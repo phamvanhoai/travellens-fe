@@ -10,7 +10,9 @@ export const dashboardRoutes = [
 
 export const adminRoutes = [
   "/admin",
+  "/admin/destination-categories",
   "/admin/travel-destinations",
+  "/admin/tour-categories",
   "/admin/tours",
   "/admin/locations",
   "/admin/view360",

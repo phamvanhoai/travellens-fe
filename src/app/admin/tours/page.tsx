@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { ImagePlus, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { Button } from "@/components/ui/button";
-import { tours as initialTours } from "@/lib/data";
+import { destinations as travelDestinations, tours as initialTours } from "@/lib/data";
 
 type TourStatus = "Active" | "Draft";
 
 type ManagedTour = {
   id: string;
   title: string;
-  destination: string;
+  destinations: string[];
   category: string;
   duration: string;
   capacity: string;
@@ -23,7 +24,7 @@ type ManagedTour = {
 const tours: ManagedTour[] = initialTours.map((tour) => ({
   id: tour.id,
   title: tour.title,
-  destination: tour.destination,
+  destinations: [tour.destination],
   category: tour.category,
   duration: tour.duration,
   capacity: tour.capacity,
@@ -35,7 +36,7 @@ const tours: ManagedTour[] = initialTours.map((tour) => ({
 const emptyTour: ManagedTour = {
   id: "",
   title: "",
-  destination: "",
+  destinations: [],
   category: "Adventure",
   duration: "",
   capacity: "",
@@ -50,10 +51,11 @@ export default function AdminToursPage() {
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [editingTour, setEditingTour] = useState<ManagedTour | null>(null);
+  const [deletingTour, setDeletingTour] = useState<ManagedTour | null>(null);
   const pageSize = 5;
 
   const visibleItems = items.filter((item) =>
-    `${item.title} ${item.destination} ${item.category}`.toLowerCase().includes(query.toLowerCase())
+    `${item.title} ${item.destinations.join(" ")} ${item.category}`.toLowerCase().includes(query.toLowerCase())
   );
   const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -70,11 +72,12 @@ export default function AdminToursPage() {
     setCreating(false);
   }
 
-  function deleteTour(item: ManagedTour) {
-    if (!window.confirm(`Delete "${item.title}"?`)) return;
+  function deleteTour() {
+    if (!deletingTour) return;
 
-    setItems((current) => current.filter((tour) => tour.id !== item.id));
+    setItems((current) => current.filter((tour) => tour.id !== deletingTour.id));
     setPage((current) => Math.max(1, Math.min(current, Math.ceil((visibleItems.length - 1) / pageSize))));
+    setDeletingTour(null);
   }
 
   return (
@@ -83,7 +86,7 @@ export default function AdminToursPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Tour Management</h1>
-            <p className="mt-1 text-sm text-slate-500">Create tours and update pricing, capacity and public display information.</p>
+            <p className="mt-1 text-sm text-slate-500">Manage bookable tour packages and their TravelDestination itinerary.</p>
           </div>
           <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Tour</Button>
         </div>
@@ -105,7 +108,7 @@ export default function AdminToursPage() {
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                {["Tour", "Destination", "Category", "Duration", "Capacity", "Price", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
+                {["Tour", "Travel Destinations", "Category", "Duration", "Capacity", "Price", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -117,7 +120,7 @@ export default function AdminToursPage() {
                       {item.title}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-600">{item.destination}</td>
+                  <td className="max-w-64 p-3 text-slate-600">{item.destinations.join(" -> ")}</td>
                   <td className="p-3">{item.category}</td>
                   <td className="p-3">{item.duration}</td>
                   <td className="p-3">{item.capacity}</td>
@@ -134,7 +137,7 @@ export default function AdminToursPage() {
                       </Button>
                       <button
                         type="button"
-                        onClick={() => deleteTour(item)}
+                        onClick={() => setDeletingTour(item)}
                         className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50"
                         aria-label={`Delete ${item.title}`}
                       >
@@ -161,6 +164,15 @@ export default function AdminToursPage() {
             setCreating(false);
           }}
           onSave={saveTour}
+        />
+      ) : null}
+
+      {deletingTour ? (
+        <ConfirmDialog
+          title="Delete Tour"
+          message={`Are you sure you want to delete "${deletingTour.title}"? This action cannot be undone in the current table state.`}
+          onCancel={() => setDeletingTour(null)}
+          onConfirm={deleteTour}
         />
       ) : null}
     </>
@@ -198,12 +210,36 @@ function TourForm({
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2"><Field label="Tour Title"><input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="input" placeholder="Santorini Sunset Tour" /></Field></div>
-          <Field label="Destination"><input required value={form.destination} onChange={(event) => setForm({ ...form, destination: event.target.value })} className="input" placeholder="Santorini, Greece" /></Field>
           <Field label="Category">
             <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} className="input">
               {["Adventure", "Cultural", "Beach", "City", "Nature", "Hiking", "Cruise"].map((item) => <option key={item}>{item}</option>)}
             </select>
           </Field>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-semibold">Travel Destinations</p>
+            <p className="mt-1 text-xs text-slate-500">Select one or more destinations included in the tour itinerary.</p>
+            <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
+              {travelDestinations.slice(0, 8).map((destination) => {
+                const label = `${destination.name}, ${destination.country}`;
+                return (
+                  <label key={destination.id} className="flex items-center gap-2 rounded-md p-2 text-sm font-semibold hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      checked={form.destinations.includes(label)}
+                      onChange={(event) => setForm({
+                        ...form,
+                        destinations: event.target.checked
+                          ? [...form.destinations, label]
+                          : form.destinations.filter((item) => item !== label)
+                      })}
+                    />
+                    {label}
+                  </label>
+                );
+              })}
+            </div>
+            {form.destinations.length === 0 ? <p className="mt-2 text-xs font-semibold text-rose-600">Select at least one destination.</p> : null}
+          </div>
           <Field label="Duration"><input required value={form.duration} onChange={(event) => setForm({ ...form, duration: event.target.value })} className="input" placeholder="5 Hours" /></Field>
           <Field label="Capacity"><input required value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} className="input" placeholder="2 - 16 People" /></Field>
           <Field label="Price"><input required min="0" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: Number(event.target.value) })} className="input" /></Field>
@@ -243,7 +279,7 @@ function TourForm({
 
         <div className="mt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Save Tour</Button>
+          <Button type="submit" disabled={form.destinations.length === 0}>Save Tour</Button>
         </div>
       </form>
     </div>

@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { BarChart3, CalendarCheck, CreditCard, Images, Map, MessageSquareText, Newspaper, Plane, Users, Video } from "lucide-react";
+import { BarChart3, CalendarCheck, CreditCard, Images, Map, MessageSquareText, Newspaper, Plane, Tags, Users, Video } from "lucide-react";
 
 const links = [
   [BarChart3, "Overview", "/admin"],
+  [Tags, "Destination Categories", "/admin/destination-categories"],
   [Plane, "Destinations", "/admin/travel-destinations"],
+  [Tags, "Tour Categories", "/admin/tour-categories"],
   [Plane, "Tours", "/admin/tours"],
   [Map, "Locations", "/admin/locations"],
   [Video, "View360", "/admin/view360"],

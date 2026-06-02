@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MapPin, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { Button } from "@/components/ui/button";
 
@@ -12,18 +13,18 @@ type ManagedLocation = {
   name: string;
   destination: string;
   description: string;
-  mapUrl: string;
+  mapCount: number;
+  view360Count: number;
   status: LocationStatus;
 };
 
 const initialLocations: ManagedLocation[] = [
-  { id: "oia-cliffside", name: "Oia Cliffside Village", destination: "Santorini, Greece", description: "Whitewashed lanes and sunset terraces.", mapUrl: "/maps/oia.json", status: "Active" },
-  { id: "ubud-rice-terraces", name: "Ubud Rice Terraces", destination: "Bali, Indonesia", description: "Green walking route through terraced fields.", mapUrl: "/maps/ubud.json", status: "Active" },
-  { id: "lake-louise", name: "Lake Louise Viewpoint", destination: "Banff, Canada", description: "Glacier lake viewpoint with nearby trails.", mapUrl: "/maps/lake-louise.json", status: "Active" },
-  { id: "arashiyama", name: "Arashiyama Bamboo Grove", destination: "Kyoto, Japan", description: "Bamboo forest walking route and temples.", mapUrl: "/maps/arashiyama.json", status: "Active" },
-  { id: "eiffel-river", name: "Eiffel River Walk", destination: "Paris, France", description: "Scenic river path and city landmarks.", mapUrl: "/maps/paris-river.json", status: "Draft" },
-  { id: "colosseum", name: "Colosseum Quarter", destination: "Rome, Italy", description: "Ancient landmark area with guided routes.", mapUrl: "/maps/rome.json", status: "Active" },
-  { id: "burj-downtown", name: "Downtown Skyline", destination: "Dubai, UAE", description: "Modern skyline route and shopping district.", mapUrl: "/maps/dubai.json", status: "Active" }
+  { id: "main-gate", name: "Main Gate", destination: "Independence Palace", description: "Visitor entrance and ticket checkpoint.", mapCount: 1, view360Count: 1, status: "Active" },
+  { id: "conference-hall", name: "Conference Hall", destination: "Independence Palace", description: "Historic conference and reception hall.", mapCount: 3, view360Count: 2, status: "Active" },
+  { id: "command-bunker", name: "Command Bunker", destination: "Independence Palace", description: "Underground command room and communication area.", mapCount: 2, view360Count: 2, status: "Active" },
+  { id: "market-main-hall", name: "Main Hall", destination: "Ben Thanh Market", description: "Central shopping and food area.", mapCount: 1, view360Count: 1, status: "Active" },
+  { id: "cathedral-front-yard", name: "Front Yard", destination: "Notre-Dame Cathedral", description: "Public viewing area in front of the cathedral.", mapCount: 1, view360Count: 1, status: "Draft" },
+  { id: "halong-wharf", name: "Visitor Wharf", destination: "Ha Long Bay", description: "Boat departure and visitor information area.", mapCount: 2, view360Count: 1, status: "Active" }
 ];
 
 const emptyLocation: ManagedLocation = {
@@ -31,7 +32,8 @@ const emptyLocation: ManagedLocation = {
   name: "",
   destination: "",
   description: "",
-  mapUrl: "",
+  mapCount: 0,
+  view360Count: 0,
   status: "Draft"
 };
 
@@ -41,10 +43,11 @@ export default function AdminLocationsPage() {
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [editingLocation, setEditingLocation] = useState<ManagedLocation | null>(null);
+  const [deletingLocation, setDeletingLocation] = useState<ManagedLocation | null>(null);
   const pageSize = 5;
 
   const visibleItems = items.filter((item) =>
-    `${item.name} ${item.destination} ${item.mapUrl}`.toLowerCase().includes(query.toLowerCase())
+    `${item.name} ${item.destination}`.toLowerCase().includes(query.toLowerCase())
   );
   const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -61,11 +64,12 @@ export default function AdminLocationsPage() {
     setCreating(false);
   }
 
-  function deleteLocation(item: ManagedLocation) {
-    if (!window.confirm(`Delete "${item.name}"?`)) return;
+  function deleteLocation() {
+    if (!deletingLocation) return;
 
-    setItems((current) => current.filter((location) => location.id !== item.id));
+    setItems((current) => current.filter((location) => location.id !== deletingLocation.id));
     setPage((current) => Math.max(1, Math.min(current, Math.ceil((visibleItems.length - 1) / pageSize))));
+    setDeletingLocation(null);
   }
 
   return (
@@ -74,7 +78,7 @@ export default function AdminLocationsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Location Management</h1>
-            <p className="mt-1 text-sm text-slate-500">Create destination locations and attach map information.</p>
+            <p className="mt-1 text-sm text-slate-500">Manage internal areas that belong to a travel destination.</p>
           </div>
           <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Location</Button>
         </div>
@@ -96,7 +100,7 @@ export default function AdminLocationsPage() {
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                {["Location", "Destination", "Description", "Map URL", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
+                {["Location", "Travel Destination", "Description", "Maps", "View360", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -107,7 +111,8 @@ export default function AdminLocationsPage() {
                   </td>
                   <td className="p-3 text-slate-600">{item.destination}</td>
                   <td className="max-w-56 truncate p-3 text-slate-600">{item.description}</td>
-                  <td className="p-3 text-brand-600">{item.mapUrl || "Not attached"}</td>
+                  <td className="p-3 font-semibold">{item.mapCount}</td>
+                  <td className="p-3 font-semibold">{item.view360Count}</td>
                   <td className="p-3">
                     <span className={item.status === "Active" ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700" : "rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700"}>
                       {item.status}
@@ -118,7 +123,7 @@ export default function AdminLocationsPage() {
                       <Button variant="outline" className="h-9 px-3" onClick={() => setEditingLocation(item)}>
                         <Pencil size={15} /> Edit
                       </Button>
-                      <button type="button" onClick={() => deleteLocation(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50" aria-label={`Delete ${item.name}`}>
+                      <button type="button" onClick={() => setDeletingLocation(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50" aria-label={`Delete ${item.name}`}>
                         <Trash2 size={15} />
                       </button>
                     </span>
@@ -142,6 +147,15 @@ export default function AdminLocationsPage() {
             setCreating(false);
           }}
           onSave={saveLocation}
+        />
+      ) : null}
+
+      {deletingLocation ? (
+        <ConfirmDialog
+          title="Delete Location"
+          message={`Are you sure you want to delete "${deletingLocation.name}"? This action cannot be undone in the current table state.`}
+          onCancel={() => setDeletingLocation(null)}
+          onConfirm={deleteLocation}
         />
       ) : null}
     </>
@@ -177,9 +191,8 @@ function LocationForm({
 
         <div className="mt-6 grid gap-4">
           <Field label="Location Name"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Oia Cliffside Village" /></Field>
-          <Field label="Destination"><input required value={form.destination} onChange={(event) => setForm({ ...form, destination: event.target.value })} className="input" placeholder="Santorini, Greece" /></Field>
+          <Field label="Travel Destination"><input required value={form.destination} onChange={(event) => setForm({ ...form, destination: event.target.value })} className="input" placeholder="Independence Palace" /></Field>
           <Field label="Description"><textarea required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Location description..." /></Field>
-          <Field label="Map URL"><input value={form.mapUrl} onChange={(event) => setForm({ ...form, mapUrl: event.target.value })} className="input" placeholder="/maps/location.json" /></Field>
           <Field label="Status">
             <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as LocationStatus })} className="input">
               <option>Active</option><option>Draft</option>

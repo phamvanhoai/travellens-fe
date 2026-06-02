@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ImagePlus, MapPin, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
 import { destinations as initialDestinations } from "@/lib/data";
@@ -47,6 +48,7 @@ export default function AdminDestinationsPage() {
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [editingDestination, setEditingDestination] = useState<ManagedDestination | null>(null);
+  const [deletingDestination, setDeletingDestination] = useState<ManagedDestination | null>(null);
   const pageSize = 5;
 
   const visibleItems = items.filter((item) =>
@@ -67,11 +69,12 @@ export default function AdminDestinationsPage() {
     setCreating(false);
   }
 
-  function deleteDestination(item: ManagedDestination) {
-    if (!window.confirm(`Delete "${item.name}, ${item.country}"?`)) return;
+  function deleteDestination() {
+    if (!deletingDestination) return;
 
-    setItems((current) => current.filter((destination) => destination.id !== item.id));
+    setItems((current) => current.filter((destination) => destination.id !== deletingDestination.id));
     setPage((current) => Math.max(1, Math.min(current, Math.ceil((visibleItems.length - 1) / pageSize))));
+    setDeletingDestination(null);
   }
 
   return (
@@ -130,7 +133,7 @@ export default function AdminDestinationsPage() {
                       </Button>
                       <button
                         type="button"
-                        onClick={() => deleteDestination(item)}
+                        onClick={() => setDeletingDestination(item)}
                         className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50"
                         aria-label={`Delete ${item.name}`}
                       >
@@ -157,6 +160,15 @@ export default function AdminDestinationsPage() {
             setCreating(false);
           }}
           onSave={saveDestination}
+        />
+      ) : null}
+
+      {deletingDestination ? (
+        <ConfirmDialog
+          title="Delete Destination"
+          message={`Are you sure you want to delete "${deletingDestination.name}, ${deletingDestination.country}"? This action cannot be undone in the current table state.`}
+          onCancel={() => setDeletingDestination(null)}
+          onConfirm={deleteDestination}
         />
       ) : null}
     </>
