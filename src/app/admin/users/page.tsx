@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Plus, Search, UserRound, X } from "lucide-react";
+import { Pagination } from "@/components/common/pagination";
 import { Button } from "@/components/ui/button";
 
 type UserRole = "Admin" | "User" | "Editor";
@@ -32,12 +33,17 @@ const emptyUser: Omit<ManagedUser, "id"> = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState(initialUsers);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [creating, setCreating] = useState(false);
+  const pageSize = 5;
 
   const visibleUsers = users.filter((user) =>
     `${user.name} ${user.email} ${user.role}`.toLowerCase().includes(query.toLowerCase())
   );
+  const pageCount = Math.max(1, Math.ceil(visibleUsers.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedUsers = visibleUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function saveUser(payload: Omit<ManagedUser, "id">) {
     if (editingUser) {
@@ -65,7 +71,10 @@ export default function AdminUsersPage() {
           <Search className="absolute left-3 top-3 size-5 text-slate-400" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
             className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
             placeholder="Search users..."
           />
@@ -79,7 +88,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.id} className="border-t border-slate-100">
                   <td className="p-3 font-bold">#{user.id}</td>
                   <td className="p-3">
@@ -105,6 +114,8 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleUsers.length} pageSize={pageSize} itemLabel="users" onPageChange={setPage} />
       </div>
 
       {creating || editingUser ? (
