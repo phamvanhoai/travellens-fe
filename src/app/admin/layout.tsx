@@ -1,5 +1,7 @@
-import Link from "next/link";
+"use client";
+
 import { BarChart3, CalendarCheck, CreditCard, Images, Map, MessageSquareText, Newspaper, Plane, Tags, Users, Video } from "lucide-react";
+import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
   [BarChart3, "Overview", "/admin"],
@@ -22,12 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <section className="bg-mist">
       <div className="mx-auto grid min-h-[760px] max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
-        <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="px-3 pb-3 text-lg font-bold">Admin Dashboard</h2>
-          <nav className="grid gap-1">
-            {links.map(([Icon, label, href]) => <Link key={href} href={href} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-600"><Icon size={16} /> {label}</Link>)}
-          </nav>
-        </aside>
+        <SidebarNav title="Admin Dashboard" links={links} />
         <div>{children}</div>
       </div>
     </section>
