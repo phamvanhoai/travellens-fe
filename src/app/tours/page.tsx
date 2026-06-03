@@ -1,9 +1,19 @@
+"use client";
+
+import { useState } from "react";
 import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves } from "lucide-react";
 import { TourCard } from "@/components/cards/tour-card";
+import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
 import { images, tours } from "@/lib/data";
 
 export default function ToursPage() {
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const pageCount = Math.max(1, Math.ceil(tours.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedTours = tours.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <>
       <PageHero title="Explore Amazing Tours" subtitle="Find the perfect tour for your next adventure" image={images.swiss} />
@@ -35,10 +45,11 @@ export default function ToursPage() {
               </button>
             ))}
           </div>
-          <p className="mb-4 text-sm text-slate-500">Showing 1-12 of 1234 tours</p>
+          <p className="mb-4 text-sm text-slate-500">Showing available tours</p>
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {tours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
+            {paginatedTours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
           </div>
+          <Pagination page={currentPage} pageCount={pageCount} totalItems={tours.length} pageSize={pageSize} itemLabel="tours" onPageChange={setPage} />
         </div>
       </section>
     </>
