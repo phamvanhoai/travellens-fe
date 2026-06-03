@@ -1,228 +1,120 @@
-# Travel360 Frontend Source
+# Travel360 Frontend
 
-## Project Overview
-
-Travel360 is a travel booking and virtual tourism platform.
-
-The frontend must support:
-- Travel destination browsing
-- Tour booking
-- Location detail pages
-- Interactive map display
-- 360 virtual tour experience
-- Booking multiple passengers
-- Payment flow
-- User dashboard
-- Admin dashboard
-- Blog and review system
-- AI chatbot
-- AI travel suggestions
-- Google OAuth login
-
----
+Travel360 is a travel booking and virtual tourism frontend built with Next.js, TypeScript and Tailwind CSS. The app supports public travel browsing, customer dashboards, admin management, staff workflows, 360 experiences, maps, reviews, blogs, payments and AI assistant UI.
 
 ## Tech Stack
 
-Use:
-
-- React.js
-- Next.js
+- Next.js App Router
+- React
 - TypeScript
 - Tailwind CSS
-- ShadCN UI
-- Framer Motion
 - Axios
-- TanStack Query
 - Zustand
-- React Hook Form
-- Zod
 - Recharts
 - Lucide React
 
----
+## Environment
 
-## UI Style
+Create `.env` from `.env.example`:
 
-Design style:
+```env
+NEXT_PUBLIC_API_URL=https://travellens-gamma.vercel.app/api
+```
 
-- Modern travel platform
-- Clean and premium
-- Similar inspiration: Airbnb, Booking.com, Klook
-- Large travel images
-- Smooth animation
-- Responsive design
-- Mobile-first
-- Dark/light mode support
-- Friendly dashboard layout
+API client config is located at:
 
----
+```text
+src/services/api.ts
+```
 
-## Main Entities
+## Run Locally
 
-Frontend must support these backend entities:
+```bash
+npm install
+npm run dev
+```
 
-- User
-- DestinationCategory
-- TourCategory
-- TravelDestination
-- Tour
-- Location
-- Map
-- View360
-- View360Image
-- Booking
-- BookingDetail
-- Payment
-- Blog
-- Review
-- Statistics
+Open:
 
----
+```text
+http://localhost:3000
+```
 
-## Required Pages
+## Validation
 
-### Public Pages
+```bash
+npm run typecheck
+npm run build
+```
 
-1. Home Page
-- Hero section
-- Destination search
-- Featured destinations
-- Popular tours
-- 360 experience preview
-- AI suggestion section
-- Blog preview
+## Core Business Model
 
-2. Login Page
-- Email/password login
-- Google login button
+The frontend follows this backend model:
 
-3. Register Page
+```text
+Tour
+  -> TourDestination
+    -> TravelDestination
+      -> Location
+        -> Map
+        -> View360
+          -> View360Image
+        -> Review
+        -> Blog
+```
 
-4. Travel Destination List Page
-- Search
-- Filter by DestinationCategory
-- Destination cards
+Important rules:
 
-5. Travel Destination Detail Page
-- Destination information
-- Related tours
-- Related locations
-- Map preview
-- View360 preview
+- `Tour` contains multiple `TravelDestination` records through `TourDestination`.
+- `TravelDestination` contains multiple `Location` records.
+- `Location` is an internal area inside a travel destination, not an independent destination.
+- `Map` is a visitor diagram image inside a location, not Google Maps.
+- `View360` belongs to a location and contains multiple `View360Image` records.
 
-6. Tour List Page
-- Search
-- Filter by TourCategory
-- Price filter
-- Capacity display
+## Main Routes
 
-7. Tour Detail Page
-- Tour description
-- Schedule
-- Price
-- Capacity
-- Booking button
-- Reviews
+### Public
 
-8. Location Detail Page
-- Location description
-- Map section
-- View360 gallery
-- Reviews
-- Related blogs
-
-9. View360 Experience Page
-- Fullscreen 360 viewer layout
-- Scene navigation
-- Image sequence by order_index
-- Audio narration controls
-- Description panel
-- Back button
-
-10. Blog List Page
-
-11. Blog Detail Page
-
----
-
-## User Pages
+- `/`
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/destinations`
+- `/destinations/[id]`
+- `/tours`
+- `/tours/[id]`
+- `/locations/[id]`
+- `/view360`
+- `/blogs`
+- `/blogs/[id]`
+- `/booking`
+- `/payment/checkout`
+- `/payment/success`
+- `/payment/failed`
+- `/ai`
 
 ### User Dashboard
-
-Routes:
 
 - `/dashboard/profile`
 - `/dashboard/bookings`
 - `/dashboard/payments`
 - `/dashboard/reviews`
 - `/dashboard/saved`
+- `/dashboard/change-password`
 
-Functions:
+User dashboard includes avatar upload preview, booking history with edit/search/pagination, payment history with search/pagination, review edit/search/pagination, saved item pagination and password change UI.
 
-- View/update profile
-- View booking history
-- View payment history
-- Cancel booking
-- View review history
-- View saved tours/destinations
-
----
-
-## Booking Flow
-
-Create booking flow:
-
-1. Select tour
-2. Enter passenger list
-3. Support passenger types:
-   - adult
-   - child
-   - infant
-4. Show price calculation
-5. Submit booking
-6. Go to payment page
-7. Show booking status
-
-Booking form fields:
-
-- passenger_name
-- age_category
-- seat_number optional
-- special_request optional
-
----
-
-## Payment Flow
-
-Payment pages must support:
-
-- Payment checkout
-- Payment success
-- Payment failed
-- Refund status
-- Transaction detail
-
-Show:
-
-- booking_id
-- amount
-- payment_method
-- payment_status
-- transaction_code
-- currency
-
----
-
-## Admin Dashboard
-
-Admin routes:
+### Admin
 
 - `/admin`
+- `/admin/destination-categories`
 - `/admin/travel-destinations`
+- `/admin/tour-categories`
 - `/admin/tours`
 - `/admin/locations`
-- `/admin/view360`
 - `/admin/maps`
+- `/admin/view360`
 - `/admin/bookings`
 - `/admin/payments`
 - `/admin/blogs`
@@ -230,158 +122,70 @@ Admin routes:
 - `/admin/users`
 - `/admin/statistics`
 
-Admin features:
+Admin pages include CRUD-style mock UI, search, pagination, upload previews and confirm-delete modals where relevant.
 
-1. Dashboard Overview
-- Total users
-- Total bookings
-- Total revenue
-- Cancelled bookings
-- Popular tours
-- Popular destinations
+### Staff
 
-2. TravelDestination Management
-- List
-- Create
-- Update
-- Delete
+- `/staff/coupons`
+- `/staff/bookings`
+- `/staff/booking-details`
+- `/staff/reviews`
+- `/staff/payments`
 
-3. Tour Management
-- List
-- Create
-- Update
-- Delete
-- Capacity display
+Staff pages cover coupon management, booking updates/cancel, booking passenger details, review moderation and payment status/refund workflows.
 
-4. Location Management
-- List locations
-- Create location
-- Update location
-- Delete location
+## UI Features
 
-5. View360 Management
-- List View360 by Location
-- Create View360 scene
-- Update View360
-- Delete View360
-- Add View360 images
-- Sort images by order_index
-- Add audio narration
+- Responsive travel platform layout
+- Dark/light mode toggle
+- Language dropdown mock UI
+- Wishlist dropdown mock UI
+- Active sidebar state for dashboard, admin and staff
+- Floating AI assistant mock chat
+- Shared pagination component
+- Shared confirm dialog component
+- Upload previews for avatar, destination images, tour images, map diagrams, View360 audio and View360 images
 
-6. Map Management
-- Upload/store map file URL
-- Attach map to Location
-
-7. Booking Management
-- List bookings
-- View booking detail
-- Cancel booking
-- Update status
-
-8. Payment Management
-- List payments
-- View transaction detail
-- Refund status
-
-9. Blog Management
-- List blogs
-- Approve/reject blog
-- Delete blog
-
-10. Review Management
-- List reviews
-- Moderate reviews
-- Delete inappropriate review
-
-11. User Management
-- List users
-- Update status
-- Change role
-
-12. Statistics
-- Revenue chart
-- Booking chart
-- Top destinations
-- Top tours
-- Cancellation statistics
-
----
-
-## AI Features
-
-Create UI for:
-
-1. AI Chatbot
-- Floating chat button
-- Chat modal
-- User message
-- AI response
-- Loading state
-
-2. AI Travel Suggestions
-- Suggest destinations
-- Suggest tours
-- Personalized recommendation cards
-
----
-
-## Folder Structure
-
-Generate frontend source with this structure:
+## Project Structure
 
 ```text
 src/
-├── app/
-│   ├── page.tsx
-│   ├── layout.tsx
-│   ├── login/
-│   ├── register/
-│   ├── destinations/
-│   ├── tours/
-│   ├── locations/
-│   ├── view360/
-│   ├── blogs/
-│   ├── dashboard/
-│   └── admin/
-├── components/
-│   ├── common/
-│   ├── ui/
-│   ├── layout/
-│   ├── cards/
-│   ├── forms/
-│   ├── tables/
-│   ├── charts/
-│   ├── modals/
-│   └── view360/
-├── features/
-│   ├── auth/
-│   ├── destinations/
-│   ├── tours/
-│   ├── locations/
-│   ├── view360/
-│   ├── booking/
-│   ├── payment/
-│   ├── blog/
-│   ├── review/
-│   ├── admin/
-│   ├── statistics/
-│   └── ai/
-├── services/
-│   ├── api.ts
-│   ├── auth.service.ts
-│   ├── destination.service.ts
-│   ├── tour.service.ts
-│   ├── location.service.ts
-│   ├── view360.service.ts
-│   ├── booking.service.ts
-│   ├── payment.service.ts
-│   ├── blog.service.ts
-│   ├── review.service.ts
-│   └── statistics.service.ts
-├── hooks/
-├── store/
-├── types/
-├── constants/
-├── utils/
-├── lib/
-└── styles/
+  app/
+    admin/
+    ai/
+    blogs/
+    booking/
+    dashboard/
+    destinations/
+    locations/
+    login/
+    payment/
+    register/
+    reset-password/
+    staff/
+    tours/
+    view360/
+  components/
+    admin/
+    auth/
+    cards/
+    charts/
+    common/
+    dashboard/
+    destinations/
+    layout/
+    ui/
+  constants/
+  hooks/
+  lib/
+  services/
+  store/
+  types/
+  utils/
+```
+
+## Notes
+
+- Current screens use mock data and are ready to connect to backend services.
+- `.env.example` is intended for GitHub.
+- `.env` contains the current API URL for local development.
