@@ -5,7 +5,8 @@ export const dashboardRoutes = [
   "/dashboard/bookings",
   "/dashboard/payments",
   "/dashboard/reviews",
-  "/dashboard/saved"
+  "/dashboard/saved",
+  "/dashboard/change-password"
 ];
 
 export const adminRoutes = [
