@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, Globe2, Heart, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { destinations, tours } from "@/lib/data";
+import { useAuthStore } from "@/store/use-auth-store";
 
 const nav = [
   { href: "/", label: "Home" },
@@ -19,10 +20,14 @@ const nav = [
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [language, setLanguage] = useState("EN");
   const [languageOpen, setLanguageOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, setUser, logout } = useAuthStore();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("travel360-theme");
@@ -31,6 +36,16 @@ export function Header() {
 
     setTheme(nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
+
+    // Load user from localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse user", e);
+      }
+    }
   }, []);
 
   function toggleTheme() {
@@ -40,6 +55,12 @@ export function Header() {
     localStorage.setItem("travel360-theme", nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
   }
+
+  const handleLogout = () => {
+    logout();
+    setUserMenuOpen(false);
+    router.push("/");
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/92 backdrop-blur">
@@ -152,12 +173,64 @@ export function Header() {
               </div>
             ) : null}
           </div>
-          <Button href="/login" variant="outline" className="hidden h-10 px-4 md:inline-flex">
-            Sign In
-          </Button>
-          <Button href="/register" className="h-10 px-4">
-            Sign Up
-          </Button>
+          
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen((open) => !open)}
+                className="flex h-10 items-center gap-2 rounded-full border border-slate-200 p-1 pr-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.name} className="size-8 rounded-full object-cover" />
+                ) : (
+                  <div className="grid size-8 place-items-center rounded-full bg-brand-100 font-bold text-brand-600">
+                    {user.name?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
+                <span className="hidden max-w-[120px] truncate sm:inline-block">{user.name}</span>
+                <ChevronDown size={14} className={cn("transition", userMenuOpen && "rotate-180")} />
+              </button>
+              
+              {userMenuOpen ? (
+                <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 shadow-soft">
+                  <div className="border-b border-slate-100 px-3 py-2">
+                    <p className="truncate text-sm font-bold text-ink">{user.name}</p>
+                    <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  </div>
+                  <Link 
+                    href="/profile" 
+                    className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    My Profile
+                  </Link>
+                  <Link 
+                    href="/dashboard" 
+                    className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <div className="my-1 h-px bg-slate-100"></div>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <Button href="/login" variant="outline" className="hidden h-10 px-4 md:inline-flex">
+                Sign In
+              </Button>
+              <Button href="/register" className="h-10 px-4">
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
