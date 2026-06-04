@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Chatbot } from "@/components/common/chatbot";
 import { Footer } from "@/components/layout/footer";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
         <Header />
         <main>{children}</main>
         <Footer />
@@ -32,3 +34,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
