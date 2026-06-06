@@ -181,7 +181,7 @@ export function Header() {
                 className="flex h-10 items-center gap-2 rounded-full border border-slate-200 p-1 pr-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.name} className="size-8 rounded-full object-cover" />
+                  <img src={user.avatar_url} alt={user.name} className="size-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="grid size-8 place-items-center rounded-full bg-brand-100 font-bold text-brand-600">
                     {user.name?.charAt(0)?.toUpperCase()}
