@@ -1,80 +1,149 @@
 "use client";
 
-import { useState } from "react";
-import { ImagePlus, MapPin, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { destinations as initialDestinations } from "@/lib/data";
+import { useToast } from "@/components/common/toast";
+import { Button } from "@/components/ui/button";
+import { adminDestinationCategoryService, type AdminDestinationCategory } from "@/services/admin-destination-category.service";
+import {
+  adminTravelDestinationService,
+  getTravelDestinationId,
+  getTravelDestinationThumbnail,
+  type AdminTravelDestination,
+  type AdminTravelDestinationPayload
+} from "@/services/admin-travel-destination.service";
 
-type DestinationStatus = "Active" | "Draft";
-
-type ManagedDestination = {
-  id: string;
-  name: string;
-  country: string;
-  category: string;
-  region: string;
-  priceFrom: number;
-  image: string;
-  status: DestinationStatus;
+type FormValue = AdminTravelDestinationPayload & {
+  preview: string;
 };
 
-const destinations: ManagedDestination[] = initialDestinations.map((destination) => ({
-  id: destination.id,
-  name: destination.name,
-  country: destination.country,
-  category: destination.category,
-  region: destination.region,
-  priceFrom: destination.priceFrom,
-  image: destination.image,
-  status: "Active"
-}));
-
-const emptyDestination: ManagedDestination = {
-  id: "",
+const emptyForm: FormValue = {
   name: "",
-  country: "",
-  category: "Beach",
-  region: "Asia",
-  priceFrom: 0,
-  image: "",
-  status: "Draft"
+  description: "",
+  latitude: "",
+  longitude: "",
+  destination_category_id: "",
+  thumbnail_file: null,
+  preview: ""
 };
+
+function getCategoryId(category: AdminDestinationCategory) {
+  return category.destination_category_id ?? category.id ?? 0;
+}
 
 export default function AdminDestinationsPage() {
-  const [items, setItems] = useState(destinations);
+  const [items, setItems] = useState<AdminTravelDestination[]>([]);
+  const [categories, setCategories] = useState<AdminDestinationCategory[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
-  const [editingDestination, setEditingDestination] = useState<ManagedDestination | null>(null);
-  const [deletingDestination, setDeletingDestination] = useState<ManagedDestination | null>(null);
-  const pageSize = 5;
+  const [editing, setEditing] = useState<AdminTravelDestination | null>(null);
+  const [deleting, setDeleting] = useState<AdminTravelDestination | null>(null);
+  const showToast = useToast();
+  const pageSize = 10;
 
-  const visibleItems = items.filter((item) =>
-    `${item.name} ${item.country} ${item.category} ${item.region}`.toLowerCase().includes(query.toLowerCase())
-  );
-  const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const paginatedItems = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  function saveDestination(payload: ManagedDestination) {
-    if (editingDestination) {
-      setItems((current) => current.map((item) => item.id === editingDestination.id ? payload : item));
-    } else {
-      setItems((current) => [...current, { ...payload, id: createSlug(payload.name) }]);
+  async function loadData(nextPage = page, search = query) {
+    setLoading(true);
+    setError("");
+    try {
+      const [destinationResult, categoryResult] = await Promise.all([
+        adminTravelDestinationService.list({ page: nextPage, limit: pageSize, search }),
+        adminDestinationCategoryService.list()
+      ]);
+      setItems(destinationResult.data ?? []);
+      setCategories(Array.isArray(categoryResult) ? categoryResult : []);
+      setTotalItems(destinationResult.pagination?.total ?? destinationResult.data?.length ?? 0);
+      setPageCount(destinationResult.pagination?.totalPages ?? Math.max(1, Math.ceil((destinationResult.pagination?.total ?? destinationResult.data?.length ?? 0) / pageSize)));
+    } catch (err) {
+      setError("Cannot load travel destinations from API.");
+      showToast({ variant: "error", title: "Load failed", description: "Cannot load travel destinations from API." });
+    } finally {
+      setLoading(false);
     }
-
-    setEditingDestination(null);
-    setCreating(false);
   }
 
-  function deleteDestination() {
-    if (!deletingDestination) return;
+  useEffect(() => {
+    void loadData(1, "");
+  }, []);
 
-    setItems((current) => current.filter((destination) => destination.id !== deletingDestination.id));
-    setPage((current) => Math.max(1, Math.min(current, Math.ceil((visibleItems.length - 1) / pageSize))));
-    setDeletingDestination(null);
+  const editingInitialValue = useMemo<FormValue>(() => {
+    if (!editing) return emptyForm;
+    return {
+      name: editing.name ?? "",
+      description: editing.description ?? "",
+      latitude: editing.latitude == null ? "" : String(editing.latitude),
+      longitude: editing.longitude == null ? "" : String(editing.longitude),
+      destination_category_id: editing.destination_category_id == null ? "" : String(editing.destination_category_id),
+      thumbnail_file: null,
+      preview: getTravelDestinationThumbnail(editing)
+    };
+  }, [editing]);
+
+  async function handleSearch(value: string) {
+    setQuery(value);
+    setPage(1);
+    await loadData(1, value);
+  }
+
+  async function handlePageChange(nextPage: number) {
+    setPage(nextPage);
+    await loadData(nextPage, query);
+  }
+
+  async function saveDestination(payload: FormValue) {
+    setSaving(true);
+    setError("");
+    try {
+      const requestPayload: AdminTravelDestinationPayload = {
+        name: payload.name,
+        description: payload.description,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        destination_category_id: payload.destination_category_id,
+        thumbnail_file: payload.thumbnail_file
+      };
+
+      if (editing) {
+        await adminTravelDestinationService.update(getTravelDestinationId(editing), requestPayload);
+        showToast({ variant: "success", title: "Destination updated", description: payload.name });
+      } else {
+        await adminTravelDestinationService.create(requestPayload);
+        showToast({ variant: "success", title: "Destination created", description: payload.name });
+      }
+
+      setCreating(false);
+      setEditing(null);
+      await loadData(page, query);
+    } catch (err) {
+      setError("Cannot save travel destination. Please check required fields, duplicate name, or permission.");
+      showToast({ variant: "error", title: "Save failed", description: "Please check required fields, duplicate name, or permission." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteDestination() {
+    if (!deleting) return;
+    setSaving(true);
+    setError("");
+    try {
+      await adminTravelDestinationService.remove(getTravelDestinationId(deleting));
+      showToast({ variant: "success", title: "Destination deleted", description: deleting.name });
+      setDeleting(null);
+      await loadData(page, query);
+    } catch (err) {
+      setError("Cannot delete this destination. It may still have tours or locations.");
+      showToast({ variant: "error", title: "Delete failed", description: "This destination may still have tours or locations." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -85,17 +154,19 @@ export default function AdminDestinationsPage() {
             <h1 className="text-2xl font-bold">TravelDestination Management</h1>
             <p className="mt-1 text-sm text-slate-500">Create destinations and update display details used by public pages.</p>
           </div>
-          <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Destination</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => loadData(page, query)} disabled={loading}><RefreshCw size={17} /> Refresh</Button>
+            <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Destination</Button>
+          </div>
         </div>
+
+        {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
         <div className="relative mt-6 max-w-md">
           <Search className="absolute left-3 top-3 size-5 text-slate-400" />
           <input
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(1);
-            }}
+            onChange={(event) => void handleSearch(event.target.value)}
             className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
             placeholder="Search destinations..."
           />
@@ -104,41 +175,29 @@ export default function AdminDestinationsPage() {
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                {["Destination", "Country", "Category", "Region", "Price From", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
-              </tr>
+              <tr>{["ID", "Destination", "Category", "Coordinates", "Description", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr>
             </thead>
             <tbody>
-              {paginatedItems.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
+              {loading ? (
+                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading travel destinations...</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={6} className="p-6 text-center text-slate-500">No travel destinations found.</td></tr>
+              ) : items.map((item) => (
+                <tr key={getTravelDestinationId(item)} className="border-t border-slate-100">
+                  <td className="p-3 font-bold">#{getTravelDestinationId(item)}</td>
                   <td className="p-3">
                     <span className="flex items-center gap-3 font-semibold">
-                      {item.image ? <img src={item.image} alt="" className="size-11 rounded-md object-cover" /> : <span className="grid size-11 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={17} /></span>}
+                      {getTravelDestinationThumbnail(item) ? <img src={getTravelDestinationThumbnail(item)} alt="" className="size-11 rounded-md object-cover" /> : <span className="grid size-11 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={17} /></span>}
                       {item.name}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-600">{item.country}</td>
-                  <td className="p-3">{item.category}</td>
-                  <td className="p-3">{item.region}</td>
-                  <td className="p-3 font-semibold">${item.priceFrom}</td>
-                  <td className="p-3">
-                    <span className={item.status === "Active" ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700" : "rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700"}>
-                      {item.status}
-                    </span>
-                  </td>
+                  <td className="p-3 text-slate-600">{item.destination_category_name ?? item.category_name ?? item.destination_category_id ?? "-"}</td>
+                  <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
+                  <td className="max-w-72 truncate p-3 text-slate-600">{item.description || "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
-                      <Button variant="outline" className="h-9 px-3" onClick={() => setEditingDestination(item)}>
-                        <Pencil size={15} /> Edit
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingDestination(item)}
-                        className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50"
-                        aria-label={`Delete ${item.name}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button>
+                      <button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${item.name}`}><Trash2 size={15} /></button>
                     </span>
                   </td>
                 </tr>
@@ -147,29 +206,23 @@ export default function AdminDestinationsPage() {
           </table>
         </div>
 
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="destinations" onPageChange={setPage} />
+        <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="destinations" onPageChange={(nextPage) => void handlePageChange(nextPage)} />
       </div>
 
-      {creating || editingDestination ? (
+      {creating || editing ? (
         <DestinationForm
-          key={editingDestination?.id ?? "create"}
-          initialValue={editingDestination ?? emptyDestination}
-          title={editingDestination ? "Edit Destination" : "Create Destination"}
-          onClose={() => {
-            setEditingDestination(null);
-            setCreating(false);
-          }}
+          key={editing ? getTravelDestinationId(editing) : "create"}
+          title={editing ? "Edit Travel Destination" : "Create Travel Destination"}
+          categories={categories}
+          initialValue={editing ? editingInitialValue : emptyForm}
+          saving={saving}
+          onClose={() => { setCreating(false); setEditing(null); }}
           onSave={saveDestination}
         />
       ) : null}
 
-      {deletingDestination ? (
-        <ConfirmDialog
-          title="Delete Destination"
-          message={`Are you sure you want to delete "${deletingDestination.name}, ${deletingDestination.country}"? This action cannot be undone in the current table state.`}
-          onCancel={() => setDeletingDestination(null)}
-          onConfirm={deleteDestination}
-        />
+      {deleting ? (
+        <ConfirmDialog title="Delete Travel Destination" message={`Are you sure you want to delete "${deleting.name}"?`} onCancel={() => setDeleting(null)} onConfirm={deleteDestination} />
       ) : null}
     </>
   );
@@ -177,78 +230,59 @@ export default function AdminDestinationsPage() {
 
 function DestinationForm({
   title,
+  categories,
   initialValue,
+  saving,
   onClose,
   onSave
 }: {
   title: string;
-  initialValue: ManagedDestination;
+  categories: AdminDestinationCategory[];
+  initialValue: FormValue;
+  saving: boolean;
   onClose: () => void;
-  onSave: (payload: ManagedDestination) => void;
+  onSave: (payload: FormValue) => void;
 }) {
   const [form, setForm] = useState(initialValue);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
-      <form
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSave(form);
-        }}
-      >
+      <form className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); onSave(form); }}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close">
-            <X size={18} />
-          </button>
+          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button>
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Field label="Destination Name"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Santorini" /></Field>
-          <Field label="Country"><input required value={form.country} onChange={(event) => setForm({ ...form, country: event.target.value })} className="input" placeholder="Greece" /></Field>
-          <Field label="Category">
-            <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} className="input">
-              {["Beach", "Nature", "Mountain", "City", "Culture", "Adventure"].map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </Field>
-          <Field label="Region">
-            <select value={form.region} onChange={(event) => setForm({ ...form, region: event.target.value })} className="input">
-              {["Asia", "Europe", "North America", "South America", "Oceania", "Middle East"].map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </Field>
-          <Field label="Price From"><input required min="0" type="number" value={form.priceFrom} onChange={(event) => setForm({ ...form, priceFrom: Number(event.target.value) })} className="input" /></Field>
-          <Field label="Status">
-            <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as DestinationStatus })} className="input">
-              <option>Active</option><option>Draft</option>
-            </select>
-          </Field>
+          <div className="sm:col-span-2"><Field label="Name"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Dinh Doc Lap" /></Field></div>
+          <div className="sm:col-span-2"><Field label="Description"><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Destination description" /></Field></div>
+          <Field label="Latitude"><input type="number" step="any" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} className="input" placeholder="10.7769" /></Field>
+          <Field label="Longitude"><input type="number" step="any" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} className="input" placeholder="106.7009" /></Field>
+          <div className="sm:col-span-2">
+            <Field label="Destination Category">
+              <select value={form.destination_category_id} onChange={(event) => setForm({ ...form, destination_category_id: event.target.value })} className="input">
+                <option value="">No category</option>
+                {categories.map((category) => <option key={getCategoryId(category)} value={getCategoryId(category)}>{category.name}</option>)}
+              </select>
+            </Field>
+          </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold">
-              Destination Image
+              Thumbnail
               <span className="mt-2 grid gap-4 rounded-lg border border-dashed border-slate-300 p-4 sm:grid-cols-[140px_1fr] sm:items-center">
                 <span className="grid h-28 place-items-center overflow-hidden rounded-lg bg-slate-50 text-slate-400">
-                  {form.image ? <img src={form.image} alt="Destination preview" className="h-full w-full object-cover" /> : <ImagePlus size={28} />}
+                  {form.preview ? <img src={form.preview} alt="Destination preview" className="h-full w-full object-cover" /> : <ImagePlus size={28} />}
                 </span>
                 <span>
-                  <span className="block text-sm font-normal text-slate-500">Upload a JPG, PNG or WEBP image for the destination card and detail page.</span>
-                  <span className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-700">
+                  <span className="block text-sm font-normal text-slate-500">Upload thumbnail_file. Supported format depends on backend validation.</span>
+                  <span className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">
                     <Upload size={16} /> Choose Image
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) setForm({ ...form, image: URL.createObjectURL(file) });
-                      }}
-                    />
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) setForm({ ...form, thumbnail_file: file, preview: URL.createObjectURL(file) });
+                    }} />
                   </span>
-                  {form.image ? (
-                    <button type="button" onClick={() => setForm({ ...form, image: "" })} className="ml-3 text-sm font-bold text-rose-600">
-                      Remove
-                    </button>
-                  ) : null}
+                  {form.preview ? <button type="button" onClick={() => setForm({ ...form, thumbnail_file: null, preview: "" })} className="ml-3 text-sm font-bold text-rose-600">Remove</button> : null}
                 </span>
               </span>
             </label>
@@ -257,7 +291,7 @@ function DestinationForm({
 
         <div className="mt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Save Destination</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Destination"}</Button>
         </div>
       </form>
     </div>
@@ -265,18 +299,5 @@ function DestinationForm({
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3 [&_.input]:outline-none [&_.input:focus]:border-brand-600">
-      {label}
-      {children}
-    </label>
-  );
-}
-
-function createSlug(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  return <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3">{label}{children}</label>;
 }

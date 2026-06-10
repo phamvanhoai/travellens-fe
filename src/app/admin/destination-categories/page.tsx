@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, RefreshCw, Search, Tag, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
+import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { adminDestinationCategoryService, type AdminDestinationCategory } from "@/services/admin-destination-category.service";
 
@@ -33,6 +34,7 @@ export default function DestinationCategoriesPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminDestinationCategory | null>(null);
   const [deleting, setDeleting] = useState<AdminDestinationCategory | null>(null);
+  const showToast = useToast();
   const pageSize = 5;
 
   const visibleItems = items.filter((item) =>
@@ -50,6 +52,7 @@ export default function DestinationCategoriesPage() {
       setItems(normalizeCategories(Array.isArray(data) ? data : []));
     } catch (err) {
       setError("Cannot load destination categories from API.");
+      showToast({ variant: "error", title: "Load failed", description: "Cannot load destination categories from API." });
     } finally {
       setLoading(false);
     }
@@ -66,14 +69,17 @@ export default function DestinationCategoriesPage() {
       if (editing) {
         const id = getCategoryId(editing);
         await adminDestinationCategoryService.update(id, payload);
+        showToast({ variant: "success", title: "Category updated", description: payload.name });
       } else {
         await adminDestinationCategoryService.create(payload);
+        showToast({ variant: "success", title: "Category created", description: payload.name });
       }
       setCreating(false);
       setEditing(null);
       await loadCategories();
     } catch (err) {
       setError("Cannot save destination category. Please check the API or your permission.");
+      showToast({ variant: "error", title: "Save failed", description: "Please check the API or your permission." });
     } finally {
       setSaving(false);
     }
@@ -86,10 +92,12 @@ export default function DestinationCategoriesPage() {
     setError("");
     try {
       await adminDestinationCategoryService.remove(getCategoryId(deleting));
+      showToast({ variant: "success", title: "Category deleted", description: deleting.name });
       setDeleting(null);
       await loadCategories();
     } catch (err) {
       setError("Cannot delete destination category. It may still be used by destinations.");
+      showToast({ variant: "error", title: "Delete failed", description: "This category may still be used by destinations." });
     } finally {
       setSaving(false);
     }
@@ -101,7 +109,7 @@ export default function DestinationCategoriesPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">DestinationCategory Management</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage destination categories using `/admin/destination-categories` API.</p>
+            <p className="mt-1 text-sm text-slate-500">Create and update categories used to classify travel destinations.</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={loadCategories} disabled={loading}>
