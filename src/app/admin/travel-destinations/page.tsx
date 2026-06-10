@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
+import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { adminDestinationCategoryService, type AdminDestinationCategory } from "@/services/admin-destination-category.service";
 import {
@@ -45,6 +46,7 @@ export default function AdminDestinationsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminTravelDestination | null>(null);
   const [deleting, setDeleting] = useState<AdminTravelDestination | null>(null);
+  const showToast = useToast();
   const pageSize = 10;
 
   async function loadData(nextPage = page, search = query) {
@@ -61,6 +63,7 @@ export default function AdminDestinationsPage() {
       setPageCount(destinationResult.pagination?.totalPages ?? Math.max(1, Math.ceil((destinationResult.pagination?.total ?? destinationResult.data?.length ?? 0) / pageSize)));
     } catch (err) {
       setError("Cannot load travel destinations from API.");
+      showToast({ variant: "error", title: "Load failed", description: "Cannot load travel destinations from API." });
     } finally {
       setLoading(false);
     }
@@ -109,8 +112,10 @@ export default function AdminDestinationsPage() {
 
       if (editing) {
         await adminTravelDestinationService.update(getTravelDestinationId(editing), requestPayload);
+        showToast({ variant: "success", title: "Destination updated", description: payload.name });
       } else {
         await adminTravelDestinationService.create(requestPayload);
+        showToast({ variant: "success", title: "Destination created", description: payload.name });
       }
 
       setCreating(false);
@@ -118,6 +123,7 @@ export default function AdminDestinationsPage() {
       await loadData(page, query);
     } catch (err) {
       setError("Cannot save travel destination. Please check required fields, duplicate name, or permission.");
+      showToast({ variant: "error", title: "Save failed", description: "Please check required fields, duplicate name, or permission." });
     } finally {
       setSaving(false);
     }
@@ -129,10 +135,12 @@ export default function AdminDestinationsPage() {
     setError("");
     try {
       await adminTravelDestinationService.remove(getTravelDestinationId(deleting));
+      showToast({ variant: "success", title: "Destination deleted", description: deleting.name });
       setDeleting(null);
       await loadData(page, query);
     } catch (err) {
       setError("Cannot delete this destination. It may still have tours or locations.");
+      showToast({ variant: "error", title: "Delete failed", description: "This destination may still have tours or locations." });
     } finally {
       setSaving(false);
     }
@@ -144,7 +152,7 @@ export default function AdminDestinationsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">TravelDestination Management</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage TravelDestination records using `/admin/travel-destinations` API.</p>
+            <p className="mt-1 text-sm text-slate-500">Create destinations and update display details used by public pages.</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => loadData(page, query)} disabled={loading}><RefreshCw size={17} /> Refresh</Button>
