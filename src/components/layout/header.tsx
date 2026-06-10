@@ -182,8 +182,6 @@ export function Header() {
                 onClick={() => setUserMenuOpen((open) => !open)}
                 className="flex h-10 items-center gap-2 rounded-full border border-slate-200 p-1 pr-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.name} className="size-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                 {avatarSrc ? (
                   <img src={avatarSrc} alt={user.name} className="size-8 rounded-full object-cover" />
                 ) : (
