@@ -1,5 +1,21 @@
 import { api } from "@/services/api";
 
+export type UpdateProfilePayload = {
+  name?: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+  address?: string;
+  profile_info?: string;
+  avatar_file?: File | null;
+};
+
+export type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export const authService = {
   login: (payload: { email: string; password: string }) => api.post("/auth/login", payload),
   register: (payload: { name: string; email: string; password: string; confirm_password?: string }) => api.post("/auth/register", payload),
@@ -8,4 +24,20 @@ export const authService = {
   forgotPassword: (payload: { email: string }) => api.post("/auth/forgot-password", payload),
   verifyResetCode: (payload: { email: string; code: string }) => api.post("/auth/verify-reset-code", payload),
   resetPassword: (payload: { reset_token: string; new_password: string }) => api.post("/auth/reset-password", payload),
+  getProfile: () => api.get("/auth/profile"),
+  changePassword: (payload: ChangePasswordPayload) => api.put("/auth/change-password", payload),
+  updateProfile: (payload: UpdateProfilePayload) => {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (key === "avatar_file" && value instanceof File) {
+        formData.append(key, value);
+        return;
+      }
+      formData.append(key, String(value));
+    });
+
+    return api.put("/auth/profile", formData);
+  }
 };

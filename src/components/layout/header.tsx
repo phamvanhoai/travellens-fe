@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { destinations, tours } from "@/lib/data";
 import { useAuthStore } from "@/store/use-auth-store";
+import { getAvatarImageSrc } from "@/lib/avatar";
 
 const nav = [
   { href: "/", label: "Home" },
@@ -28,6 +29,7 @@ export function Header() {
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, setUser, logout } = useAuthStore();
+  const avatarSrc = getAvatarImageSrc(user?.avatar_url);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("travel360-theme");
@@ -182,6 +184,8 @@ export function Header() {
               >
                 {user.avatar_url ? (
                   <img src={user.avatar_url} alt={user.name} className="size-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt={user.name} className="size-8 rounded-full object-cover" />
                 ) : (
                   <div className="grid size-8 place-items-center rounded-full bg-brand-100 font-bold text-brand-600">
                     {user.name?.charAt(0)?.toUpperCase()}
@@ -197,19 +201,12 @@ export function Header() {
                     <p className="truncate text-sm font-bold text-ink">{user.name}</p>
                     <p className="truncate text-xs text-slate-500">{user.email}</p>
                   </div>
-                  <Link 
-                    href="/profile" 
+                  <Link
+                    href="/dashboard/profile"
                     className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    My Profile
-                  </Link>
-                  <Link 
-                    href="/dashboard" 
-                    className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    Dashboard
+                    Profile
                   </Link>
                   <div className="my-1 h-px bg-slate-100"></div>
                   <button
