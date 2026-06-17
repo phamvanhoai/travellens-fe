@@ -35,6 +35,8 @@ export type AdminUserCreatePayload = AdminUserPayload & {
   password: string;
 };
 
+export type AdminUserUpdatePayload = Partial<AdminUserPayload>;
+
 type ListResponse = {
   data?: AdminUser[];
   pagination?: {
@@ -66,13 +68,13 @@ function unwrapData<T>(responseData: T | { data?: T }) {
   return responseData as T;
 }
 
-function toFormData(payload: AdminUserPayload) {
+function toFormData(payload: AdminUserPayload | AdminUserUpdatePayload) {
   const formData = new FormData();
-  formData.append("name", payload.name);
-  formData.append("email", payload.email);
-  formData.append("role", payload.role);
-  formData.append("status", payload.status);
-  if (payload.phone) formData.append("phone", payload.phone);
+  if (payload.name !== undefined) formData.append("name", payload.name);
+  if (payload.email !== undefined) formData.append("email", payload.email);
+  if (payload.role !== undefined) formData.append("role", payload.role);
+  if (payload.status !== undefined) formData.append("status", payload.status);
+  if (payload.phone !== undefined) formData.append("phone", payload.phone);
   if (payload.password) formData.append("password", payload.password);
   if (payload.avatar_file) formData.append("avatar_file", payload.avatar_file);
   return formData;
@@ -99,7 +101,7 @@ export const adminUserService = {
     const response = await api.post("/admin/users", toFormData(payload));
     return unwrapData<AdminUser>(response.data);
   },
-  async update(id: number, payload: AdminUserPayload) {
+  async update(id: number, payload: AdminUserUpdatePayload) {
     const response = await api.put(`/admin/users/${id}`, toFormData(payload));
     return unwrapData<AdminUser>(response.data);
   },
