@@ -47,6 +47,12 @@ const emptyTour: TourFormValue = {
 const statuses = ["active", "inactive", "draft"];
 const pageSize = 10;
 
+type ScheduleParts = {
+  days: number;
+  startTime: string;
+  endTime: string;
+};
+
 export default function AdminToursPage() {
   const [items, setItems] = useState<AdminTour[]>([]);
   const [categories, setCategories] = useState<AdminTourCategory[]>([]);
@@ -367,7 +373,25 @@ function TourForm({
   onClose: () => void;
   onSave: (payload: TourFormValue) => void;
 }) {
-  const [form, setForm] = useState(initialValue);
+  const initialSchedule = parseSchedule(initialValue.schedule);
+  const [form, setForm] = useState<TourFormValue>({
+    ...initialValue,
+    schedule: buildSchedule(initialSchedule.days, initialSchedule.startTime, initialSchedule.endTime)
+  });
+  const [scheduleDays, setScheduleDays] = useState(initialSchedule.days);
+  const [startTime, setStartTime] = useState(initialSchedule.startTime);
+  const [endTime, setEndTime] = useState(initialSchedule.endTime);
+
+  function updateSchedule(next: Partial<ScheduleParts>) {
+    const days = next.days ?? scheduleDays;
+    const start = next.startTime ?? startTime;
+    const end = next.endTime ?? endTime;
+
+    setScheduleDays(days);
+    setStartTime(start);
+    setEndTime(end);
+    setForm((current) => ({ ...current, schedule: buildSchedule(days, start, end) }));
+  }
 
   useEffect(() => {
     return () => {
@@ -411,7 +435,44 @@ function TourForm({
               {statuses.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}
             </select>
           </Field>
-          <Field label="Schedule"><input required value={form.schedule} onChange={(event) => setForm({ ...form, schedule: event.target.value })} className="input" placeholder="Daily 08:00 - 17:00" /></Field>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-semibold">Schedule</p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <label className="block text-xs font-semibold text-slate-500">
+                Number of days
+                <input
+                  required
+                  min="1"
+                  max="30"
+                  type="number"
+                  value={scheduleDays}
+                  onChange={(event) => updateSchedule({ days: Math.max(1, Number(event.target.value) || 1) })}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+                />
+              </label>
+              <label className="block text-xs font-semibold text-slate-500">
+                Start time
+                <input
+                  required
+                  type="time"
+                  value={startTime}
+                  onChange={(event) => updateSchedule({ startTime: event.target.value })}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+                />
+              </label>
+              <label className="block text-xs font-semibold text-slate-500">
+                End time
+                <input
+                  required
+                  type="time"
+                  value={endTime}
+                  onChange={(event) => updateSchedule({ endTime: event.target.value })}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+                />
+              </label>
+            </div>
+            <input type="hidden" value={form.schedule} readOnly />
+          </div>
           <Field label="Capacity"><input required min="1" type="number" value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} className="input" /></Field>
           <Field label="Price"><input required min="0" type="number" step="any" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} className="input" /></Field>
 
@@ -499,6 +560,25 @@ function StatusBadge({ value }: { value: string }) {
 
 function formatLabel(value: string) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : "-";
+}
+
+function parseSchedule(value?: string): ScheduleParts {
+  const fallback = { days: 1, startTime: "08:00", endTime: "17:00" };
+  if (!value) return fallback;
+
+  const match = value.match(/(\d+)\s*days?\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/i);
+  if (!match) return fallback;
+
+  return {
+    days: Math.max(1, Number(match[1]) || 1),
+    startTime: match[2],
+    endTime: match[3]
+  };
+}
+
+function buildSchedule(days: number, startTime: string, endTime: string) {
+  const dayLabel = days === 1 ? "day" : "days";
+  return `${days} ${dayLabel} ${startTime} - ${endTime}`;
 }
 
 function formatPrice(value: AdminTour["price"]) {
