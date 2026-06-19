@@ -20,6 +20,9 @@ function normalizeCategories(items: AdminTourCategory[]) {
   }));
 }
 
+type CategoryFieldName = "name" | "description";
+type CategoryFieldErrors = Partial<Record<CategoryFieldName, string>>;
+
 export default function TourCategoriesPage() {
   const [items, setItems] = useState<AdminTourCategory[]>([]);
   const [query, setQuery] = useState("");
@@ -27,6 +30,7 @@ export default function TourCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<CategoryFieldErrors>({});
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminTourCategory | null>(null);
   const [deleting, setDeleting] = useState<AdminTourCategory | null>(null);
@@ -61,6 +65,7 @@ export default function TourCategoriesPage() {
   async function saveCategory(payload: AdminTourCategoryPayload) {
     setSaving(true);
     setError("");
+    setFieldErrors({});
     try {
       if (editing) {
         await adminTourCategoryService.update(getTourCategoryId(editing), payload);
@@ -72,10 +77,14 @@ export default function TourCategoriesPage() {
 
       setCreating(false);
       setEditing(null);
+      setFieldErrors({});
       await loadCategories();
     } catch (err) {
-      setError("Cannot save tour category. Please check the API, duplicate name, or your permission.");
-      showToast({ variant: "error", title: "Save failed", description: "Please check the API, duplicate name, or your permission." });
+      const message = getBackendErrorMessage(err, "Cannot save tour category. Please check the API, duplicate name, or your permission.");
+      const nextFieldErrors = getBackendFieldErrors(err);
+      setError(message);
+      setFieldErrors(nextFieldErrors);
+      showToast({ variant: "error", title: "Save failed", description: message });
     } finally {
       setSaving(false);
     }
@@ -111,7 +120,10 @@ export default function TourCategoriesPage() {
             <Button variant="outline" onClick={loadCategories} disabled={loading}>
               <RefreshCw size={17} /> Refresh
             </Button>
-            <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Category</Button>
+            <Button onClick={() => {
+              setFieldErrors({});
+              setCreating(true);
+            }}><Plus size={17} /> Create Category</Button>
           </div>
         </div>
 
@@ -147,7 +159,10 @@ export default function TourCategoriesPage() {
                   <td className="p-3 text-slate-600">{item.description || "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
-                      <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}>
+                      <Button variant="outline" className="h-9 px-3" onClick={() => {
+                        setFieldErrors({});
+                        setEditing(item);
+                      }}>
                         <Pencil size={15} /> Edit
                       </Button>
                       <button
@@ -174,9 +189,17 @@ export default function TourCategoriesPage() {
           title={editing ? "Edit Tour Category" : "Create Tour Category"}
           initialValue={{ name: editing?.name ?? "", description: editing?.description ?? "" }}
           saving={saving}
+          fieldErrors={fieldErrors}
+          onSetFieldErrors={setFieldErrors}
+          onClearFieldError={(field) => setFieldErrors((current) => {
+            const next = { ...current };
+            delete next[field];
+            return next;
+          })}
           onClose={() => {
             setCreating(false);
             setEditing(null);
+            setFieldErrors({});
           }}
           onSave={saveCategory}
         />
@@ -198,12 +221,18 @@ function TourCategoryForm({
   title,
   initialValue,
   saving,
+  fieldErrors,
+  onSetFieldErrors,
+  onClearFieldError,
   onClose,
   onSave
 }: {
   title: string;
   initialValue: AdminTourCategoryPayload;
   saving: boolean;
+  fieldErrors: CategoryFieldErrors;
+  onSetFieldErrors: (errors: CategoryFieldErrors) => void;
+  onClearFieldError: (field: CategoryFieldName) => void;
   onClose: () => void;
   onSave: (payload: AdminTourCategoryPayload) => void;
 }) {
@@ -212,9 +241,13 @@ function TourCategoryForm({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
       <form
+        noValidate
         className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
         onSubmit={(event) => {
           event.preventDefault();
+          const nextFieldErrors = validateCategoryForm(form);
+          onSetFieldErrors(nextFieldErrors);
+          if (Object.keys(nextFieldErrors).length > 0) return;
           onSave(form);
         }}
       >
@@ -225,11 +258,17 @@ function TourCategoryForm({
           </button>
         </div>
         <div className="mt-6 grid gap-4">
-          <Field label="Name">
-            <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Family" />
+          <Field label="Name" message={fieldErrors.name} tone={fieldErrors.name ? "invalid" : "neutral"}>
+            <input value={form.name} onChange={(event) => {
+              onClearFieldError("name");
+              setForm({ ...form, name: event.target.value });
+            }} className="input" placeholder="Family" />
           </Field>
-          <Field label="Description">
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Tour category description" />
+          <Field label="Description" message={fieldErrors.description} tone={fieldErrors.description ? "invalid" : "neutral"}>
+            <textarea value={form.description} onChange={(event) => {
+              onClearFieldError("description");
+              setForm({ ...form, description: event.target.value });
+            }} className="input min-h-24 py-3" placeholder="Tour category description" />
           </Field>
         </div>
         <div className="mt-6 flex justify-end gap-3">
@@ -241,11 +280,93 @@ function TourCategoryForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  message,
+  tone = "neutral"
+}: {
+  label: string;
+  children: React.ReactNode;
+  message?: string;
+  tone?: "neutral" | "invalid";
+}) {
   return (
     <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3">
       {label}
       {children}
+      {message ? <span className={tone === "invalid" ? "mt-2 block text-xs font-semibold text-rose-600" : "mt-2 block text-xs font-medium text-slate-500"}>{message}</span> : null}
     </label>
   );
+}
+
+function validateCategoryForm(form: AdminTourCategoryPayload): CategoryFieldErrors {
+  const errors: CategoryFieldErrors = {};
+
+  if (!form.name.trim()) {
+    errors.name = "Category name is required.";
+  }
+
+  return errors;
+}
+
+function getBackendErrorMessage(err: unknown, fallback: string) {
+  const messages = getBackendValidationMessages(err);
+  if (messages.length > 0) return messages.join("\n");
+
+  const error = err as {
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+      };
+    };
+    message?: string;
+  };
+  const data = error.response?.data;
+  return data?.message || data?.error || error.message || fallback;
+}
+
+function getBackendFieldErrors(err: unknown): CategoryFieldErrors {
+  const errors: CategoryFieldErrors = {};
+
+  for (const message of getBackendValidationMessages(err)) {
+    const fieldPath = message.match(/"([^"]+)"/)?.[1] ?? "";
+    const field = mapBackendFieldToCategoryField(fieldPath, message);
+    if (!field) continue;
+    errors[field] = errors[field] ? `${errors[field]}\n${message}` : message;
+  }
+
+  return errors;
+}
+
+function getBackendValidationMessages(err: unknown) {
+  const error = err as {
+    response?: {
+      data?: {
+        details?: {
+          body?: string[] | string;
+        } | string[] | string;
+      };
+    };
+  };
+  const data = error.response?.data;
+  const bodyDetails = typeof data?.details === "object" && !Array.isArray(data.details)
+    ? data.details.body
+    : undefined;
+
+  if (Array.isArray(bodyDetails) && bodyDetails.length > 0) return bodyDetails;
+  if (typeof bodyDetails === "string" && bodyDetails) return [bodyDetails];
+  if (Array.isArray(data?.details) && data.details.length > 0) return data.details;
+  if (typeof data?.details === "string" && data.details) return [data.details];
+  return [];
+}
+
+function mapBackendFieldToCategoryField(fieldPath: string, message: string): CategoryFieldName | null {
+  const normalized = fieldPath.toLowerCase();
+  const lowerMessage = message.toLowerCase();
+
+  if (normalized.includes("name") || lowerMessage.includes("duplicate")) return "name";
+  if (normalized.includes("description")) return "description";
+  return null;
 }
