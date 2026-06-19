@@ -31,6 +31,19 @@ type TourFormValue = AdminTourPayload & {
   preview: string;
 };
 
+type TourFieldName =
+  | "name"
+  | "description"
+  | "tour_category_id"
+  | "status"
+  | "schedule"
+  | "capacity"
+  | "price"
+  | "destinations"
+  | "thumbnail_file";
+
+type TourFieldErrors = Partial<Record<TourFieldName, string>>;
+
 const emptyTour: TourFormValue = {
   tour_category_id: "",
   name: "",
@@ -68,6 +81,7 @@ export default function AdminToursPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<TourFieldErrors>({});
   const [creating, setCreating] = useState(false);
   const [editingTour, setEditingTour] = useState<AdminTour | null>(null);
   const [deletingTour, setDeletingTour] = useState<AdminTour | null>(null);
@@ -173,6 +187,7 @@ export default function AdminToursPage() {
   async function saveTour(payload: TourFormValue) {
     setSaving(true);
     setError("");
+    setFieldErrors({});
     try {
       const requestPayload: AdminTourPayload = {
         tour_category_id: payload.tour_category_id,
@@ -196,10 +211,14 @@ export default function AdminToursPage() {
 
       setEditingTour(null);
       setCreating(false);
+      setFieldErrors({});
       await loadData(page, query, categoryFilter, destinationFilter, statusFilter);
     } catch (err) {
-      setError("Cannot save tour. Please check required fields, duplicate name, category, destinations, or permission.");
-      showToast({ variant: "error", title: "Save failed", description: "Please check required fields or permission." });
+      const message = getBackendErrorMessage(err, "Cannot save tour. Please check required fields, duplicate name, category, destinations, or permission.");
+      const nextFieldErrors = getBackendFieldErrors(err);
+      setError(message);
+      setFieldErrors(nextFieldErrors);
+      showToast({ variant: "error", title: "Save failed", description: message });
     } finally {
       setSaving(false);
     }
@@ -215,8 +234,9 @@ export default function AdminToursPage() {
       setDeletingTour(null);
       await loadData(page, query, categoryFilter, destinationFilter, statusFilter);
     } catch (err) {
-      setError("Cannot delete this tour. It may still have active bookings.");
-      showToast({ variant: "error", title: "Delete failed", description: "This tour may still have active bookings." });
+      const message = getBackendErrorMessage(err, "Cannot delete this tour. It may still have active bookings.");
+      setError(message);
+      showToast({ variant: "error", title: "Delete failed", description: message });
     } finally {
       setSaving(false);
     }
@@ -234,7 +254,10 @@ export default function AdminToursPage() {
             <Button variant="outline" onClick={() => void loadData(page, query, categoryFilter, destinationFilter, statusFilter)} disabled={loading}>
               <RefreshCw size={17} /> Refresh
             </Button>
-            <Button onClick={() => setCreating(true)}><Plus size={17} /> Create Tour</Button>
+            <Button onClick={() => {
+              setFieldErrors({});
+              setCreating(true);
+            }}><Plus size={17} /> Create Tour</Button>
           </div>
         </div>
 
@@ -305,7 +328,10 @@ export default function AdminToursPage() {
                     <td className="p-3"><StatusBadge value={item.status ?? "draft"} /></td>
                     <td className="p-3">
                       <span className="flex gap-2">
-                        <Button variant="outline" className="h-9 px-3" onClick={() => setEditingTour(item)}>
+                        <Button variant="outline" className="h-9 px-3" onClick={() => {
+                          setFieldErrors({});
+                          setEditingTour(item);
+                        }}>
                           <Pencil size={15} /> Edit
                         </Button>
                         <button
@@ -336,9 +362,17 @@ export default function AdminToursPage() {
           categories={categories}
           destinations={destinations}
           saving={saving}
+          fieldErrors={fieldErrors}
+          onSetFieldErrors={setFieldErrors}
+          onClearFieldError={(field) => setFieldErrors((current) => {
+            const next = { ...current };
+            delete next[field];
+            return next;
+          })}
           onClose={() => {
             setEditingTour(null);
             setCreating(false);
+            setFieldErrors({});
           }}
           onSave={saveTour}
         />
@@ -362,6 +396,9 @@ function TourForm({
   categories,
   destinations,
   saving,
+  fieldErrors,
+  onSetFieldErrors,
+  onClearFieldError,
   onClose,
   onSave
 }: {
@@ -370,6 +407,9 @@ function TourForm({
   categories: AdminTourCategory[];
   destinations: AdminTravelDestination[];
   saving: boolean;
+  fieldErrors: TourFieldErrors;
+  onSetFieldErrors: (errors: TourFieldErrors) => void;
+  onClearFieldError: (field: TourFieldName) => void;
   onClose: () => void;
   onSave: (payload: TourFormValue) => void;
 }) {
@@ -390,6 +430,7 @@ function TourForm({
     setScheduleDays(days);
     setStartTime(start);
     setEndTime(end);
+    onClearFieldError("schedule");
     setForm((current) => ({ ...current, schedule: buildSchedule(days, start, end) }));
   }
 
@@ -404,9 +445,13 @@ function TourForm({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
       <form
+        noValidate
         className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
         onSubmit={(event) => {
           event.preventDefault();
+          const nextFieldErrors = validateTourForm(form, { days: scheduleDays, startTime, endTime });
+          onSetFieldErrors(nextFieldErrors);
+          if (Object.keys(nextFieldErrors).length > 0) return;
           onSave(form);
         }}
       >
@@ -419,19 +464,35 @@ function TourForm({
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Tour Name"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Saigon One Day Tour" /></Field>
+            <Field label="Tour Name" message={fieldErrors.name} tone={fieldErrors.name ? "invalid" : "neutral"}>
+              <input required value={form.name} onChange={(event) => {
+                onClearFieldError("name");
+                setForm({ ...form, name: event.target.value });
+              }} className="input" placeholder="Saigon One Day Tour" />
+            </Field>
           </div>
           <div className="sm:col-span-2">
-            <Field label="Description"><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Tour description" /></Field>
+            <Field label="Description" message={fieldErrors.description} tone={fieldErrors.description ? "invalid" : "neutral"}>
+              <textarea value={form.description} onChange={(event) => {
+                onClearFieldError("description");
+                setForm({ ...form, description: event.target.value });
+              }} className="input min-h-24 py-3" placeholder="Tour description" />
+            </Field>
           </div>
-          <Field label="Tour Category">
-            <select required value={form.tour_category_id} onChange={(event) => setForm({ ...form, tour_category_id: event.target.value })} className="input">
+          <Field label="Tour Category" message={fieldErrors.tour_category_id} tone={fieldErrors.tour_category_id ? "invalid" : "neutral"}>
+            <select required value={form.tour_category_id} onChange={(event) => {
+              onClearFieldError("tour_category_id");
+              setForm({ ...form, tour_category_id: event.target.value });
+            }} className="input">
               <option value="">Select category</option>
               {categories.map((category) => <option key={getTourCategoryId(category)} value={getTourCategoryId(category)}>{category.name}</option>)}
             </select>
           </Field>
-          <Field label="Status">
-            <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="input">
+          <Field label="Status" message={fieldErrors.status} tone={fieldErrors.status ? "invalid" : "neutral"}>
+            <select value={form.status} onChange={(event) => {
+              onClearFieldError("status");
+              setForm({ ...form, status: event.target.value });
+            }} className="input">
               {statuses.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}
             </select>
           </Field>
@@ -471,10 +532,21 @@ function TourForm({
                 />
               </label>
             </div>
+            {fieldErrors.schedule ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.schedule}</p> : null}
             <input type="hidden" value={form.schedule} readOnly />
           </div>
-          <Field label="Capacity"><input required min="1" type="number" value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} className="input" /></Field>
-          <Field label="Price"><input required min="0" type="number" step="any" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} className="input" /></Field>
+          <Field label="Capacity" message={fieldErrors.capacity} tone={fieldErrors.capacity ? "invalid" : "neutral"}>
+            <input required min="1" type="number" value={form.capacity} onChange={(event) => {
+              onClearFieldError("capacity");
+              setForm({ ...form, capacity: event.target.value });
+            }} className="input" />
+          </Field>
+          <Field label="Price" message={fieldErrors.price} tone={fieldErrors.price ? "invalid" : "neutral"}>
+            <input required min="0" type="number" step="any" value={form.price} onChange={(event) => {
+              onClearFieldError("price");
+              setForm({ ...form, price: event.target.value });
+            }} className="input" />
+          </Field>
 
           <div className="sm:col-span-2">
             <p className="text-sm font-semibold">Travel Destinations</p>
@@ -493,12 +565,14 @@ function TourForm({
                           ? [...form.destination_ids, id]
                           : form.destination_ids.filter((item) => item !== id)
                       })}
+                      onClick={() => onClearFieldError("destinations")}
                     />
                     {destination.name}
                   </label>
                 );
               })}
             </div>
+            {fieldErrors.destinations ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.destinations}</p> : null}
             {form.destination_ids.length === 0 ? <p className="mt-2 text-xs font-semibold text-rose-600">Select at least one destination.</p> : null}
           </div>
 
@@ -519,11 +593,16 @@ function TourForm({
                       className="hidden"
                       onChange={(event) => {
                         const file = event.target.files?.[0];
+                        onClearFieldError("thumbnail_file");
                         if (file) setForm({ ...form, thumbnail_file: file, preview: URL.createObjectURL(file) });
                       }}
                     />
                   </span>
-                  {form.preview ? <button type="button" onClick={() => setForm({ ...form, thumbnail_file: null, preview: "" })} className="ml-3 text-sm font-bold text-rose-600">Remove</button> : null}
+                  {form.preview ? <button type="button" onClick={() => {
+                    onClearFieldError("thumbnail_file");
+                    setForm({ ...form, thumbnail_file: null, preview: "" });
+                  }} className="ml-3 text-sm font-bold text-rose-600">Remove</button> : null}
+                  {fieldErrors.thumbnail_file ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.thumbnail_file}</span> : null}
                 </span>
               </span>
             </label>
@@ -539,11 +618,22 @@ function TourForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  message,
+  tone = "neutral"
+}: {
+  label: string;
+  children: React.ReactNode;
+  message?: string;
+  tone?: "neutral" | "invalid";
+}) {
   return (
     <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3 [&_.input]:outline-none [&_.input:focus]:border-brand-600">
       {label}
       {children}
+      {message ? <span className={tone === "invalid" ? "mt-2 block text-xs font-semibold text-rose-600" : "mt-2 block text-xs font-medium text-slate-500"}>{message}</span> : null}
     </label>
   );
 }
@@ -579,6 +669,116 @@ function parseSchedule(value?: string): ScheduleParts {
 function buildSchedule(days: number, startTime: string, endTime: string) {
   const dayLabel = days === 1 ? "day" : "days";
   return `${days} ${dayLabel} ${startTime} - ${endTime}`;
+}
+
+function validateTourForm(form: TourFormValue, schedule: ScheduleParts): TourFieldErrors {
+  const errors: TourFieldErrors = {};
+
+  if (!form.name.trim()) errors.name = "Tour name is required.";
+  if (!form.tour_category_id) errors.tour_category_id = "Tour category is required.";
+  if (!form.status) errors.status = "Status is required.";
+
+  if (!Number.isFinite(schedule.days) || schedule.days < 1) {
+    errors.schedule = "Number of days must be at least 1.";
+  } else if (schedule.days > 30) {
+    errors.schedule = "Number of days cannot exceed 30.";
+  } else if (!schedule.startTime) {
+    errors.schedule = "Start time is required.";
+  } else if (!schedule.endTime) {
+    errors.schedule = "End time is required.";
+  }
+
+  const capacity = Number(form.capacity);
+  if (!form.capacity) {
+    errors.capacity = "Capacity is required.";
+  } else if (!Number.isFinite(capacity) || capacity < 1) {
+    errors.capacity = "Capacity must be at least 1.";
+  }
+
+  const price = Number(form.price);
+  if (!form.price) {
+    errors.price = "Price is required.";
+  } else if (!Number.isFinite(price) || price < 0) {
+    errors.price = "Price must be 0 or greater.";
+  }
+
+  if (form.destination_ids.length === 0) {
+    errors.destinations = "Select at least one destination.";
+  }
+
+  return errors;
+}
+
+function getBackendErrorMessage(err: unknown, fallback: string) {
+  const messages = getBackendValidationMessages(err);
+  if (messages.length > 0) return messages.join("\n");
+
+  const error = err as {
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+      };
+    };
+    message?: string;
+  };
+
+  const data = error.response?.data;
+  return data?.message || data?.error || error.message || fallback;
+}
+
+function getBackendFieldErrors(err: unknown): TourFieldErrors {
+  const errors: TourFieldErrors = {};
+
+  for (const message of getBackendValidationMessages(err)) {
+    const fieldPath = message.match(/"([^"]+)"/)?.[1] ?? "";
+    const field = mapBackendFieldToTourField(fieldPath, message);
+    if (!field) continue;
+    errors[field] = errors[field] ? `${errors[field]}\n${message}` : message;
+  }
+
+  return errors;
+}
+
+function getBackendValidationMessages(err: unknown) {
+  const error = err as {
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+        details?: {
+          body?: string[] | string;
+        } | string[] | string;
+      };
+    };
+    message?: string;
+  };
+  const data = error.response?.data;
+  const bodyDetails = typeof data?.details === "object" && !Array.isArray(data.details)
+    ? data.details.body
+    : undefined;
+
+  if (Array.isArray(bodyDetails) && bodyDetails.length > 0) return bodyDetails;
+  if (typeof bodyDetails === "string" && bodyDetails) return [bodyDetails];
+  if (Array.isArray(data?.details) && data.details.length > 0) return data.details;
+  if (typeof data?.details === "string" && data.details) return [data.details];
+  return [];
+}
+
+function mapBackendFieldToTourField(fieldPath: string, message: string): TourFieldName | null {
+  const normalized = fieldPath.toLowerCase();
+  const lowerMessage = message.toLowerCase();
+
+  if (normalized.includes("destination") || lowerMessage.includes("destination")) return "destinations";
+  if (normalized.includes("thumbnail")) return "thumbnail_file";
+  if (normalized.includes("tour_category") || normalized.includes("category")) return "tour_category_id";
+  if (normalized.includes("name") || lowerMessage.includes("duplicate tour")) return "name";
+  if (normalized.includes("description")) return "description";
+  if (normalized.includes("schedule")) return "schedule";
+  if (normalized.includes("capacity")) return "capacity";
+  if (normalized.includes("price")) return "price";
+  if (normalized.includes("status")) return "status";
+  return null;
 }
 
 function formatPrice(value: AdminTour["price"]) {
