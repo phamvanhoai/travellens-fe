@@ -51,6 +51,7 @@ const emptyForm: FormValue = {
 export default function AdminView360Page() {
   const [items, setItems] = useState<View360Row[]>([]);
   const [locations, setLocations] = useState<AdminLocation[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -145,6 +146,11 @@ export default function AdminView360Page() {
     return locations.find((location) => String(getLocationId(location)) === locationFilter)?.name ?? "";
   }, [locationFilter, locations]);
 
+  function handleSearch() {
+    setQuery(searchInput.trim());
+    setPage(1);
+  }
+
   async function save(payload: FormValue) {
     setSaving(true);
     setError("");
@@ -222,18 +228,18 @@ export default function AdminView360Page() {
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
         <div className="mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_260px]">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
-              placeholder="Search View360 experiences..."
-            />
-          </div>
+          <form className="grid max-w-xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); handleSearch(); }}>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+              <input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
+                placeholder="Search View360 experiences..."
+              />
+            </div>
+            <Button type="submit" disabled={loading} className="h-11 justify-center"><Search size={17} /> Search</Button>
+          </form>
           <select
             value={locationFilter}
             onChange={(event) => {
