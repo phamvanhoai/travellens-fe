@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import Link from "next/link";
+import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Video, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -38,6 +39,7 @@ const emptyForm: FormValue = {
 export default function AdminLocationsPage() {
   const [items, setItems] = useState<AdminLocation[]>([]);
   const [destinations, setDestinations] = useState<AdminTravelDestination[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -89,7 +91,8 @@ export default function AdminLocationsPage() {
     };
   }, [editing]);
 
-  async function handleSearch(value: string) {
+  async function handleSearch() {
+    const value = searchInput.trim();
     setQuery(value);
     setPage(1);
     await loadData(1, value);
@@ -165,42 +168,53 @@ export default function AdminLocationsPage() {
 
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
-        <div className="relative mt-6 max-w-md">
-          <Search className="absolute left-3 top-3 size-5 text-slate-400" />
-          <input
-            value={query}
-            onChange={(event) => void handleSearch(event.target.value)}
-            className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
-            placeholder="Search locations..."
-          />
-        </div>
+        <form className="mt-6 grid max-w-xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); void handleSearch(); }}>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
+              placeholder="Search locations..."
+            />
+          </div>
+          <Button type="submit" disabled={loading} className="h-11 justify-center"><Search size={17} /> Search</Button>
+        </form>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                {["ID", "Location", "Travel Destination", "Coordinates", "Description", "Maps", "View360", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
+                {["Location", "Travel Destination", "Maps", "View360", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-500">Loading locations...</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-slate-500">Loading locations...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-500">No locations found.</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-slate-500">No locations found.</td></tr>
               ) : items.map((item) => (
                 <tr key={getLocationId(item)} className="border-t border-slate-100">
-                  <td className="p-3 font-bold">#{getLocationId(item)}</td>
                   <td className="p-3">
-                    <span className="flex items-center gap-3 font-semibold">
+                    <span className="flex items-start gap-3">
                       {getLocationThumbnail(item) ? <img src={getLocationThumbnail(item)} alt="" className="size-11 rounded-md object-cover" /> : <span className="grid size-11 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={17} /></span>}
-                      {item.name}
+                      <span className="min-w-0">
+                        <span className="block font-semibold">{item.name}</span>
+                        <span className="mt-1 block max-w-80 truncate text-xs font-medium text-slate-500">{item.description || "No description"}</span>
+                        <span className="mt-1 block text-xs text-slate-400">#{getLocationId(item)} · {item.latitude ?? "-"}, {item.longitude ?? "-"}</span>
+                      </span>
                     </span>
                   </td>
                   <td className="p-3 text-slate-600">{getLocationDestinationName(item)}</td>
-                  <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
-                  <td className="max-w-72 truncate p-3 text-slate-600">{item.description || "-"}</td>
                   <td className="p-3 font-semibold">{item.map_count ?? item.maps_count ?? "-"}</td>
-                  <td className="p-3 font-semibold">{item.view360_count ?? item.view360s_count ?? "-"}</td>
+                  <td className="p-3">
+                    <Link
+                      href={`/admin/view360?locationId=${getLocationId(item)}`}
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-100 px-3 text-sm font-semibold text-brand-600 transition hover:bg-brand-50"
+                    >
+                      <Video size={15} /> {item.view360_count ?? item.view360s_count ?? 0}
+                    </Link>
+                  </td>
                   <td className="p-3">
                     <span className="flex gap-2">
                       <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button>
