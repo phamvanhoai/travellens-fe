@@ -182,29 +182,30 @@ export default function AdminLocationsPage() {
         </form>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                {["ID", "Location", "Travel Destination", "Coordinates", "Description", "Maps", "View360", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
+                {["Location", "Travel Destination", "Maps", "View360", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-500">Loading locations...</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-slate-500">Loading locations...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-500">No locations found.</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-slate-500">No locations found.</td></tr>
               ) : items.map((item) => (
                 <tr key={getLocationId(item)} className="border-t border-slate-100">
-                  <td className="p-3 font-bold">#{getLocationId(item)}</td>
                   <td className="p-3">
-                    <span className="flex items-center gap-3 font-semibold">
+                    <span className="flex items-start gap-3">
                       {getLocationThumbnail(item) ? <img src={getLocationThumbnail(item)} alt="" className="size-11 rounded-md object-cover" /> : <span className="grid size-11 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={17} /></span>}
-                      {item.name}
+                      <span className="min-w-0">
+                        <span className="block font-semibold">{item.name}</span>
+                        <span className="mt-1 block max-w-80 truncate text-xs font-medium text-slate-500">{item.description || "No description"}</span>
+                        <span className="mt-1 block text-xs text-slate-400">#{getLocationId(item)} · {item.latitude ?? "-"}, {item.longitude ?? "-"}</span>
+                      </span>
                     </span>
                   </td>
                   <td className="p-3 text-slate-600">{getLocationDestinationName(item)}</td>
-                  <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
-                  <td className="max-w-72 truncate p-3 text-slate-600">{item.description || "-"}</td>
                   <td className="p-3 font-semibold">{item.map_count ?? item.maps_count ?? "-"}</td>
                   <td className="p-3">
                     <Link

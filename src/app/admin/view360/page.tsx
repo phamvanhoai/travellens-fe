@@ -37,6 +37,9 @@ type FormValue = AdminView360Payload & {
   images: ImageDraft[];
 };
 
+type View360FieldName = "location_id" | "title" | "description" | "language" | "order_index" | "audio_file" | "images";
+type View360FieldErrors = Partial<Record<View360FieldName, string>>;
+
 const emptyForm: FormValue = {
   location_id: "",
   title: "",
@@ -58,6 +61,7 @@ export default function AdminView360Page() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<View360FieldErrors>({});
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<View360Row | null>(null);
   const [deleting, setDeleting] = useState<View360Row | null>(null);
@@ -154,6 +158,7 @@ export default function AdminView360Page() {
   async function save(payload: FormValue) {
     setSaving(true);
     setError("");
+    setFieldErrors({});
     try {
       const requestPayload: AdminView360Payload = {
         title: payload.title,
@@ -183,10 +188,14 @@ export default function AdminView360Page() {
 
       setCreating(false);
       setEditing(null);
+      setFieldErrors({});
       await loadData();
     } catch (err) {
-      setError("Cannot save View360. Please check required fields, files, or permission.");
-      showToast({ variant: "error", title: "Save failed", description: "Please check required fields, files, or permission." });
+      const message = getBackendErrorMessage(err, "Cannot save View360. Please check required fields, files, or permission.");
+      const nextFieldErrors = getBackendFieldErrors(err);
+      setError(message);
+      setFieldErrors(nextFieldErrors);
+      showToast({ variant: "error", title: "Save failed", description: message });
     } finally {
       setSaving(false);
     }
@@ -221,7 +230,10 @@ export default function AdminView360Page() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => loadData()} disabled={loading}><RefreshCw size={17} /> Refresh</Button>
-            <Button onClick={() => setCreating(true)}><Plus size={17} /> Create View360</Button>
+            <Button onClick={() => {
+              setFieldErrors({});
+              setCreating(true);
+            }}><Plus size={17} /> Create View360</Button>
           </div>
         </div>
 
@@ -278,7 +290,10 @@ export default function AdminView360Page() {
                   <td className="p-3 text-slate-600">{item.order_index ?? "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
-                      <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button>
+                      <Button variant="outline" className="h-9 px-3" onClick={() => {
+                        setFieldErrors({});
+                        setEditing(item);
+                      }}><Pencil size={15} /> Edit</Button>
                       <DeleteButton label={item.title} onClick={() => setDeleting(item)} />
                     </span>
                   </td>
@@ -299,9 +314,17 @@ export default function AdminView360Page() {
           locations={locations}
           saving={saving}
           editing={Boolean(editing)}
+          fieldErrors={fieldErrors}
+          onSetFieldErrors={setFieldErrors}
+          onClearFieldError={(field) => setFieldErrors((current) => {
+            const next = { ...current };
+            delete next[field];
+            return next;
+          })}
           onClose={() => {
             setEditing(null);
             setCreating(false);
+            setFieldErrors({});
           }}
           onSave={save}
         />
@@ -318,6 +341,9 @@ function ExperienceForm({
   locations,
   saving,
   editing,
+  fieldErrors,
+  onSetFieldErrors,
+  onClearFieldError,
   onClose,
   onSave
 }: {
@@ -326,6 +352,9 @@ function ExperienceForm({
   locations: AdminLocation[];
   saving: boolean;
   editing: boolean;
+  fieldErrors: View360FieldErrors;
+  onSetFieldErrors: (errors: View360FieldErrors) => void;
+  onClearFieldError: (field: View360FieldName) => void;
   onClose: () => void;
   onSave: (payload: FormValue) => void;
 }) {
@@ -333,27 +362,66 @@ function ExperienceForm({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
-      <form className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); onSave(form); }}>
+      <form
+        noValidate
+        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const nextFieldErrors = validateView360Form(form);
+          onSetFieldErrors(nextFieldErrors);
+          if (Object.keys(nextFieldErrors).length > 0) return;
+          onSave(form);
+        }}
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
           <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button>
         </div>
 
         <div className="mt-6 grid gap-4">
-          <Field label="Location">
-            <select required disabled={editing} value={form.location_id} onChange={(event) => setForm({ ...form, location_id: event.target.value })} className="input disabled:bg-slate-50 disabled:text-slate-500">
+          <Field label="Location" message={fieldErrors.location_id} tone={fieldErrors.location_id ? "invalid" : "neutral"}>
+            <select disabled={editing} value={form.location_id} onChange={(event) => {
+              onClearFieldError("location_id");
+              setForm({ ...form, location_id: event.target.value });
+            }} className="input disabled:bg-slate-50 disabled:text-slate-500">
               <option value="">Select location</option>
               {locations.map((location) => <option key={getLocationId(location)} value={getLocationId(location)}>{location.name}</option>)}
             </select>
           </Field>
-          <Field label="View360 Title"><input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="input" placeholder="Conference Hall 360" /></Field>
+          <Field label="View360 Title" message={fieldErrors.title} tone={fieldErrors.title ? "invalid" : "neutral"}>
+            <input value={form.title} onChange={(event) => {
+              onClearFieldError("title");
+              setForm({ ...form, title: event.target.value });
+            }} className="input" placeholder="Conference Hall 360" />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Language"><select value={form.language} onChange={(event) => setForm({ ...form, language: event.target.value })} className="input"><option>Vietnamese</option><option>English</option><option>Japanese</option></select></Field>
-            <Field label="Order Index"><input type="number" min="0" value={form.order_index} onChange={(event) => setForm({ ...form, order_index: event.target.value })} className="input" /></Field>
+            <Field label="Language" message={fieldErrors.language} tone={fieldErrors.language ? "invalid" : "neutral"}>
+              <select value={form.language} onChange={(event) => {
+                onClearFieldError("language");
+                setForm({ ...form, language: event.target.value });
+              }} className="input"><option>Vietnamese</option><option>English</option><option>Japanese</option></select>
+            </Field>
+            <Field label="Order Index" message={fieldErrors.order_index} tone={fieldErrors.order_index ? "invalid" : "neutral"}>
+              <input type="number" min="0" value={form.order_index} onChange={(event) => {
+                onClearFieldError("order_index");
+                setForm({ ...form, order_index: event.target.value });
+              }} className="input" />
+            </Field>
           </div>
-          <Field label="Description"><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" /></Field>
-          <UploadAudio value={form.audioPreview} onChange={(audioPreview, audioFile) => setForm({ ...form, audioPreview, audio_file: audioFile })} />
-          <UploadImages images={form.images} onChange={(images) => setForm({ ...form, images })} />
+          <Field label="Description" message={fieldErrors.description} tone={fieldErrors.description ? "invalid" : "neutral"}>
+            <textarea value={form.description} onChange={(event) => {
+              onClearFieldError("description");
+              setForm({ ...form, description: event.target.value });
+            }} className="input min-h-24 py-3" />
+          </Field>
+          <UploadAudio value={form.audioPreview} message={fieldErrors.audio_file} onChange={(audioPreview, audioFile) => {
+            onClearFieldError("audio_file");
+            setForm({ ...form, audioPreview, audio_file: audioFile });
+          }} />
+          <UploadImages images={form.images} message={fieldErrors.images} onChange={(images) => {
+            onClearFieldError("images");
+            setForm({ ...form, images });
+          }} />
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -365,7 +433,7 @@ function ExperienceForm({
   );
 }
 
-function UploadAudio({ value, onChange }: { value: string; onChange: (preview: string, file: File | null) => void }) {
+function UploadAudio({ value, message, onChange }: { value: string; message?: string; onChange: (preview: string, file: File | null) => void }) {
   return (
     <label className="block text-sm font-semibold">
       Audio Narration
@@ -380,12 +448,13 @@ function UploadAudio({ value, onChange }: { value: string; onChange: (preview: s
           }} />
         </span>
         {value ? <button type="button" onClick={() => onChange("", null)} className="ml-3 text-sm font-bold text-rose-600">Remove</button> : null}
+        {message ? <span className="mt-2 block text-xs font-semibold text-rose-600">{message}</span> : null}
       </span>
     </label>
   );
 }
 
-function UploadImages({ images, onChange }: { images: ImageDraft[]; onChange: (images: ImageDraft[]) => void }) {
+function UploadImages({ images, message, onChange }: { images: ImageDraft[]; message?: string; onChange: (images: ImageDraft[]) => void }) {
   const visibleImages = images.filter((image) => !image.removed);
 
   return (
@@ -417,15 +486,122 @@ function UploadImages({ images, onChange }: { images: ImageDraft[]; onChange: (i
             onChange([...images, ...files.map((file) => ({ file, src: URL.createObjectURL(file) }))]);
           }} />
         </span>
+        {message ? <span className="mt-2 block text-xs font-semibold text-rose-600">{message}</span> : null}
       </span>
     </label>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3 [&_.input]:outline-none [&_.input:focus]:border-brand-600">{label}{children}</label>;
+function Field({
+  label,
+  children,
+  message,
+  tone = "neutral"
+}: {
+  label: string;
+  children: React.ReactNode;
+  message?: string;
+  tone?: "neutral" | "invalid";
+}) {
+  return (
+    <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3 [&_.input]:outline-none [&_.input:focus]:border-brand-600">
+      {label}
+      {children}
+      {message ? <span className={tone === "invalid" ? "mt-2 block text-xs font-semibold text-rose-600" : "mt-2 block text-xs font-medium text-slate-500"}>{message}</span> : null}
+    </label>
+  );
 }
 
 function DeleteButton({ label, onClick }: { label: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${label}`}><Trash2 size={15} /></button>;
+}
+
+function validateView360Form(form: FormValue): View360FieldErrors {
+  const errors: View360FieldErrors = {};
+
+  if (!form.location_id) errors.location_id = "Location is required.";
+  if (!form.title.trim()) errors.title = "View360 title is required.";
+  if (!form.language) errors.language = "Language is required.";
+
+  const orderIndex = Number(form.order_index);
+  if (form.order_index === "") {
+    errors.order_index = "Order index is required.";
+  } else if (!Number.isFinite(orderIndex) || orderIndex < 0) {
+    errors.order_index = "Order index must be 0 or greater.";
+  }
+
+  if (form.images.filter((image) => !image.removed).length === 0) {
+    errors.images = "Upload at least one View360 image.";
+  }
+
+  return errors;
+}
+
+function getBackendErrorMessage(err: unknown, fallback: string) {
+  const messages = getBackendValidationMessages(err);
+  if (messages.length > 0) return messages.join("\n");
+
+  const error = err as {
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+      };
+    };
+    message?: string;
+  };
+  const data = error.response?.data;
+  return data?.message || data?.error || error.message || fallback;
+}
+
+function getBackendFieldErrors(err: unknown): View360FieldErrors {
+  const errors: View360FieldErrors = {};
+
+  for (const message of getBackendValidationMessages(err)) {
+    const fieldPath = message.match(/"([^"]+)"/)?.[1] ?? "";
+    const field = mapBackendFieldToView360Field(fieldPath, message);
+    if (!field) continue;
+    errors[field] = errors[field] ? `${errors[field]}\n${message}` : message;
+  }
+
+  return errors;
+}
+
+function getBackendValidationMessages(err: unknown) {
+  const error = err as {
+    response?: {
+      data?: {
+        message?: string;
+        error?: string;
+        details?: {
+          body?: string[] | string;
+        } | string[] | string;
+      };
+    };
+    message?: string;
+  };
+  const data = error.response?.data;
+  const bodyDetails = typeof data?.details === "object" && !Array.isArray(data.details)
+    ? data.details.body
+    : undefined;
+
+  if (Array.isArray(bodyDetails) && bodyDetails.length > 0) return bodyDetails;
+  if (typeof bodyDetails === "string" && bodyDetails) return [bodyDetails];
+  if (Array.isArray(data?.details) && data.details.length > 0) return data.details;
+  if (typeof data?.details === "string" && data.details) return [data.details];
+  return [];
+}
+
+function mapBackendFieldToView360Field(fieldPath: string, message: string): View360FieldName | null {
+  const normalized = fieldPath.toLowerCase();
+  const lowerMessage = message.toLowerCase();
+
+  if (normalized.includes("location") || lowerMessage.includes("location")) return "location_id";
+  if (normalized.includes("title")) return "title";
+  if (normalized.includes("description")) return "description";
+  if (normalized.includes("language")) return "language";
+  if (normalized.includes("order")) return "order_index";
+  if (normalized.includes("audio")) return "audio_file";
+  if (normalized.includes("image") || lowerMessage.includes("image")) return "images";
+  return null;
 }
