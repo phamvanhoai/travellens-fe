@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import Link from "next/link";
+import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Video, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -200,7 +201,14 @@ export default function AdminLocationsPage() {
                   <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
                   <td className="max-w-72 truncate p-3 text-slate-600">{item.description || "-"}</td>
                   <td className="p-3 font-semibold">{item.map_count ?? item.maps_count ?? "-"}</td>
-                  <td className="p-3 font-semibold">{item.view360_count ?? item.view360s_count ?? "-"}</td>
+                  <td className="p-3">
+                    <Link
+                      href={`/admin/view360?locationId=${getLocationId(item)}`}
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-100 px-3 text-sm font-semibold text-brand-600 transition hover:bg-brand-50"
+                    >
+                      <Video size={15} /> {item.view360_count ?? item.view360s_count ?? 0}
+                    </Link>
+                  </td>
                   <td className="p-3">
                     <span className="flex gap-2">
                       <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button>
