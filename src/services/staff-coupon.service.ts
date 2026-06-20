@@ -1,6 +1,6 @@
 import { api } from "@/services/api";
 
-export type StaffCouponStatus = "active" | "inactive" | "expired" | "deleted";
+export type StaffCouponStatus = "active" | "inactive" | "expired" | "archived";
 export type StaffCouponDiscountType = "percentage" | "fixed";
 
 export type StaffCoupon = {
@@ -94,6 +94,10 @@ export const staffCouponService = {
   },
   async remove(id: number) {
     const response = await api.delete(`/staff/coupons/${id}`);
+    return response.data;
+  },
+  async archive(id: number) {
+    const response = await api.patch(`/staff/coupons/${id}/archive`);
     return response.data;
   }
 };

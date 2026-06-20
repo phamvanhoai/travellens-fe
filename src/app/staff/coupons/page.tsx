@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Percent, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Archive, Pencil, Percent, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -19,7 +19,8 @@ type CouponFormValue = StaffCouponPayload;
 type CouponFieldName = keyof CouponFormValue;
 type CouponFieldErrors = Partial<Record<CouponFieldName, string>>;
 
-const statuses: StaffCouponStatus[] = ["active", "inactive", "expired", "deleted"];
+const statuses: StaffCouponStatus[] = ["active", "inactive", "expired", "archived"];
+const editableStatuses: StaffCouponStatus[] = ["active", "inactive", "expired"];
 const discountTypes: StaffCouponDiscountType[] = ["percentage", "fixed"];
 const pageSize = 10;
 
@@ -53,6 +54,7 @@ export default function StaffCouponsPage() {
   const [editing, setEditing] = useState<StaffCoupon | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<StaffCoupon | null>(null);
+  const [archiving, setArchiving] = useState<StaffCoupon | null>(null);
   const showToast = useToast();
 
   const loadData = useCallback(async (nextPage: number, search: string, status: string, discountType: string) => {
@@ -169,6 +171,24 @@ export default function StaffCouponsPage() {
     }
   }
 
+  async function archive() {
+    if (!archiving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await staffCouponService.archive(getStaffCouponId(archiving));
+      showToast({ variant: "success", title: "Coupon archived", description: archiving.code });
+      setArchiving(null);
+      await loadData(page, query, statusFilter, discountTypeFilter);
+    } catch (err) {
+      const message = getBackendErrorMessage(err, "Cannot archive coupon.");
+      setError(message);
+      showToast({ variant: "error", title: "Archive failed", description: message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -216,32 +236,38 @@ export default function StaffCouponsPage() {
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full table-fixed text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
-              <tr>{["Code", "Name", "Discount", "Max", "Min Order", "Usage", "Dates", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr>
+              <tr>
+                <th className="w-[18%] p-3">Code</th>
+                <th className="w-[24%] p-3">Name</th>
+                <th className="hidden w-[15%] p-3 md:table-cell">Discount</th>
+                <th className="hidden w-[21%] p-3 lg:table-cell">Dates</th>
+                <th className="w-[13%] p-3">Status</th>
+                <th className="w-[120px] p-3 text-right">Actions</th>
+              </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="p-6 text-center text-slate-500">Loading coupons...</td></tr>
+                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading coupons...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={9} className="p-6 text-center text-slate-500">No coupons found.</td></tr>
+                <tr><td colSpan={6} className="p-6 text-center text-slate-500">No coupons found.</td></tr>
               ) : items.map((item) => (
                 <tr key={getStaffCouponId(item)} className="border-t border-slate-100">
-                  <td className="p-3 font-bold"><Percent className="mr-2 inline size-4 text-brand-600" />{item.code}</td>
-                  <td className="max-w-56 truncate p-3">{item.name}</td>
-                  <td className="p-3">{formatDiscount(item)}</td>
-                  <td className="p-3">{formatMoney(item.max_discount_amount)}</td>
-                  <td className="p-3">{formatMoney(item.min_order_amount)}</td>
-                  <td className="p-3">{item.usage_limit ?? "-"}</td>
-                  <td className="p-3 text-slate-600">{toDateInput(item.start_date) || "-"} - {toDateInput(item.end_date) || "-"}</td>
+                  <td className="truncate p-3 font-bold" title={item.code}><Percent className="mr-2 inline size-4 shrink-0 text-brand-600" />{item.code}</td>
+                  <td className="truncate p-3" title={item.name}>{item.name}</td>
+                  <td className="hidden p-3 md:table-cell">{formatDiscount(item)}</td>
+                  <td className="hidden p-3 text-slate-600 lg:table-cell">{toDateInput(item.start_date) || "-"} - {toDateInput(item.end_date) || "-"}</td>
                   <td className="p-3"><Status value={item.status} /></td>
-                  <td className="p-3">
+                  <td className="p-3 text-right">
                     <Actions
+                      archived={item.status === "archived"}
                       onEdit={() => {
                         setFieldErrors({});
                         setEditing(item);
                       }}
                       onDelete={() => setDeleting(item)}
+                      onArchive={() => setArchiving(item)}
                     />
                   </td>
                 </tr>
@@ -276,6 +302,7 @@ export default function StaffCouponsPage() {
       ) : null}
 
       {deleting ? <ConfirmDialog title="Delete Coupon" message={`Delete coupon "${deleting.code}"?`} onCancel={() => setDeleting(null)} onConfirm={remove} /> : null}
+      {archiving ? <ConfirmDialog title="Archive Coupon" message={`Archive coupon "${archiving.code}" permanently? It cannot be edited, deleted, applied, or reused afterward.`} onCancel={() => setArchiving(null)} onConfirm={archive} /> : null}
     </>
   );
 }
@@ -385,7 +412,7 @@ function CouponForm({
             onClearFieldError("status");
             setForm({ ...form, status: event.target.value as StaffCouponStatus });
           }} className="input">
-            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            {editableStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </Field>
       </div>
@@ -443,17 +470,32 @@ function Modal({
   );
 }
 
-function Actions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+function Actions({
+  archived,
+  onEdit,
+  onDelete,
+  onArchive
+}: {
+  archived: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onArchive: () => void;
+}) {
+  if (archived) {
+    return <span className="text-xs font-semibold text-slate-400">No actions</span>;
+  }
+
   return (
-    <span className="flex gap-2">
-      <Button variant="outline" className="h-9 px-3" onClick={onEdit}><Pencil size={15} /> Edit</Button>
+    <span className="flex justify-end gap-1.5">
+      <button type="button" onClick={onEdit} className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label="Edit coupon" title="Edit coupon"><Pencil size={15} /></button>
+      <button type="button" onClick={onArchive} className="grid size-9 place-items-center rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50" aria-label="Archive coupon" title="Archive coupon"><Archive size={15} /></button>
       <button type="button" onClick={onDelete} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label="Delete coupon"><Trash2 size={15} /></button>
     </span>
   );
 }
 
 function Status({ value }: { value: string }) {
-  const style = value === "active" ? "bg-emerald-50 text-emerald-700" : value === "deleted" ? "bg-rose-50 text-rose-700" : value === "expired" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700";
+  const style = value === "active" ? "bg-emerald-50 text-emerald-700" : value === "archived" ? "bg-rose-50 text-rose-700" : value === "expired" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700";
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{value}</span>;
 }
 
