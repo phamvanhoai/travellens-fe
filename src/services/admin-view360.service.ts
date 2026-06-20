@@ -1,0 +1,112 @@
+import { api } from "@/services/api";
+
+export type AdminView360 = {
+  view360_id?: number;
+  view_id?: number;
+  id?: number;
+  location_id?: number | string;
+  location_name?: string;
+  title: string;
+  description?: string;
+  audio_url?: string;
+  audio_file?: string;
+  language?: string;
+  order_index?: number | string;
+  images?: AdminView360Image[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminView360Image = {
+  view360_image_id?: number;
+  image_id?: number;
+  id?: number;
+  view360_id?: number | string;
+  image_url?: string;
+  image_file?: string;
+  order_index?: number | string;
+};
+
+export type AdminView360Payload = {
+  title: string;
+  description: string;
+  audio_file?: File | null;
+  language: string;
+  order_index: string;
+};
+
+function unwrapData<T>(responseData: unknown): T {
+  if (responseData && typeof responseData === "object" && "data" in responseData) {
+    return (responseData as { data: T }).data;
+  }
+  return responseData as T;
+}
+
+function unwrapList<T>(responseData: unknown): T[] {
+  const data = unwrapData<T[] | unknown>(responseData);
+  return Array.isArray(data) ? data as T[] : [];
+}
+
+function sceneFormData(payload: AdminView360Payload) {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("description", payload.description);
+  if (payload.audio_file) formData.append("audio_file", payload.audio_file);
+  if (payload.language) formData.append("language", payload.language);
+  if (payload.order_index) formData.append("order_index", payload.order_index);
+  return formData;
+}
+
+function imageFormData(file: File, orderIndex: number) {
+  const formData = new FormData();
+  formData.append("image_file", file);
+  formData.append("order_index", String(orderIndex));
+  return formData;
+}
+
+export function getView360Id(scene: AdminView360) {
+  return scene.view360_id ?? scene.view_id ?? scene.id ?? 0;
+}
+
+export function getView360Audio(scene: AdminView360) {
+  return scene.audio_url ?? scene.audio_file ?? "";
+}
+
+export function getView360ImageId(image: AdminView360Image) {
+  return image.view360_image_id ?? image.image_id ?? image.id ?? 0;
+}
+
+export function getView360ImageSrc(image: AdminView360Image) {
+  return image.image_url ?? image.image_file ?? "";
+}
+
+export const adminView360Service = {
+  async listByLocation(locationId: number) {
+    const response = await api.get(`/admin/locations/${locationId}/view360`);
+    return unwrapList<AdminView360>(response.data);
+  },
+  async create(locationId: number, payload: AdminView360Payload) {
+    const response = await api.post(`/admin/locations/${locationId}/view360`, sceneFormData(payload));
+    return unwrapData<AdminView360 | { view360_id?: number; id?: number }>(response.data);
+  },
+  async update(viewId: number, payload: AdminView360Payload) {
+    const response = await api.put(`/admin/view360/${viewId}`, sceneFormData(payload));
+    return unwrapData<AdminView360>(response.data);
+  },
+  async remove(viewId: number) {
+    const response = await api.delete(`/admin/view360/${viewId}`);
+    return response.data;
+  },
+  async listImages(viewId: number) {
+    const response = await api.get(`/admin/view360/${viewId}/images`);
+    return unwrapList<AdminView360Image>(response.data);
+  },
+  async addImage(viewId: number, file: File, orderIndex: number) {
+    const response = await api.post(`/admin/view360/${viewId}/images`, imageFormData(file, orderIndex));
+    return unwrapData<AdminView360Image>(response.data);
+  },
+  async removeImage(imageId: number) {
+    const response = await api.delete(`/admin/view360-images/${imageId}`);
+    return response.data;
+  }
+};

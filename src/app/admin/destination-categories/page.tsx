@@ -26,6 +26,7 @@ function normalizeCategories(items: AdminDestinationCategory[]) {
 
 export default function DestinationCategoriesPage() {
   const [items, setItems] = useState<AdminDestinationCategory[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -103,6 +104,11 @@ export default function DestinationCategoriesPage() {
     }
   }
 
+  function handleSearch() {
+    setQuery(searchInput.trim());
+    setPage(1);
+  }
+
   return (
     <>
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -121,18 +127,18 @@ export default function DestinationCategoriesPage() {
 
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
-        <div className="relative mt-6 max-w-md">
-          <Search className="absolute left-3 top-3 size-5 text-slate-400" />
-          <input
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(1);
-            }}
-            className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
-            placeholder="Search categories..."
-          />
-        </div>
+        <form className="mt-6 grid max-w-xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); handleSearch(); }}>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
+              placeholder="Search categories..."
+            />
+          </div>
+          <Button type="submit" disabled={loading} className="h-11 justify-center"><Search size={17} /> Search</Button>
+        </form>
 
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
