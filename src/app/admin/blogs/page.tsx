@@ -89,7 +89,13 @@ export default function AdminBlogsPage() {
     setError("");
     try {
       const detail = await adminBlogService.detail(getAdminBlogId(blog));
-      setEditing(detail || blog);
+      const listLocationIds = getAdminBlogLocationIds(blog);
+      const detailLocationIds = detail ? getAdminBlogLocationIds(detail) : [];
+      setEditing(detail ? {
+        ...blog,
+        ...detail,
+        location_ids: detailLocationIds.length > 0 ? detailLocationIds : listLocationIds
+      } : blog);
     } catch (err) {
       const message = getApiError(err, "Cannot load blog detail.");
       setError(message);

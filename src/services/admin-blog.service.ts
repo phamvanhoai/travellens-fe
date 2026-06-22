@@ -11,6 +11,8 @@ export type AdminBlogLocation = {
   location_id?: number;
   id?: number;
   name?: string;
+  location?: AdminBlogLocation;
+  Location?: AdminBlogLocation;
 };
 
 export type AdminBlog = {
@@ -25,7 +27,11 @@ export type AdminBlog = {
   user?: AdminBlogUser;
   locations?: AdminBlogLocation[];
   blog_locations?: AdminBlogLocation[];
-  location_ids?: number[];
+  Locations?: AdminBlogLocation[];
+  BlogLocations?: AdminBlogLocation[];
+  Blog_Locations?: AdminBlogLocation[];
+  location_ids?: Array<number | string>;
+  locationIds?: Array<number | string>;
   created_at?: string;
   updated_at?: string;
 };
@@ -54,6 +60,14 @@ function unwrapList(responseData: unknown): AdminBlog[] {
   return [];
 }
 
+function unwrapBlog(responseData: unknown) {
+  const data = unwrapData<unknown>(responseData as { data?: unknown });
+  if (data && typeof data === "object" && "blog" in data) {
+    return (data as { blog?: AdminBlog }).blog as AdminBlog;
+  }
+  return data as AdminBlog;
+}
+
 export function getAdminBlogId(blog: AdminBlog) {
   return blog.blog_id ?? blog.id ?? 0;
 }
@@ -67,14 +81,31 @@ export function getAdminBlogAuthorName(blog: AdminBlog) {
 }
 
 export function getAdminBlogLocations(blog: AdminBlog) {
-  return blog.locations ?? blog.blog_locations ?? [];
+  return blog.locations
+    ?? blog.Locations
+    ?? blog.blog_locations
+    ?? blog.BlogLocations
+    ?? blog.Blog_Locations
+    ?? [];
 }
 
 export function getAdminBlogLocationIds(blog: AdminBlog) {
-  if (Array.isArray(blog.location_ids)) return blog.location_ids.map(Number).filter(Boolean);
+  const directIds = blog.location_ids ?? blog.locationIds;
+  if (Array.isArray(directIds)) return [...new Set(directIds.map(Number).filter(Boolean))];
   return getAdminBlogLocations(blog)
-    .map((location) => location.location_id ?? location.id ?? 0)
-    .filter(Boolean);
+    .map((location) => {
+      if (typeof location === "number" || typeof location === "string") return Number(location);
+      return location.location_id
+        ?? location.id
+        ?? location.location?.location_id
+        ?? location.location?.id
+        ?? location.Location?.location_id
+        ?? location.Location?.id
+        ?? 0;
+    })
+    .map(Number)
+    .filter(Boolean)
+    .filter((id, index, ids) => ids.indexOf(id) === index);
 }
 
 export const adminBlogService = {
@@ -84,15 +115,15 @@ export const adminBlogService = {
   },
   async detail(id: number) {
     const response = await api.get(`/admin/blogs/${id}`);
-    return unwrapData<AdminBlog>(response.data);
+    return unwrapBlog(response.data);
   },
   async create(payload: AdminBlogPayload) {
     const response = await api.post("/admin/blogs", payload);
-    return unwrapData<AdminBlog>(response.data);
+    return unwrapBlog(response.data);
   },
   async update(id: number, payload: AdminBlogPayload) {
     const response = await api.put(`/admin/blogs/${id}`, payload);
-    return unwrapData<AdminBlog>(response.data);
+    return unwrapBlog(response.data);
   },
   async remove(id: number) {
     const response = await api.delete(`/admin/blogs/${id}`);
