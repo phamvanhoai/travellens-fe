@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, Globe2, Heart, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getDefaultRouteForRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { destinations, tours } from "@/lib/data";
 import { useAuthStore } from "@/store/use-auth-store";
@@ -29,8 +30,13 @@ export function Header() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const languageRef = useRef<HTMLDivElement>(null);
+  const wishlistRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, setUser, logout } = useAuthStore();
   const avatarSrc = getAvatarImageSrc(user?.avatar_url);
+  const dashboardHref = getDefaultRouteForRole(user?.role);
+  const dashboardLabel = user?.role === "admin" ? "Admin Dashboard" : user?.role === "staff" ? "Staff Workspace" : "User Dashboard";
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("travel360-theme");
@@ -51,6 +57,31 @@ export function Header() {
     }
   }, []);
 
+  useEffect(() => {
+    function closeDropdowns(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (!languageRef.current?.contains(target)) setLanguageOpen(false);
+      if (!wishlistRef.current?.contains(target)) setWishlistOpen(false);
+      if (!userMenuRef.current?.contains(target)) setUserMenuOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setLanguageOpen(false);
+      setWishlistOpen(false);
+      setUserMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", closeDropdowns);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeDropdowns);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
 
@@ -66,7 +97,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/92 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#07111f]">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-xl font-bold">
           <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-white">
@@ -90,7 +121,7 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <div className="relative hidden sm:block">
+          <div ref={languageRef} className="relative hidden sm:block">
             <button
               onClick={() => setLanguageOpen((open) => !open)}
               className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700"
@@ -131,7 +162,7 @@ export function Header() {
           >
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <div className="relative hidden md:block">
+          <div ref={wishlistRef} className="relative hidden md:block">
             <button
               onClick={() => setWishlistOpen((open) => !open)}
               className="relative grid size-10 place-items-center rounded-full border border-slate-200 text-slate-700"
@@ -178,7 +209,7 @@ export function Header() {
           </div>
           
           {user ? (
-            <div className="relative">
+            <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen((open) => !open)}
                 className="flex h-10 items-center gap-2 rounded-full border border-slate-200 p-1 pr-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -201,11 +232,11 @@ export function Header() {
                     <p className="truncate text-xs text-slate-500">{user.email}</p>
                   </div>
                   <Link
-                    href="/dashboard/profile"
+                    href={dashboardHref}
                     className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    Profile
+                    {dashboardLabel}
                   </Link>
                   <div className="my-1 h-px bg-slate-100"></div>
                   <button

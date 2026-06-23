@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCheck, CreditCard, Heart, KeyRound, MessageSquareText, UserRound } from "lucide-react";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
@@ -14,11 +15,13 @@ const links = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-mist">
-      <div className="mx-auto grid min-h-[720px] max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
-        <SidebarNav title="User Dashboard" links={links} />
-        <div>{children}</div>
-      </div>
-    </section>
+    <AuthGuard allowedRoles={["customer"]}>
+      <section className="bg-mist">
+        <div className="mx-auto grid min-h-[720px] max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
+          <SidebarNav title="User Dashboard" links={links} />
+          <div>{children}</div>
+        </div>
+      </section>
+    </AuthGuard>
   );
 }
