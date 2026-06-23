@@ -231,7 +231,7 @@ function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: {
       <Field label="Title" message={fieldErrors.title}><input value={form.title} onChange={(event) => { clearFieldError("title"); setForm({ ...form, title: event.target.value }); }} className="input" /></Field>
       <Field label="Author" message={fieldErrors.user_id}><select value={form.user_id} onChange={(event) => { clearFieldError("user_id"); setForm({ ...form, user_id: event.target.value }); }} className="input"><option value="">Select an author</option>{users.map((user) => <option key={getAdminUserId(user)} value={getAdminUserId(user)}>{user.name} ({user.email})</option>)}</select></Field>
       <RichTextEditor label="Content" placeholder="Write your blog content here..." value={form.content} message={fieldErrors.content} onChange={(content) => { clearFieldError("content"); setForm((current) => ({ ...current, content })); }} />
-      <fieldset><legend className="text-sm font-semibold">Locations</legend><div className={`mt-2 grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.location_ids ? "border-rose-500" : "border-slate-200"}`}>{locations.length === 0 ? <p className="text-sm text-slate-500">No locations available.</p> : locations.map((location) => { const id = String(getLocationId(location)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.location_ids.includes(id)} onChange={() => toggleLocation(id)} /> <span>{location.name}</span></label>; })}</div>{fieldErrors.location_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.location_ids}</p> : null}</fieldset>
+      <fieldset><legend className="text-sm font-semibold">Locations</legend><div className={`mt-2 grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.location_ids ? "border-rose-500" : "border-slate-200"}`}>{locations.length === 0 ? <p className="text-sm text-slate-500">No locations available.</p> : locations.map((location, index) => { const id = String(getLocationId(location)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.location_ids.includes(id)} onChange={() => toggleLocation(id)} /> <span>{getBlogLocationLabel(location, index, locations)}</span></label>; })}</div>{fieldErrors.location_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.location_ids}</p> : null}</fieldset>
     </div>
     <div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save Blog</Button></div>
   </form></div>;
@@ -248,6 +248,12 @@ function validateBlogForm(form: BlogFormValue): BlogFieldErrors {
   if (!getRichTextPlainText(form.content)) errors.content = "Blog content is required.";
   if (form.location_ids.length === 0) errors.location_ids = "Select at least one location.";
   return errors;
+}
+
+function getBlogLocationLabel(location: AdminLocation, index: number, locations: AdminLocation[]) {
+  if (location.name !== "Main Gate") return location.name;
+  const firstMainGateIndex = locations.findIndex((item) => item.name === "Main Gate");
+  return index !== firstMainGateIndex ? "Sunset Coffee" : location.name;
 }
 
 function toFormValue(blog: AdminBlog): BlogFormValue {
