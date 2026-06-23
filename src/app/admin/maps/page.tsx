@@ -8,6 +8,7 @@ import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import {
   adminLocationService,
+  getLocationDestinationId,
   getLocationDestinationName,
   getLocationId,
   type AdminLocation
@@ -21,13 +22,15 @@ import {
 } from "@/services/admin-map.service";
 
 type MapFormValue = AdminMapPayload & {
+  travel_destination_id: string;
   preview: string;
 };
-type MapFieldName = keyof AdminMapPayload;
+type MapFieldName = keyof Omit<MapFormValue, "preview">;
 type MapFieldErrors = Partial<Record<MapFieldName, string>>;
 
 const pageSize = 10;
 const emptyMap: MapFormValue = {
+  travel_destination_id: "",
   location_id: "",
   title: "",
   description: "",
@@ -90,7 +93,9 @@ export default function AdminMapsPage() {
 
   const editingInitialValue = useMemo<MapFormValue>(() => {
     if (!editing) return emptyMap;
+    const selectedLocation = locations.find((location) => getLocationId(location) === Number(editing.location_id));
     return {
+      travel_destination_id: selectedLocation ? String(getLocationDestinationId(selectedLocation)) : "",
       location_id: String(editing.location_id ?? ""),
       title: editing.title ?? "",
       description: editing.description ?? "",
@@ -98,7 +103,16 @@ export default function AdminMapsPage() {
       map_file: null,
       preview: getAdminMapFile(editing)
     };
-  }, [editing]);
+  }, [editing, locations]);
+
+  const creatingInitialValue = useMemo<MapFormValue>(() => {
+    const selectedLocation = locations.find((location) => getLocationId(location) === Number(locationFilter));
+    return {
+      ...emptyMap,
+      travel_destination_id: selectedLocation ? String(getLocationDestinationId(selectedLocation)) : "",
+      location_id: locationFilter
+    };
+  }, [locationFilter, locations]);
 
   async function handleSearch() {
     const value = searchInput.trim();
@@ -269,7 +283,7 @@ export default function AdminMapsPage() {
         <MapForm
           key={editing ? getAdminMapId(editing) : "create"}
           title={editing ? "Edit Map" : "Create Map"}
-          initialValue={editing ? editingInitialValue : emptyMap}
+          initialValue={editing ? editingInitialValue : creatingInitialValue}
           locations={locations}
           editing={Boolean(editing)}
           saving={saving}
@@ -318,6 +332,18 @@ function MapForm({
   onSave: (payload: MapFormValue) => void;
 }) {
   const [form, setForm] = useState(initialValue);
+  const destinations = useMemo(() => {
+    const unique = new globalThis.Map<string, string>();
+    for (const location of locations) {
+      const id = String(getLocationDestinationId(location) ?? "");
+      if (id) unique.set(id, String(getLocationDestinationName(location)));
+    }
+    return Array.from(unique, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [locations]);
+  const availableLocations = useMemo(
+    () => locations.filter((location) => String(getLocationDestinationId(location) ?? "") === form.travel_destination_id),
+    [form.travel_destination_id, locations]
+  );
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
@@ -333,16 +359,30 @@ function MapForm({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+          <div>
+            <Field label="Travel Destination" message={fieldErrors.travel_destination_id}>
+              <select disabled={editing} value={form.travel_destination_id} onChange={(event) => {
+                onClearFieldError("travel_destination_id");
+                onClearFieldError("location_id");
+                setForm({ ...form, travel_destination_id: event.target.value, location_id: "" });
+              }} className="input disabled:bg-slate-50 disabled:text-slate-500">
+                <option value="">Select destination</option>
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id}>{destination.name}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div>
             <Field label="Location" message={fieldErrors.location_id}>
-              <select disabled={editing} value={form.location_id} onChange={(event) => {
+              <select disabled={editing || !form.travel_destination_id} value={form.location_id} onChange={(event) => {
                 onClearFieldError("location_id");
                 setForm({ ...form, location_id: event.target.value });
               }} className="input disabled:bg-slate-50 disabled:text-slate-500">
-                <option value="">Select location</option>
-                {locations.map((location) => (
+                <option value="">{form.travel_destination_id ? "Select location" : "Select destination first"}</option>
+                {availableLocations.map((location) => (
                   <option key={getLocationId(location)} value={getLocationId(location)}>
-                    {getLocationOptionLabel(location)}
+                    {location.name} (#{getLocationId(location)})
                   </option>
                 ))}
               </select>
@@ -414,6 +454,7 @@ function Field({ label, children, message }: { label: string; children: React.Re
 
 function validateMapForm(form: MapFormValue, editing: boolean): MapFieldErrors {
   const errors: MapFieldErrors = {};
+  if (!editing && !form.travel_destination_id) errors.travel_destination_id = "Travel destination is required.";
   if (!editing && !form.location_id) errors.location_id = "Location is required.";
   if (!form.title.trim()) errors.title = "Title is required.";
   if (!editing && !form.map_file) errors.map_file = "Map image is required.";
