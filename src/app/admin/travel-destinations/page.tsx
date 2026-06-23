@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { getRichTextPlainText, RichTextEditor } from "@/components/admin/rich-text-editor";
+import { MapLocationPicker } from "@/components/admin/map-location-picker";
 import { Button } from "@/components/ui/button";
 import { adminDestinationCategoryService, type AdminDestinationCategory } from "@/services/admin-destination-category.service";
 import {
@@ -269,8 +270,29 @@ function DestinationForm({
               onChange={(description) => setForm({ ...form, description })}
             />
           </div>
-          <Field label="Latitude"><input type="number" step="any" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} className="input" placeholder="10.7769" /></Field>
-          <Field label="Longitude"><input type="number" step="any" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} className="input" placeholder="106.7009" /></Field>
+          <div className="sm:col-span-2">
+            <MapLocationPicker
+              latitude={form.latitude}
+              longitude={form.longitude}
+              onChange={(latitude, longitude) => setForm({ ...form, latitude, longitude })}
+            />
+          </div>
+          <Field label="Latitude">
+            <input
+              readOnly
+              value={form.latitude}
+              className="input bg-slate-50 text-slate-600"
+              placeholder="Select on map"
+            />
+          </Field>
+          <Field label="Longitude">
+            <input
+              readOnly
+              value={form.longitude}
+              className="input bg-slate-50 text-slate-600"
+              placeholder="Select on map"
+            />
+          </Field>
           <div className="sm:col-span-2">
             <Field label="Destination Category">
               <select value={form.destination_category_id} onChange={(event) => setForm({ ...form, destination_category_id: event.target.value })} className="input">
