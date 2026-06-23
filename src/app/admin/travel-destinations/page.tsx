@@ -35,6 +35,10 @@ function getCategoryId(category: AdminDestinationCategory) {
   return category.destination_category_id ?? category.id ?? 0;
 }
 
+function getDestinationCategoryId(destination: AdminTravelDestination) {
+  return destination.destination_category_id == null ? "" : String(destination.destination_category_id);
+}
+
 export default function AdminDestinationsPage() {
   const [items, setItems] = useState<AdminTravelDestination[]>([]);
   const [categories, setCategories] = useState<AdminDestinationCategory[]>([]);
@@ -76,6 +80,17 @@ export default function AdminDestinationsPage() {
     void loadData(1, "");
   }, []);
 
+  const categoryNameById = useMemo(() => {
+    return new Map(categories.map((category) => [String(getCategoryId(category)), category.name]));
+  }, [categories]);
+
+  function getDestinationCategoryName(item: AdminTravelDestination) {
+    return item.destination_category_name
+      ?? item.category_name
+      ?? categoryNameById.get(getDestinationCategoryId(item))
+      ?? "-";
+  }
+
   const editingInitialValue = useMemo<FormValue>(() => {
     if (!editing) return emptyForm;
     return {
@@ -83,7 +98,7 @@ export default function AdminDestinationsPage() {
       description: editing.description ?? "",
       latitude: editing.latitude == null ? "" : String(editing.latitude),
       longitude: editing.longitude == null ? "" : String(editing.longitude),
-      destination_category_id: editing.destination_category_id == null ? "" : String(editing.destination_category_id),
+      destination_category_id: getDestinationCategoryId(editing),
       thumbnail_file: null,
       preview: getTravelDestinationThumbnail(editing)
     };
@@ -198,7 +213,7 @@ export default function AdminDestinationsPage() {
                       {item.name}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-600">{item.destination_category_name ?? item.category_name ?? item.destination_category_id ?? "-"}</td>
+                  <td className="p-3 text-slate-600">{getDestinationCategoryName(item)}</td>
                   <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
                   <td className="max-w-72 truncate p-3 text-slate-600">{getRichTextPlainText(item.description) || "-"}</td>
                   <td className="p-3">
