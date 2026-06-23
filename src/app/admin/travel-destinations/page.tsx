@@ -5,6 +5,7 @@ import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X }
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
+import { getRichTextPlainText, RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { adminDestinationCategoryService, type AdminDestinationCategory } from "@/services/admin-destination-category.service";
 import {
@@ -198,7 +199,7 @@ export default function AdminDestinationsPage() {
                   </td>
                   <td className="p-3 text-slate-600">{item.destination_category_name ?? item.category_name ?? item.destination_category_id ?? "-"}</td>
                   <td className="p-3 text-slate-600">{item.latitude ?? "-"}, {item.longitude ?? "-"}</td>
-                  <td className="max-w-72 truncate p-3 text-slate-600">{item.description || "-"}</td>
+                  <td className="max-w-72 truncate p-3 text-slate-600">{getRichTextPlainText(item.description) || "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
                       <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button>
@@ -252,7 +253,7 @@ function DestinationForm({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
-      <form className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); onSave(form); }}>
+      <form className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); onSave(form); }}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
           <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button>
@@ -260,7 +261,14 @@ function DestinationForm({
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2"><Field label="Name"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input" placeholder="Dinh Doc Lap" /></Field></div>
-          <div className="sm:col-span-2"><Field label="Description"><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Destination description" /></Field></div>
+          <div className="sm:col-span-2">
+            <RichTextEditor
+              label="Description"
+              placeholder="Write destination description..."
+              value={form.description}
+              onChange={(description) => setForm({ ...form, description })}
+            />
+          </div>
           <Field label="Latitude"><input type="number" step="any" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} className="input" placeholder="10.7769" /></Field>
           <Field label="Longitude"><input type="number" step="any" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} className="input" placeholder="106.7009" /></Field>
           <div className="sm:col-span-2">

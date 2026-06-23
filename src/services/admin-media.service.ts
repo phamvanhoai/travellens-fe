@@ -6,10 +6,16 @@ export type AdminMedia = {
   url?: string;
   file_url?: string;
   image_url?: string;
+  media_url?: string;
+  public_url?: string;
+  secure_url?: string;
   path?: string;
+  file_path?: string;
+  storage_path?: string;
   original_name?: string;
   file_name?: string;
   filename?: string;
+  name?: string;
   mime_type?: string;
   created_at?: string;
 };
@@ -32,12 +38,14 @@ function unwrapData<T>(responseData: T | { data?: T }) {
 }
 
 function unwrapList(responseData: unknown): AdminMediaList {
-  const body = unwrapData<unknown>(responseData as { data?: unknown });
-  if (Array.isArray(body)) return { data: body as AdminMedia[] };
-  if (body && typeof body === "object") {
-    const result = body as { data?: unknown; pagination?: AdminMediaList["pagination"] };
-    return { data: Array.isArray(result.data) ? result.data as AdminMedia[] : [], pagination: result.pagination };
+  if (Array.isArray(responseData)) return { data: responseData as AdminMedia[] };
+
+  if (responseData && typeof responseData === "object") {
+    const data = findMediaArray(responseData);
+    const pagination = findPagination(responseData);
+    return { data, pagination };
   }
+
   return { data: [] };
 }
 
@@ -46,11 +54,11 @@ export function getAdminMediaId(media: AdminMedia) {
 }
 
 export function getAdminMediaUrl(media: AdminMedia) {
-  return media.url ?? media.file_url ?? media.image_url ?? media.path ?? "";
+  return media.url ?? media.file_url ?? media.image_url ?? media.media_url ?? media.public_url ?? media.secure_url ?? media.path ?? media.file_path ?? media.storage_path ?? "";
 }
 
 export function getAdminMediaName(media: AdminMedia) {
-  return media.original_name ?? media.file_name ?? media.filename ?? `Image #${getAdminMediaId(media)}`;
+  return media.original_name ?? media.file_name ?? media.filename ?? media.name ?? `Image #${getAdminMediaId(media)}`;
 }
 
 export const adminMediaService = {
@@ -77,3 +85,65 @@ export const adminMediaService = {
     return unwrapData<unknown>(response.data);
   }
 };
+
+function findMediaArray(value: unknown): AdminMedia[] {
+  if (Array.isArray(value)) return value as AdminMedia[];
+  if (!value || typeof value !== "object") return [];
+
+  const objectValue = value as Record<string, unknown>;
+  const arrayKeys = ["data", "items", "media", "medias", "images", "files", "rows", "records", "results"];
+
+  for (const key of arrayKeys) {
+    if (Array.isArray(objectValue[key])) return objectValue[key] as AdminMedia[];
+  }
+
+  for (const key of ["data", "result", "payload"]) {
+    const nested = objectValue[key];
+    if (nested && typeof nested === "object") {
+      const nestedArray = findMediaArray(nested);
+      if (nestedArray.length > 0) return nestedArray;
+    }
+  }
+
+  return [];
+}
+
+function findPagination(value: unknown): AdminMediaList["pagination"] {
+  if (!value || typeof value !== "object") return undefined;
+
+  const objectValue = value as Record<string, unknown>;
+  const direct = normalizePagination(objectValue.pagination);
+  if (direct) return direct;
+
+  for (const key of ["data", "result", "payload", "meta"]) {
+    const nested = objectValue[key];
+    if (nested && typeof nested === "object") {
+      const nestedPagination = findPagination(nested);
+      if (nestedPagination) return nestedPagination;
+    }
+  }
+
+  return normalizePagination(objectValue);
+}
+
+function normalizePagination(value: unknown): AdminMediaList["pagination"] {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Record<string, unknown>;
+  const total = toNumber(data.total ?? data.totalItems ?? data.total_items ?? data.count);
+  if (total == null) return undefined;
+
+  const page = toNumber(data.page ?? data.currentPage ?? data.current_page) ?? 1;
+  const limit = toNumber(data.limit ?? data.pageSize ?? data.page_size ?? data.perPage ?? data.per_page) ?? 20;
+  const totalPages = toNumber(data.totalPages ?? data.total_pages ?? data.lastPage ?? data.last_page) ?? Math.max(1, Math.ceil(total / limit));
+
+  return { page, limit, total, totalPages };
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
