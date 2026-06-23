@@ -1,136 +1,122 @@
 "use client";
 
-import { useState } from "react";
-import { MessageSquareText, Pencil, Search, Star, X } from "lucide-react";
+import axios from "axios";
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, MessageSquareText, Plus, RefreshCw, Search, Star, X } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
+import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { getPublicLocationId, locationService, type PublicLocation } from "@/services/location.service";
+import { getCustomerReviewId, getCustomerReviewLocationName, reviewService, type CustomerReview } from "@/services/review.service";
 
-type ReviewStatus = "Pending" | "Approved" | "Hidden";
+type ReviewFormValue = { location_id: string; rating: string; comment: string };
+type ReviewFieldErrors = Partial<Record<keyof ReviewFormValue, string>>;
 
-type UserReview = {
-  id: string;
-  target: string;
-  targetType: "TravelDestination" | "Location" | "Tour";
-  rating: number;
-  comment: string;
-  status: ReviewStatus;
-};
-
-const initialReviews: UserReview[] = [
-  { id: "REV-1001", target: "Independence Palace", targetType: "TravelDestination", rating: 5, comment: "The 360 preview helped us plan a thoughtful visit.", status: "Approved" },
-  { id: "REV-1002", target: "Conference Hall", targetType: "Location", rating: 4, comment: "Clear visitor route and useful diagram images.", status: "Approved" },
-  { id: "REV-1003", target: "Saigon One Day Tour", targetType: "Tour", rating: 5, comment: "Smooth itinerary and knowledgeable local guide.", status: "Approved" },
-  { id: "REV-1004", target: "Ben Thanh Market", targetType: "TravelDestination", rating: 4, comment: "Busy but worth visiting for local food.", status: "Pending" },
-  { id: "REV-1005", target: "Command Bunker", targetType: "Location", rating: 3, comment: "Interesting location, but the audio was hard to hear.", status: "Pending" },
-  { id: "REV-1006", target: "Ha Long Bay Weekend", targetType: "Tour", rating: 5, comment: "Great route and comfortable schedule.", status: "Approved" }
-];
+const emptyForm: ReviewFormValue = { location_id: "", rating: "5", comment: "" };
+const pageSize = 5;
 
 export default function ReviewsPage() {
-  const [items, setItems] = useState(initialReviews);
+  const [items, setItems] = useState<CustomerReview[]>([]);
+  const [locations, setLocations] = useState<PublicLocation[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState<UserReview | null>(null);
-  const pageSize = 5;
-  const visibleItems = items.filter((item) =>
-    `${item.id} ${item.target} ${item.targetType} ${item.status} ${item.comment}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const showToast = useToast();
+
+  const visibleItems = items.filter((item) => `${getCustomerReviewId(item)} ${getCustomerReviewLocationName(item)} ${item.comment ?? ""} ${item.status ?? ""}`.toLowerCase().includes(query.toLowerCase()));
   const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const paginatedItems = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rows = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  function saveReview(payload: UserReview) {
-    setItems((current) => current.map((item) => item.id === payload.id ? payload : item));
-    setEditing(null);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [reviews, locationList] = await Promise.all([reviewService.list(), locationService.list()]);
+      setItems(reviews);
+      setLocations(locationList);
+    } catch (err) {
+      const message = getApiError(err, "Cannot load reviews from API.");
+      setError(message);
+      showToast({ variant: "error", title: "Load failed", description: message });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  async function createReview(form: ReviewFormValue) {
+    setSaving(true);
+    setError("");
+    try {
+      await reviewService.createForLocation(Number(form.location_id), {
+        rating: Number(form.rating),
+        comment: form.comment.trim()
+      });
+      showToast({ variant: "success", title: "Review submitted", description: "Your review has been sent for moderation." });
+      setCreating(false);
+      await loadData();
+    } catch (err) {
+      const message = getApiError(err, "Cannot submit this review.");
+      setError(message);
+      showToast({ variant: "error", title: "Submit failed", description: message });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  return (
-    <>
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">Review History</h1>
-        <p className="mt-1 text-sm text-slate-500">Search and update your review comments.</p>
-
-        <div className="relative mt-6 max-w-md">
-          <Search className="absolute left-3 top-3 size-5 text-slate-400" />
-          <input
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(1);
-            }}
-            className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
-            placeholder="Search reviews..."
-          />
-        </div>
-
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>{["Review ID", "Target Type", "Target", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr>
-            </thead>
-            <tbody>
-              {paginatedItems.map((review) => (
-                <tr key={review.id} className="border-t border-slate-100">
-                  <td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />{review.id}</td>
-                  <td className="p-3 text-slate-600">{review.targetType}</td>
-                  <td className="p-3 font-semibold">{review.target}</td>
-                  <td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{review.rating}</td>
-                  <td className="max-w-64 truncate p-3 text-slate-600">{review.comment}</td>
-                  <td className="p-3"><Status value={review.status} /></td>
-                  <td className="p-3"><Button variant="outline" className="h-9 px-3" onClick={() => setEditing(review)}><Pencil size={15} /> Edit</Button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
-      </div>
-
-      {editing ? <ReviewForm initialValue={editing} onClose={() => setEditing(null)} onSave={saveReview} /> : null}
-    </>
-  );
-}
-
-function ReviewForm({ initialValue, onClose, onSave }: { initialValue: UserReview; onClose: () => void; onSave: (payload: UserReview) => void }) {
-  const [form, setForm] = useState(initialValue);
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
-      <form
-        className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSave(form);
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Edit Review</h2>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="mt-6 grid gap-4">
-          <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-            {form.targetType}: <span className="font-bold text-ink">{form.target}</span>
-          </div>
-          <Field label="Rating"><select value={form.rating} onChange={(event) => setForm({ ...form, rating: Number(event.target.value) })} className="input"><option value="1">1 Star</option><option value="2">2 Stars</option><option value="3">3 Stars</option><option value="4">4 Stars</option><option value="5">5 Stars</option></select></Field>
-          <Field label="Comment"><textarea required value={form.comment} onChange={(event) => setForm({ ...form, comment: event.target.value })} className="input min-h-28 py-3" /></Field>
-          <Field label="Status"><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ReviewStatus })} className="input"><option>Pending</option><option>Approved</option><option>Hidden</option></select></Field>
-        </div>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Save Review</Button>
-        </div>
-      </form>
+  return <>
+    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold">Location Reviews</h1><p className="mt-1 text-sm text-slate-500">View traveler reviews and share your experience at a location.</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button><Button onClick={() => setCreating(true)} disabled={loading}><Plus size={17} /> Write Review</Button></div></div>
+      {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
+      <div className="relative mt-6 max-w-md"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search reviews..." /></div>
+      <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "Location", "Rating", "Comment", "Status"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
+        {loading ? <tr><td colSpan={5} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading reviews...</td></tr>
+          : rows.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
+            : rows.map((review) => <tr key={getCustomerReviewId(review)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getCustomerReviewId(review)}</td><td className="p-3 font-semibold">{getCustomerReviewLocationName(review)}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{review.rating}</td><td className="max-w-80 truncate p-3 text-slate-600">{review.comment || "-"}</td><td className="p-3"><Status value={review.status ?? "approved"} /></td></tr>)}
+      </tbody></table></div>
+      <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
     </div>
-  );
+    {creating ? <CreateReviewForm locations={locations} saving={saving} onClose={() => setCreating(false)} onSave={createReview} /> : null}
+  </>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3">{label}{children}</label>;
+function CreateReviewForm({ locations, saving, onClose, onSave }: { locations: PublicLocation[]; saving: boolean; onClose: () => void; onSave: (form: ReviewFormValue) => Promise<void> }) {
+  const [form, setForm] = useState(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState<ReviewFieldErrors>({});
+
+  function clearError(field: keyof ReviewFormValue) {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"><form noValidate className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); const errors = validateReview(form); setFieldErrors(errors); if (Object.keys(errors).length === 0) void onSave(form); }}><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Write a Review</h2><p className="mt-1 text-sm text-slate-500">You can review each location once.</p></div><button type="button" onClick={onClose} disabled={saving} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button></div><div className="mt-6 grid gap-4">
+    <Field label="Location" message={fieldErrors.location_id}><select value={form.location_id} onChange={(event) => { clearError("location_id"); setForm({ ...form, location_id: event.target.value }); }} className="input"><option value="">Select a location</option>{locations.map((location) => <option key={getPublicLocationId(location)} value={getPublicLocationId(location)}>{location.name}</option>)}</select></Field>
+    <Field label="Rating" message={fieldErrors.rating}><select value={form.rating} onChange={(event) => { clearError("rating"); setForm({ ...form, rating: event.target.value }); }} className="input">{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} Star{rating > 1 ? "s" : ""}</option>)}</select></Field>
+    <Field label="Comment" message={fieldErrors.comment}><textarea value={form.comment} onChange={(event) => { clearError("comment"); setForm({ ...form, comment: event.target.value }); }} className="input min-h-32 py-3" placeholder="Share your experience..." /></Field>
+  </div><div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Submit Review</Button></div></form></div>;
 }
 
-function Status({ value }: { value: ReviewStatus }) {
-  const style = value === "Approved" ? "bg-emerald-50 text-emerald-700" : value === "Hidden" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700";
-  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{value}</span>;
+function Field({ label, message, children }: { label: string; message?: string; children: React.ReactNode }) { return <label className={`block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:px-3 [&_.input]:outline-none ${message ? "[&_.input]:border-rose-500" : "[&_.input]:border-slate-200 [&_.input]:focus:border-brand-600"}`}>{label}{children}{message ? <span className="mt-2 block text-xs font-semibold text-rose-600">{message}</span> : null}</label>; }
+function Status({ value }: { value: string }) { const normalized = value.toLowerCase(); const style = normalized === "approved" ? "bg-emerald-50 text-emerald-700" : normalized === "hidden" || normalized === "rejected" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"; return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{value}</span>; }
+
+function validateReview(form: ReviewFormValue) {
+  const errors: ReviewFieldErrors = {};
+  if (!form.location_id) errors.location_id = "Location is required.";
+  if (!form.rating || Number(form.rating) < 1 || Number(form.rating) > 5) errors.rating = "Choose a rating from 1 to 5.";
+  if (!form.comment.trim()) errors.comment = "Comment is required.";
+  return errors;
+}
+
+function getApiError(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) return fallback;
+  const data = error.response?.data as { message?: string; error?: string } | undefined;
+  if (error.response?.status === 409) return data?.message ?? "You have already reviewed this location.";
+  if (error.response?.status === 401) return "Please sign in with a customer account to submit a review.";
+  return data?.message ?? data?.error ?? fallback;
 }
