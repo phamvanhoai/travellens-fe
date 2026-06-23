@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Chatbot } from "@/components/common/chatbot";
+import { ToastProvider } from "@/components/common/toast";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,12 +26,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
-        <Header />
-        <main>{children}</main>
-        <Footer />
-        <Chatbot />
+        <ToastProvider>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          <Chatbot />
+        </ToastProvider>
       </body>
     </html>
   );
