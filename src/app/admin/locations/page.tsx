@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ImagePlus, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Video, X } from "lucide-react";
+import { ImagePlus, Map, MapPin, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Video, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
+import { MapLocationPicker } from "@/components/admin/map-location-picker";
 import { Button } from "@/components/ui/button";
 import {
   adminLocationService,
@@ -206,7 +207,14 @@ export default function AdminLocationsPage() {
                     </span>
                   </td>
                   <td className="p-3 text-slate-600">{getLocationDestinationName(item)}</td>
-                  <td className="p-3 font-semibold">{item.map_count ?? item.maps_count ?? "-"}</td>
+                  <td className="p-3">
+                    <Link
+                      href={`/admin/maps?locationId=${getLocationId(item)}`}
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-100 px-3 text-sm font-semibold text-brand-600 transition hover:bg-brand-50"
+                    >
+                      <Map size={15} /> {item.map_count ?? item.maps_count ?? 0}
+                    </Link>
+                  </td>
                   <td className="p-3">
                     <Link
                       href={`/admin/view360?locationId=${getLocationId(item)}`}
@@ -279,7 +287,7 @@ function LocationForm({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
       <form
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
+        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
         onSubmit={(event) => {
           event.preventDefault();
           onSave(form);
@@ -310,8 +318,15 @@ function LocationForm({
           <div className="sm:col-span-2">
             <Field label="Description"><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-24 py-3" placeholder="Location description..." /></Field>
           </div>
-          <Field label="Latitude"><input type="number" step="any" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} className="input" placeholder="10.7769" /></Field>
-          <Field label="Longitude"><input type="number" step="any" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} className="input" placeholder="106.7009" /></Field>
+          <div className="sm:col-span-2">
+            <MapLocationPicker
+              latitude={form.latitude}
+              longitude={form.longitude}
+              onChange={(latitude, longitude) => setForm({ ...form, latitude, longitude })}
+            />
+          </div>
+          <Field label="Latitude"><input readOnly value={form.latitude} className="input bg-slate-50 text-slate-600" placeholder="Select on map" /></Field>
+          <Field label="Longitude"><input readOnly value={form.longitude} className="input bg-slate-50 text-slate-600" placeholder="Select on map" /></Field>
           <div className="sm:col-span-2">
             <label className="block text-sm font-semibold">
               Thumbnail
