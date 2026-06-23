@@ -14,6 +14,7 @@ const nav = [
   { href: "/", label: "Home" },
   { href: "/destinations", label: "Destinations" },
   { href: "/tours", label: "Tours" },
+  { href: "/maps/travel", label: "Travel Map" },
   { href: "/view360", label: "360 Experience" },
   { href: "/blogs", label: "Blogs" },
   { href: "/ai", label: "AI Assistant" }
