@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/use-auth-store";
+import { getDefaultRouteForRole } from "@/lib/auth";
 
 declare global {
   interface Window {
@@ -44,7 +45,7 @@ export default function RegisterPage() {
         localStorage.setItem("travel360_token", token);
         localStorage.setItem("user", JSON.stringify(user));
         setUser(user);
-        router.push("/");
+        router.push(getDefaultRouteForRole(user?.role));
       } else {
         setError(res.data.message || "Google login failed");
       }

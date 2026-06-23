@@ -8,11 +8,28 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/use-auth-store";
+import { canAccessRole, getDefaultRouteForRole, type UserRole } from "@/lib/auth";
 
 declare global {
   interface Window {
     google?: any;
   }
+}
+
+const routeRoles: Array<[string, readonly UserRole[]]> = [
+  ["/admin", ["admin"]],
+  ["/staff", ["staff"]],
+  ["/dashboard", ["customer"]]
+];
+
+function getPostLoginRoute(role?: string) {
+  const redirect = new URLSearchParams(window.location.search).get("redirect");
+  if (!redirect?.startsWith("/") || redirect.startsWith("//")) return getDefaultRouteForRole(role);
+
+  const matchedRoute = routeRoles.find(([prefix]) => redirect === prefix || redirect.startsWith(`${prefix}/`));
+  if (!matchedRoute) return redirect;
+
+  return canAccessRole(role, matchedRoute[1]) ? redirect : getDefaultRouteForRole(role);
 }
 
 export default function LoginPage() {
@@ -36,7 +53,7 @@ export default function LoginPage() {
         localStorage.setItem("travel360_token", token);
         localStorage.setItem("user", JSON.stringify(user));
         setUser(user);
-        router.push("/");
+        router.push(getPostLoginRoute(user?.role));
       } else {
         setError(res.data.message || "Google login failed");
       }
@@ -95,9 +112,7 @@ export default function LoginPage() {
         localStorage.setItem("travel360_token", token);
         localStorage.setItem("user", JSON.stringify(user));
         setUser(user);
-        
-        // Redirect to dashboard or home page
-        router.push("/");
+        router.push(getPostLoginRoute(user?.role));
       } else {
         setError(response.data.message || "Login failed");
       }
