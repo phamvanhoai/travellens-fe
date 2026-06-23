@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Crosshair, LoaderCircle } from "lucide-react";
+import { Crosshair, LoaderCircle, Search } from "lucide-react";
 import type { LatLngExpression } from "leaflet";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +26,8 @@ type MapLocationPickerProps = {
 export function MapLocationPicker({ latitude, longitude, onChange }: MapLocationPickerProps) {
   const [locationError, setLocationError] = useState("");
   const [locating, setLocating] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searching, setSearching] = useState(false);
 
   const position = useMemo<LatLngExpression>(() => {
     const parsedLatitude = Number(latitude);
@@ -70,6 +72,50 @@ export function MapLocationPicker({ latitude, longitude, onChange }: MapLocation
     );
   }
 
+  async function searchAddress() {
+    const query = searchInput.trim();
+
+    if (!query) {
+      setLocationError("Enter an address or place name to search.");
+      return;
+    }
+
+    setSearching(true);
+    setLocationError("");
+
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        format: "json",
+        limit: "1",
+        addressdetails: "1"
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Search failed.");
+      }
+
+      const results = await response.json() as Array<{ lat: string; lon: string }>;
+      const firstResult = results[0];
+
+      if (!firstResult) {
+        setLocationError("No matching address found.");
+        return;
+      }
+
+      onChange(Number(firstResult.lat).toFixed(6), Number(firstResult.lon).toFixed(6));
+    } catch (err) {
+      setLocationError("Cannot search this address right now. Please try again.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -80,6 +126,30 @@ export function MapLocationPicker({ latitude, longitude, onChange }: MapLocation
         <Button type="button" variant="outline" className="h-9 px-3" onClick={useCurrentLocation} disabled={locating}>
           {locating ? <LoaderCircle className="animate-spin" size={16} /> : <Crosshair size={16} />}
           Current Location
+        </Button>
+      </div>
+
+      <div
+        className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void searchAddress();
+              }
+            }}
+            className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
+            placeholder="Search address or place..."
+          />
+        </div>
+        <Button type="button" variant="outline" className="h-11 justify-center" onClick={() => void searchAddress()} disabled={searching}>
+          {searching ? <LoaderCircle className="animate-spin" size={16} /> : <Search size={16} />}
+          Search
         </Button>
       </div>
 
