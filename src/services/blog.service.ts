@@ -37,6 +37,7 @@ function unwrapList(value: unknown) {
 
 export function getCustomerBlogId(blog: CustomerBlog) { return blog.blog_id ?? blog.id ?? 0; }
 export function getCustomerBlogUserId(blog: CustomerBlog) { return blog.user_id ?? blog.user?.user_id ?? blog.user?.id ?? 0; }
+export function getCustomerBlogLocationIds(blog: CustomerBlog) { if (Array.isArray(blog.location_ids)) return blog.location_ids.map(Number).filter(Boolean); return (blog.locations ?? []).map((location) => location.location_id ?? location.id ?? 0).filter(Boolean); }
 
 export const blogService = {
   async list() { const response = await api.get("/blogs"); return unwrapList(response.data); },
