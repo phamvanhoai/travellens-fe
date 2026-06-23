@@ -5,6 +5,7 @@ import { ImagePlus, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "l
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import {
@@ -446,7 +447,7 @@ function TourForm({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
       <form
         noValidate
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
+        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft"
         onSubmit={(event) => {
           event.preventDefault();
           const nextFieldErrors = validateTourForm(form, { days: scheduleDays, startTime, endTime });
@@ -472,12 +473,16 @@ function TourForm({
             </Field>
           </div>
           <div className="sm:col-span-2">
-            <Field label="Description" message={fieldErrors.description} tone={fieldErrors.description ? "invalid" : "neutral"}>
-              <textarea value={form.description} onChange={(event) => {
+            <RichTextEditor
+              label="Description"
+              placeholder="Write tour description..."
+              value={form.description}
+              message={fieldErrors.description}
+              onChange={(description) => {
                 onClearFieldError("description");
-                setForm({ ...form, description: event.target.value });
-              }} className="input min-h-24 py-3" placeholder="Tour description" />
-            </Field>
+                setForm((current) => ({ ...current, description }));
+              }}
+            />
           </div>
           <Field label="Tour Category" message={fieldErrors.tour_category_id} tone={fieldErrors.tour_category_id ? "invalid" : "neutral"}>
             <select required value={form.tour_category_id} onChange={(event) => {
