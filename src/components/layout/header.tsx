@@ -205,7 +205,7 @@ export function Header() {
                     My Profile
                   </Link>
                   <Link 
-                    href="/dashboard" 
+                    href={user.role === "admin" || user.role === "staff" ? "/admin" : "/dashboard"} 
                     className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
                     onClick={() => setUserMenuOpen(false)}
                   >
