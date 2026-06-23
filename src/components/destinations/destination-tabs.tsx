@@ -211,7 +211,7 @@ function MapPreview() {
     <div className="relative min-h-72 overflow-hidden rounded-lg bg-blue-50">
       <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=900&q=85" alt="Map preview" className="h-full w-full object-cover opacity-75" />
       <span className="absolute left-1/2 top-1/2 grid size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-brand-600 text-white"><MapPin /></span>
-      <Button className="absolute right-4 top-4 h-9">Open in Map</Button>
+      <Button href="/maps/travel" className="absolute right-4 top-4 h-9">Open in Map</Button>
     </div>
   );
 }
