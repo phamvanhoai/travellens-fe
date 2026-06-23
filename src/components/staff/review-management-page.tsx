@@ -19,6 +19,7 @@ import {
   type StaffReviewPayload,
   type StaffReviewStatus
 } from "@/services/staff-review.service";
+import { adminUserService, getAdminUserId } from "@/services/admin-user.service";
 
 const pageSize = 5;
 
@@ -32,6 +33,7 @@ function ReviewManagementPage() {
   const title = isAdmin ? "Review Management" : "Staff Reviews";
   const description = isAdmin ? "Moderate, update and delete location reviews." : "Moderate and delete location reviews.";
   const [items, setItems] = useState<StaffReview[]>([]);
+  const [userNames, setUserNames] = useState<Map<number, string>>(new Map());
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,8 @@ function ReviewManagementPage() {
   const [deleting, setDeleting] = useState<StaffReview | null>(null);
   const showToast = useToast();
 
-  const visible = items.filter((item) => `${getStaffReviewId(item)} ${getStaffReviewUserName(item)} ${getStaffReviewLocationName(item)} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase()));
+  const getUserLabel = (item: StaffReview) => userNames.get(getStaffReviewUserId(item)) ?? getStaffReviewUserName(item);
+  const visible = items.filter((item) => `${getStaffReviewId(item)} ${getUserLabel(item)} ${getStaffReviewLocationName(item)} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase()));
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const rows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -50,7 +53,16 @@ function ReviewManagementPage() {
     setLoading(true);
     setError("");
     try {
-      setItems(await staffReviewService.list());
+      const reviews = await staffReviewService.list();
+      setItems(reviews);
+      if (isAdmin) {
+        try {
+          const result = await adminUserService.list({ page: 1, limit: 100 });
+          setUserNames(new Map((result.data ?? []).map((user) => [getAdminUserId(user), user.name])));
+        } catch {
+          setUserNames(new Map());
+        }
+      }
     } catch (err) {
       const message = getApiError(err, "Cannot load staff reviews from API.");
       setError(message);
@@ -58,7 +70,7 @@ function ReviewManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [isAdmin, showToast]);
 
   useEffect(() => {
     void loadReviews();
@@ -115,7 +127,7 @@ function ReviewManagementPage() {
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "User", "Location", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading reviews...</td></tr>
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
-            : rows.map((item) => <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3">{getStaffReviewUserName(item)}</td><td className="p-3">{getStaffReviewLocationName(item)}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2"><Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button><button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>)}
+            : rows.map((item) => <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3 font-semibold">{getUserLabel(item)}</td><td className="p-3">{getStaffReviewLocationName(item)}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2"><Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button><button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>)}
       </tbody></table></div>
       <Pagination page={currentPage} pageCount={pageCount} totalItems={visible.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
     </div>
