@@ -279,26 +279,18 @@ function DestinationForm({
           </div>
           <Field label="Latitude">
             <input
-              type="number"
-              step="any"
-              min="-90"
-              max="90"
+              readOnly
               value={form.latitude}
-              onChange={(event) => setForm({ ...form, latitude: event.target.value })}
-              className="input"
-              placeholder="10.776900"
+              className="input bg-slate-50 text-slate-600"
+              placeholder="Select on map"
             />
           </Field>
           <Field label="Longitude">
             <input
-              type="number"
-              step="any"
-              min="-180"
-              max="180"
+              readOnly
               value={form.longitude}
-              onChange={(event) => setForm({ ...form, longitude: event.target.value })}
-              className="input"
-              placeholder="106.700900"
+              className="input bg-slate-50 text-slate-600"
+              placeholder="Select on map"
             />
           </Field>
           <div className="sm:col-span-2">
