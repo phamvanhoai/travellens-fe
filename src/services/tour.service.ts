@@ -5,10 +5,32 @@ export type PublicTour = {
   id?: number;
   name?: string;
   title?: string;
+  destination?: string;
+  destination_name?: string;
   description?: string;
   price?: number | string;
+  schedule?: string;
   capacity?: number | string;
+  available_slots?: number | string;
+  remaining_slots?: number | string;
+  available_capacity?: number | string;
+  destinations?: PublicTourDestination[];
+  travel_destinations?: PublicTourDestination[];
+  tour_destinations?: PublicTourDestination[];
+  TourDestinations?: PublicTourDestination[];
   status?: string;
+};
+
+export type PublicTourDestination = {
+  name?: string;
+  destination_name?: string;
+  travel_destination_name?: string;
+  travel_destination?: { name?: string; country?: string; city?: string };
+  TravelDestination?: { name?: string; country?: string; city?: string };
+  destination?: { name?: string; country?: string; city?: string };
+  travelDestination?: { name?: string; country?: string; city?: string };
+  country?: string;
+  city?: string;
 };
 
 function unwrapData<T>(value: T | { data?: T }) {
