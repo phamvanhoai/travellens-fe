@@ -18,6 +18,7 @@ declare global {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,10 +59,12 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isVerifying) return;
+    if (!googleClientId) return;
+
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
         window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          client_id: googleClientId,
           callback: handleGoogleResponse,
         });
         if (googleBtnRef.current) {
@@ -88,7 +91,7 @@ export default function RegisterPage() {
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [handleGoogleResponse, isVerifying]);
+  }, [googleClientId, handleGoogleResponse, isVerifying]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,7 +303,13 @@ export default function RegisterPage() {
           <span className="h-px flex-1 bg-slate-200" />or continue with<span className="h-px flex-1 bg-slate-200" />
         </div>
         
-        <div ref={googleBtnRef} className="flex justify-center [&>div]:w-full" />
+        {googleClientId ? (
+          <div ref={googleBtnRef} className="flex justify-center [&>div]:w-full" />
+        ) : (
+          <div className="rounded-lg bg-amber-50 p-3 text-center text-sm font-semibold text-amber-700">
+            Google login is not configured.
+          </div>
+        )}
       </form>
       
       <p className="mt-8 text-center text-sm text-slate-600">
