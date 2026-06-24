@@ -1,4 +1,5 @@
-import { Bus, CalendarDays, CheckCircle2, Clock3, MapPin, Play, Star, Users } from "lucide-react";
+import { Bus, CalendarDays, CheckCircle2, Clock3, Play, Star, Users } from "lucide-react";
+import { CustomerRouteNavigationLoader } from "@/components/navigation/customer-route-navigation-loader";
 import { Button } from "@/components/ui/button";
 import { tours } from "@/lib/data";
 import { currency } from "@/lib/utils";
@@ -38,21 +39,17 @@ export default async function TourDetailPage({ params }: { params: Promise<{ id:
                 {["Visit iconic viewpoints", "Explore hidden local spots", "Taste regional food and drinks", "Enjoy stress-free transport"].map((item) => <li key={item}>✓ {item}</li>)}
               </ul>
             </div>
-            <div className="relative min-h-72 overflow-hidden rounded-lg bg-blue-50">
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=900&q=85" alt="Route map" className="h-full w-full object-cover opacity-75" />
-              {[["35%","28%"],["58%","50%"],["42%","72%"]].map(([left, top]) => <span key={left} className="absolute grid size-9 place-items-center rounded-full bg-brand-600 text-white" style={{ left, top }}><MapPin size={18} /></span>)}
+            <div className="rounded-lg border border-slate-200 bg-white p-6">
+              <h2 className="font-bold">Route Navigation</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                The live route map below loads ordered destinations, coordinates, polyline points and itinerary data from the backend navigation API.
+              </p>
             </div>
           </div>
+          <div className="mt-10">
+            <CustomerRouteNavigationLoader tourId={id} />
+          </div>
           <div className="mt-10 grid gap-8 lg:grid-cols-2">
-            <div>
-              <h2 className="font-bold">Itinerary</h2>
-              {["Hotel Pick-up", "Old Village", "Sunset Viewing", "Wine Tasting", "Return to Hotel"].map((item, index) => (
-                <div key={item} className="mt-4 flex gap-4">
-                  <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">{index + 1}</span>
-                  <div><p className="font-semibold">{item}</p><p className="text-sm text-slate-500">Carefully timed stop with local guidance.</p></div>
-                </div>
-              ))}
-            </div>
             <div className="grid gap-6 sm:grid-cols-2">
               <div><h2 className="font-bold">Included</h2>{["Hotel pick-up", "Professional local guide", "Wine tasting", "All taxes and fees"].map((item) => <p key={item} className="mt-3 text-sm text-slate-600"><CheckCircle2 className="mr-2 inline size-4 text-emerald-600" />{item}</p>)}</div>
               <div><h2 className="font-bold">Not Included</h2>{["Meals and drinks", "Personal expenses", "Tips"].map((item) => <p key={item} className="mt-3 text-sm text-slate-600">× {item}</p>)}</div>

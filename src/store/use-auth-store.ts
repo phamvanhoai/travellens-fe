@@ -13,6 +13,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (typeof window !== "undefined") {
       localStorage.removeItem("user");
       localStorage.removeItem("travel360_token");
+      localStorage.removeItem("token");
     }
     set({ user: null });
   }
