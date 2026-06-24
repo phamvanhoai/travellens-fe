@@ -3,6 +3,7 @@
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Loader2, Minus, Plus, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { bookingService, type BookingPassengerPayload } from "@/services/booking.service";
@@ -13,6 +14,7 @@ type PassengerDraft = Omit<BookingPassengerPayload, "price">;
 const emptyPassenger = (): PassengerDraft => ({ passenger_name: "", age_category: "adult", seat_number: "", special_request: "" });
 
 export default function BookingPage() {
+  const router = useRouter();
   const [tours, setTours] = useState<PublicTour[]>([]);
   const [tourId, setTourId] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -26,7 +28,6 @@ export default function BookingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [createdBooking, setCreatedBooking] = useState<Record<string, unknown> | null>(null);
   const showToast = useToast();
 
   useEffect(() => {
@@ -116,8 +117,12 @@ export default function BookingPage() {
         };
         localStorage.setItem("travel360_booking_metadata", JSON.stringify(metadata));
       }
-      setCreatedBooking(booking);
       showToast({ variant: "success", title: "Booking created", description: "Your booking was created successfully." });
+      if (bookingId) {
+        router.push(`/payment/checkout?bookingId=${String(bookingId)}`);
+        return;
+      }
+      router.push("/dashboard/bookings");
     } catch (err) {
       const message = getApiError(err, "Cannot create this booking.");
       setError(message);
@@ -128,11 +133,6 @@ export default function BookingPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  if (createdBooking) {
-    const bookingId = createdBooking.booking_id ?? createdBooking.id;
-    return <section className="mx-auto max-w-2xl px-4 py-16"><div className="rounded-lg border border-emerald-200 bg-white p-8 text-center shadow-sm"><h1 className="text-3xl font-bold">Booking Created</h1><p className="mt-3 text-slate-600">Booking {bookingId ? `#${String(bookingId)}` : ""} has been submitted successfully.</p><div className="mt-7 flex justify-center gap-3"><Button href="/dashboard/bookings" variant="outline">View My Bookings</Button>{bookingId ? <Button href={`/payment/checkout?bookingId=${String(bookingId)}`}>Continue to Payment</Button> : null}</div></div></section>;
   }
 
   return <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8"><form noValidate onSubmit={submitBooking} className="grid gap-8 lg:grid-cols-[1fr_320px]">
