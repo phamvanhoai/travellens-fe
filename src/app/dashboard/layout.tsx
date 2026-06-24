@@ -16,7 +16,7 @@ const links = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard allowedRoles={["customer"]}>
+    <AuthGuard allowedRoles={["admin", "staff", "customer"]}>
       <section className="bg-mist">
         <div className="mx-auto grid min-h-[720px] max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
           <SidebarNav title="User Dashboard" links={links} />

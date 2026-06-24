@@ -35,8 +35,12 @@ export function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, setUser, logout } = useAuthStore();
   const avatarSrc = getAvatarImageSrc(user?.avatar_url);
-  const dashboardHref = getDefaultRouteForRole(user?.role);
-  const dashboardLabel = user?.role === "admin" ? "Admin Dashboard" : user?.role === "staff" ? "Staff Workspace" : "User Dashboard";
+  const adminDashboardTarget = pathname.startsWith("/admin") ? { href: "/staff", label: "Staff Dashboard" } : { href: "/admin", label: "Admin Dashboard" };
+  const dashboardTarget = user?.role === "admin"
+    ? adminDashboardTarget
+    : user?.role === "staff"
+      ? { href: "/staff", label: "Staff Workspace" }
+      : { href: getDefaultRouteForRole(user?.role), label: "User Dashboard" };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("travel360-theme");
@@ -232,11 +236,18 @@ export function Header() {
                     <p className="truncate text-xs text-slate-500">{user.email}</p>
                   </div>
                   <Link
-                    href={dashboardHref}
+                    href={dashboardTarget.href}
                     className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    {dashboardLabel}
+                    {dashboardTarget.label}
+                  </Link>
+                  <Link
+                    href="/dashboard/profile"
+                    className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Profile
                   </Link>
                   <div className="my-1 h-px bg-slate-100"></div>
                   <button
