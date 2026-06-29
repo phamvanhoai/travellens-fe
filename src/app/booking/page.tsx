@@ -167,7 +167,7 @@ export default function BookingPage() {
     try {
       const booking = await bookingService.create({
         tour_id: Number(tourId),
-        travel_date: travelDate,
+        departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
         coupon_code: appliedCoupon ? couponCode.trim() : undefined,
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
@@ -401,6 +401,13 @@ function getVietnamDateInputValue() {
   }).formatToParts(new Date());
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${value.year}-${value.month}-${value.day}`;
+}
+
+function buildDepartureAt(date: string, schedule?: string) {
+  const timeMatch = schedule?.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  const hour = timeMatch?.[1]?.padStart(2, "0") ?? "08";
+  const minute = timeMatch?.[2] ?? "00";
+  return `${date}T${hour}:${minute}:00+07:00`;
 }
 
 function getAvailableSlots(tour?: PublicTour) {
