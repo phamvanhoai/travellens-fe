@@ -10,8 +10,7 @@ export type BookingPassengerPayload = {
 
 export type CreateBookingPayload = {
   tour_id: number;
-  travel_date: string;
-  departure_at?: string;
+  departure_at: string;
   coupon_code?: string;
   passengers: BookingPassengerPayload[];
 };
