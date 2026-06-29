@@ -269,7 +269,7 @@ function formatMoney(value: number, currency: string) {
 }
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 }
 
 function getApiError(error: unknown, fallback: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, CreditCard, MessageSquareText, Percent, ReceiptText } from "lucide-react";
+import { CalendarCheck, CreditCard, MessageSquareText, Percent, ReceiptText, RotateCcw } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
@@ -9,7 +9,8 @@ const links = [
   [CalendarCheck, "Bookings", "/staff/bookings"],
   [ReceiptText, "Booking Details", "/staff/booking-details"],
   [MessageSquareText, "Reviews", "/staff/reviews"],
-  [CreditCard, "Payments", "/staff/payments"]
+  [CreditCard, "Payments", "/staff/payments"],
+  [RotateCcw, "Refund Requests", "/staff/refund-requests"]
 ] as const;
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import axios from "axios";
 import { Eye, EyeOff, Globe2, Loader2 } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,8 @@ export default function LoginPage() {
       } else {
         setError(res.data.message || "Google login failed");
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Google login failed. Please try again.");
+    } catch (err: unknown) {
+      setError(getLoginError(err, "Google login failed. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -119,8 +120,8 @@ export default function LoginPage() {
       } else {
         setError(response.data.message || "Login failed");
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "An error occurred during login. Please try again.");
+    } catch (err: unknown) {
+      setError(getLoginError(err, "An error occurred during login. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -208,3 +209,14 @@ export default function LoginPage() {
   );
 }
 
+function getLoginError(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) return fallback;
+
+  const data = error.response?.data as { message?: string; error?: string } | undefined;
+  if (data?.message || data?.error) return data.message ?? data.error ?? fallback;
+  if (error.response?.status === 404) return "Login API was not found. Please check NEXT_PUBLIC_API_URL.";
+  if (error.response?.status) return `Login failed with status ${error.response.status}.`;
+  if (error.code === "ERR_NETWORK") return "Cannot connect to the API server. Please check if backend is running.";
+
+  return fallback;
+}
