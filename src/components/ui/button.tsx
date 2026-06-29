@@ -18,7 +18,7 @@ const styles = {
 
 export function Button({ className, variant = "primary", href, children, ...props }: ButtonProps) {
   const classes = cn(
-    "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold transition",
+    "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
     styles[variant],
     className
   );
