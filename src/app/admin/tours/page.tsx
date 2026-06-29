@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ImagePlus, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -40,6 +40,7 @@ type TourFieldName =
   | "schedule"
   | "capacity"
   | "price"
+  | "child_price"
   | "destinations"
   | "thumbnail_file";
 
@@ -50,10 +51,11 @@ const emptyTour: TourFormValue = {
   name: "",
   description: "",
   price: "",
+  child_price: "",
   schedule: "",
   capacity: "",
   status: "draft",
-  destination_ids: [],
+  destinations: [],
   thumbnail_file: null,
   preview: ""
 };
@@ -137,10 +139,19 @@ export default function AdminToursPage() {
       name: getAdminTourName(editingTour),
       description: editingTour.description ?? "",
       price: editingTour.price == null ? "" : String(editingTour.price),
+      child_price: editingTour.child_price == null ? "" : String(editingTour.child_price),
       schedule: editingTour.schedule ?? editingTour.duration ?? "",
       capacity: editingTour.capacity == null ? "" : String(editingTour.capacity),
       status: editingTour.status ?? "active",
-      destination_ids: getAdminTourDestinations(editingTour).map((destination) => String(getAdminTourDestinationId(destination))).filter((id) => id !== "0"),
+      destinations: getAdminTourDestinations(editingTour)
+        .slice()
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((destination) => ({
+          destination_id: String(getAdminTourDestinationId(destination)),
+          estimated_time: destination.estimated_time ?? "",
+          note: destination.note ?? ""
+        }))
+        .filter((destination) => destination.destination_id !== "0"),
       thumbnail_file: null,
       preview: resolveBackendAssetUrl(getAdminTourThumbnail(editingTour))
     };
@@ -195,10 +206,11 @@ export default function AdminToursPage() {
         name: payload.name,
         description: payload.description,
         price: payload.price,
+        child_price: payload.child_price,
         schedule: payload.schedule,
         capacity: payload.capacity,
         status: payload.status,
-        destination_ids: payload.destination_ids,
+        destinations: payload.destinations,
         thumbnail_file: payload.thumbnail_file
       };
 
@@ -329,9 +341,14 @@ export default function AdminToursPage() {
                     <td className="p-3"><StatusBadge value={item.status ?? "draft"} /></td>
                     <td className="p-3">
                       <span className="flex gap-2">
-                        <Button variant="outline" className="h-9 px-3" onClick={() => {
+                        <Button variant="outline" className="h-9 px-3" onClick={async () => {
                           setFieldErrors({});
-                          setEditingTour(item);
+                          try {
+                            setEditingTour(await adminTourService.get(getAdminTourId(item)));
+                          } catch {
+                            setEditingTour(item);
+                            showToast({ variant: "error", title: "Detail unavailable", description: "Using the tour data from the list." });
+                          }
                         }}>
                           <Pencil size={15} /> Edit
                         </Button>
@@ -552,23 +569,29 @@ function TourForm({
               setForm({ ...form, price: event.target.value });
             }} className="input" />
           </Field>
+          <Field label="Child Price" message={fieldErrors.child_price} tone={fieldErrors.child_price ? "invalid" : "neutral"}>
+            <input required min="0" type="number" step="any" value={form.child_price} onChange={(event) => {
+              onClearFieldError("child_price");
+              setForm({ ...form, child_price: event.target.value });
+            }} className="input" />
+          </Field>
 
           <div className="sm:col-span-2">
             <p className="text-sm font-semibold">Travel Destinations</p>
-            <p className="mt-1 text-xs text-slate-500">Select one or more destinations included in the tour itinerary.</p>
-            <div className="mt-3 grid max-h-64 gap-2 overflow-auto rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
+            <p className="mt-1 text-xs text-slate-500">Select destinations, arrange their order, and add the estimated time and notes for each stop.</p>
+            <div className="mt-3 grid max-h-48 gap-2 overflow-auto rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
               {destinations.map((destination) => {
                 const id = String(getTravelDestinationId(destination));
                 return (
                   <label key={id} className="flex items-center gap-2 rounded-md p-2 text-sm font-semibold hover:bg-slate-50">
                     <input
                       type="checkbox"
-                      checked={form.destination_ids.includes(id)}
+                      checked={form.destinations.some((item) => item.destination_id === id)}
                       onChange={(event) => setForm({
                         ...form,
-                        destination_ids: event.target.checked
-                          ? [...form.destination_ids, id]
-                          : form.destination_ids.filter((item) => item !== id)
+                        destinations: event.target.checked
+                          ? [...form.destinations, { destination_id: id, estimated_time: "", note: "" }]
+                          : form.destinations.filter((item) => item.destination_id !== id)
                       })}
                       onClick={() => onClearFieldError("destinations")}
                     />
@@ -577,8 +600,30 @@ function TourForm({
                 );
               })}
             </div>
+            {form.destinations.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {form.destinations.map((stop, index) => {
+                  const destination = destinations.find((item) => String(getTravelDestinationId(item)) === stop.destination_id);
+                  return (
+                    <div key={stop.destination_id} className="rounded-lg border border-slate-200 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold"><span className="mr-2 text-brand-600">{index + 1}</span>{destination?.name ?? `Destination #${stop.destination_id}`}</p>
+                        <span className="flex gap-1">
+                          <button type="button" disabled={index === 0} onClick={() => setForm({ ...form, destinations: moveItem(form.destinations, index, index - 1) })} className="grid size-8 place-items-center rounded border border-slate-200 disabled:opacity-30" aria-label="Move up"><ArrowUp size={14} /></button>
+                          <button type="button" disabled={index === form.destinations.length - 1} onClick={() => setForm({ ...form, destinations: moveItem(form.destinations, index, index + 1) })} className="grid size-8 place-items-center rounded border border-slate-200 disabled:opacity-30" aria-label="Move down"><ArrowDown size={14} /></button>
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <input value={stop.estimated_time} onChange={(event) => setForm({ ...form, destinations: updateStop(form.destinations, index, "estimated_time", event.target.value) })} className="input" placeholder="Estimated time (e.g. 90 minutes)" />
+                        <input value={stop.note} onChange={(event) => setForm({ ...form, destinations: updateStop(form.destinations, index, "note", event.target.value) })} className="input" placeholder="Note for this stop" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
             {fieldErrors.destinations ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.destinations}</p> : null}
-            {form.destination_ids.length === 0 ? <p className="mt-2 text-xs font-semibold text-rose-600">Select at least one destination.</p> : null}
+            {form.destinations.length === 0 ? <p className="mt-2 text-xs font-semibold text-rose-600">Select at least one destination.</p> : null}
           </div>
 
           <div className="sm:col-span-2">
@@ -616,7 +661,7 @@ function TourForm({
 
         <div className="mt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving || form.destination_ids.length === 0}>{saving ? "Saving..." : "Save Tour"}</Button>
+          <Button type="submit" disabled={saving || form.destinations.length === 0}>{saving ? "Saving..." : "Save Tour"}</Button>
         </div>
       </form>
     </div>
@@ -707,7 +752,14 @@ function validateTourForm(form: TourFormValue, schedule: ScheduleParts): TourFie
     errors.price = "Price must be 0 or greater.";
   }
 
-  if (form.destination_ids.length === 0) {
+  const childPrice = Number(form.child_price);
+  if (!form.child_price) {
+    errors.child_price = "Child price is required.";
+  } else if (!Number.isFinite(childPrice) || childPrice < 0) {
+    errors.child_price = "Child price must be 0 or greater.";
+  }
+
+  if (form.destinations.length === 0) {
     errors.destinations = "Select at least one destination.";
   }
 
@@ -781,9 +833,26 @@ function mapBackendFieldToTourField(fieldPath: string, message: string): TourFie
   if (normalized.includes("description")) return "description";
   if (normalized.includes("schedule")) return "schedule";
   if (normalized.includes("capacity")) return "capacity";
+  if (normalized.includes("child_price") || lowerMessage.includes("child price")) return "child_price";
   if (normalized.includes("price")) return "price";
   if (normalized.includes("status")) return "status";
   return null;
+}
+
+function moveItem<T>(items: T[], from: number, to: number) {
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function updateStop(
+  stops: AdminTourPayload["destinations"],
+  index: number,
+  field: "estimated_time" | "note",
+  value: string
+) {
+  return stops.map((stop, stopIndex) => stopIndex === index ? { ...stop, [field]: value } : stop);
 }
 
 function formatPrice(value: AdminTour["price"]) {

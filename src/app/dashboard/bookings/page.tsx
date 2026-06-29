@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, Loader2, RefreshCw, Search, X, XCircle } from "lucide-react";
+import { CalendarCheck, CreditCard, Loader2, RefreshCw, Search, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
@@ -129,7 +129,7 @@ export default function BookingsPage() {
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Booking", "Tour", "Desired Arrival Date", "Passengers", "Payment Status", "Amount", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading your bookings...</td></tr>
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">This account has no bookings yet.</td></tr>
-            : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "pending"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={getCustomerBookingId(booking)} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3">{cancelActionStatus ? <Status value={cancelActionStatus} /> : <button type="button" onClick={() => openCancelDialog(booking)} disabled={!canCancel} title={canCancel ? "Cancel booking" : "This booking can no longer be cancelled"} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"><XCircle size={15} /> Cancel</button>}</td></tr>; })}
+            : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "unpaid"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const needsPayment = canPayBooking(booking); const bookingId = getCustomerBookingId(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={bookingId} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3">{cancelActionStatus ? <Status value={cancelActionStatus} /> : needsPayment ? <Button href={`/payment/checkout?bookingId=${bookingId}`} className="h-9 px-3"><CreditCard size={15} /> Pay Now</Button> : <button type="button" onClick={() => openCancelDialog(booking)} disabled={!canCancel} title={canCancel ? "Cancel booking" : "This booking can no longer be cancelled"} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"><XCircle size={15} /> Cancel</button>}</td></tr>; })}
       </tbody></table></div>
       <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} />
     </div>
@@ -243,6 +243,13 @@ function canCancelBooking(booking: CustomerBooking) {
 
   const hoursUntilDeparture = departure.getTime() - Date.now();
   return hoursUntilDeparture > 24 * 60 * 60 * 1000;
+}
+
+function canPayBooking(booking: CustomerBooking) {
+  const bookingStatus = (booking.status ?? "pending").toLowerCase();
+  const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "unpaid").toLowerCase();
+  if (["cancel_pending", "cancelled", "canceled", "expired", "refunded", "completed"].includes(bookingStatus)) return false;
+  return ["unpaid", "pending", "failed"].includes(paymentStatus);
 }
 
 function getCancelActionStatus(booking: CustomerBooking) {

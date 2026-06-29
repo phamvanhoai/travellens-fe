@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clipboard, Loader2, QrCode, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Clipboard, Loader2, QrCode, RefreshCw, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useToast } from "@/components/common/toast";
@@ -33,6 +33,7 @@ function PaymentCheckoutContent() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [bookingProcessed, setBookingProcessed] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const showToast = useToast();
 
   useEffect(() => {
@@ -99,10 +100,20 @@ function PaymentCheckoutContent() {
     return () => window.clearInterval(timer);
   }, [payment]);
 
+  useEffect(() => {
+    if (!payment?.expired_at || payment.status !== "pending") return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [payment?.expired_at, payment?.status]);
+
   const status = payment?.status ?? "pending";
   const paymentId = payment ? getCustomerPaymentId(payment) : 0;
   const paymentCode = payment ? getCustomerPaymentCode(payment) : "";
   const expiredAt = useMemo(() => payment?.expired_at ? formatDateTime(payment.expired_at) : "", [payment?.expired_at]);
+  const expiryTime = payment?.expired_at ? new Date(payment.expired_at).getTime() : Number.NaN;
+  const remainingMs = Number.isFinite(expiryTime) ? Math.max(0, expiryTime - now) : null;
+  const displayedStatus = status === "pending" && remainingMs === 0 ? "expired" : status;
 
   async function refreshStatus(showSuccessToast = true) {
     if (!paymentId) return;
@@ -172,7 +183,7 @@ function PaymentCheckoutContent() {
           <h1 className="text-3xl font-bold">Payment Checkout</h1>
           <p className="mt-2 text-slate-500">Scan the QR code or transfer manually with the exact content below.</p>
         </div>
-        <PaymentStatusBadge status={status} />
+        <PaymentStatusBadge status={displayedStatus} />
       </div>
 
       {status === "paid" ? (
@@ -194,6 +205,15 @@ function PaymentCheckoutContent() {
               </div>
             )}
           </div>
+          {status === "pending" && remainingMs !== null ? (
+            <div className={`mt-4 rounded-lg border p-4 text-center ${remainingMs > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+              <p className="flex items-center justify-center gap-2 text-sm font-semibold">
+                <Clock3 className="size-4" />
+                {remainingMs > 0 ? "QR code expires in" : "QR code has expired"}
+              </p>
+              <strong className="mt-2 block font-mono text-3xl tabular-nums">{formatCountdown(remainingMs)}</strong>
+            </div>
+          ) : null}
           <Button type="button" className="mt-5 w-full" onClick={() => void refreshStatus()} disabled={checking}>
             {checking ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw size={16} />}
             Check Payment Status
@@ -206,7 +226,7 @@ function PaymentCheckoutContent() {
             <InfoRow label="Booking ID" value={String(payment.booking_id ?? bookingId)} />
             <InfoRow label="Payment ID" value={paymentId ? `#${paymentId}` : "-"} />
             <InfoRow label="Amount" value={formatMoney(Number(payment.amount ?? 0), payment.currency ?? "VND")} strong />
-            <InfoRow label="Status" value={status} />
+            <InfoRow label="Status" value={displayedStatus} />
             <InfoRow label="Bank" value={payment.bank_name || "-"} />
             <CopyRow label="Bank Account" value={payment.bank_account || ""} onCopy={copy} />
             <CopyRow label="Payment Code" value={paymentCode} onCopy={copy} />
@@ -270,6 +290,14 @@ function formatMoney(value: number, currency: string) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
+}
+
+function formatCountdown(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
 function getApiError(error: unknown, fallback: string) {

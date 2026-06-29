@@ -9,6 +9,7 @@ export type PublicTour = {
   destination_name?: string;
   description?: string;
   price?: number | string;
+  child_price?: number | string;
   schedule?: string;
   capacity?: number | string;
   available_slots?: number | string;

@@ -11,7 +11,7 @@ import { authService } from "@/services/auth.service";
 import { couponService, type CouponValidationResult } from "@/services/coupon.service";
 import { getPublicTourId, getPublicTourName, tourService, type PublicTour } from "@/services/tour.service";
 
-type PassengerDraft = Omit<BookingPassengerPayload, "price">;
+type PassengerDraft = BookingPassengerPayload;
 type BookingMetadata = Record<string, { booked_at: string; arrival_time: string; amount: number; passengers: PassengerDraft["age_category"][] }>;
 
 const emptyPassenger = (): PassengerDraft => ({
@@ -79,10 +79,11 @@ export default function BookingPage() {
 
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
   const unitPrice = Number(selectedTour?.price ?? 0);
+  const childPrice = Number(selectedTour?.child_price ?? unitPrice * 0.65);
   const availableSlots = getAvailableSlots(selectedTour);
   const subtotal = useMemo(
-    () => passengers.reduce((sum, passenger) => sum + passengerPrice(unitPrice, passenger.age_category), 0),
-    [passengers, unitPrice]
+    () => passengers.reduce((sum, passenger) => sum + passengerPrice(unitPrice, childPrice, passenger.age_category), 0),
+    [passengers, unitPrice, childPrice]
   );
   const discountAmount = getCouponDiscountAmount(appliedCoupon, subtotal);
   const finalTotal = getCouponFinalAmount(appliedCoupon, subtotal);
@@ -167,6 +168,7 @@ export default function BookingPage() {
     try {
       const booking = await bookingService.create({
         tour_id: Number(tourId),
+        travel_date: travelDate,
         departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
         coupon_code: appliedCoupon ? couponCode.trim() : undefined,
         passengers: passengers.map((passenger, index) => ({
@@ -180,8 +182,7 @@ export default function BookingPage() {
                 `Phone: ${phone.trim()}`,
                 specialRequest.trim()
               ].filter(Boolean).join(" | ")
-            : undefined,
-          price: passengerPrice(unitPrice, passenger.age_category)
+            : undefined
         }))
       });
       const bookingId = booking.booking_id ?? booking.id;
@@ -305,7 +306,7 @@ export default function BookingPage() {
                   <div key={category} className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
                     <div>
                       <p className="font-bold capitalize">{category}</p>
-                      <p className="text-xs text-slate-500">{formatVnd(passengerPrice(unitPrice, category))} each</p>
+                      <p className="text-xs text-slate-500">{formatVnd(passengerPrice(unitPrice, childPrice, category))} each</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => changePassengerCount(category, -1)} disabled={count === 0} className="grid size-8 place-items-center rounded-full border border-slate-200 bg-white disabled:opacity-40" aria-label={`Remove ${category}`}>
@@ -362,7 +363,7 @@ export default function BookingPage() {
               <div className="mt-5 space-y-3 text-sm">
                 {(["adult", "child", "infant"] as const).map((category) => {
                   const count = passengers.filter((passenger) => passenger.age_category === category).length;
-                  return count ? <p key={category} className="flex justify-between capitalize"><span>{category} x {count}</span><span>{formatVnd(passengerPrice(unitPrice, category) * count)}</span></p> : null;
+                  return count ? <p key={category} className="flex justify-between capitalize"><span>{category} x {count}</span><span>{formatVnd(passengerPrice(unitPrice, childPrice, category) * count)}</span></p> : null;
                 })}
                 <p className="flex justify-between border-t border-slate-200 pt-3"><span>Subtotal</span><span>{formatVnd(subtotal)}</span></p>
                 {appliedCoupon ? <p className="flex justify-between text-emerald-700"><span>Coupon {appliedCoupon.code ?? couponCode}</span><span>-{formatVnd(discountAmount)}</span></p> : null}
@@ -380,8 +381,8 @@ export default function BookingPage() {
   );
 }
 
-function passengerPrice(basePrice: number, category: PassengerDraft["age_category"]) {
-  return category === "child" ? Math.round(basePrice * 0.65) : category === "infant" ? 0 : basePrice;
+function passengerPrice(adultPrice: number, childPrice: number, category: PassengerDraft["age_category"]) {
+  return category === "child" ? childPrice : category === "infant" ? 0 : adultPrice;
 }
 
 function formatVnd(value: number) {
