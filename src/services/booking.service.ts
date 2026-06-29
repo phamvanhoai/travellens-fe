@@ -3,13 +3,13 @@ import { api } from "@/services/api";
 export type BookingPassengerPayload = {
   passenger_name: string;
   age_category: "adult" | "child" | "infant";
-  price: number;
   seat_number?: string;
   special_request?: string;
 };
 
 export type CreateBookingPayload = {
   tour_id: number;
+  travel_date: string;
   departure_at: string;
   coupon_code?: string;
   passengers: BookingPassengerPayload[];
@@ -18,6 +18,7 @@ export type CreateBookingPayload = {
 export type CustomerBookingPassenger = BookingPassengerPayload & {
   booking_detail_id?: number;
   id?: number;
+  price?: number | string;
 };
 
 export type CustomerBooking = {

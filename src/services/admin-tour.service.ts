@@ -10,6 +10,8 @@ export type AdminTourDestination = {
   destination_name?: string;
   travel_destination_name?: string;
   order_index?: number;
+  estimated_time?: string | null;
+  note?: string | null;
 };
 
 export type AdminTourCategoryRef = {
@@ -26,6 +28,7 @@ export type AdminTour = {
   title?: string;
   description?: string;
   price?: number | string;
+  child_price?: number | string;
   schedule?: string;
   duration?: string;
   capacity?: number | string;
@@ -50,11 +53,18 @@ export type AdminTourPayload = {
   name: string;
   description: string;
   price: string;
+  child_price: string;
   schedule: string;
   capacity: string;
   status: string;
-  destination_ids: string[];
+  destinations: AdminTourDestinationPayload[];
   thumbnail_file?: File | null;
+};
+
+export type AdminTourDestinationPayload = {
+  destination_id: string;
+  estimated_time: string;
+  note: string;
 };
 
 type ListResponse = {
@@ -87,14 +97,17 @@ function toFormData(payload: AdminTourPayload) {
   formData.append("name", payload.name);
   formData.append("description", payload.description);
   formData.append("price", payload.price);
+  formData.append("child_price", payload.child_price);
   formData.append("schedule", payload.schedule);
   formData.append("capacity", payload.capacity);
   formData.append("status", payload.status);
   formData.append(
     "destinations",
-    JSON.stringify(payload.destination_ids.map((id, index) => ({
-      destination_id: Number(id),
-      order_index: index + 1
+    JSON.stringify(payload.destinations.map((destination, index) => ({
+      destination_id: Number(destination.destination_id),
+      order_index: index + 1,
+      estimated_time: destination.estimated_time.trim() || null,
+      note: destination.note.trim() || null
     })))
   );
   if (payload.thumbnail_file) formData.append("thumbnail_file", payload.thumbnail_file);
@@ -167,6 +180,11 @@ export const adminTourService = {
   async create(payload: AdminTourPayload) {
     const response = await api.post("/admin/tours", toFormData(payload));
     return response.data;
+  },
+  async get(id: number) {
+    const response = await api.get(`/admin/tours/${id}`);
+    const body = response.data as { data?: AdminTour } | AdminTour;
+    return body && typeof body === "object" && "data" in body ? body.data as AdminTour : body as AdminTour;
   },
   async update(id: number, payload: AdminTourPayload) {
     const response = await api.put(`/admin/tours/${id}`, toFormData(payload));
