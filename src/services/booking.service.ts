@@ -10,6 +10,8 @@ export type BookingPassengerPayload = {
 
 export type CreateBookingPayload = {
   tour_id: number;
+  travel_date: string;
+  departure_at?: string;
   coupon_code?: string;
   passengers: BookingPassengerPayload[];
 };
@@ -27,11 +29,20 @@ export type CustomerBooking = {
   tour_id?: number;
   tour_name?: string;
   status?: string;
+  cancel_status?: string;
+  cancellation_status?: string;
+  refund_status?: string;
+  refund_request_status?: string;
+  payment_status?: string;
   total_amount?: number | string;
+  total_price?: number | string;
+  final_amount?: number | string;
+  paid_amount?: number | string;
   amount?: number | string;
   created_at?: string;
   booking_date?: string;
   booked_at?: string;
+  departure_at?: string;
   arrival_time?: string;
   preferred_arrival_time?: string;
   travel_date?: string;
@@ -41,8 +52,18 @@ export type CustomerBooking = {
   Tour?: { tour_id?: number; id?: number; name?: string; title?: string };
   passengers?: CustomerBookingPassenger[];
   booking_details?: CustomerBookingPassenger[];
+  bookingDetails?: CustomerBookingPassenger[];
+  BookingDetail?: CustomerBookingPassenger[];
   details?: CustomerBookingPassenger[];
   BookingDetails?: CustomerBookingPassenger[];
+  payment?: { amount?: number | string; status?: string; payment_status?: string };
+  payments?: Array<{ amount?: number | string; status?: string; payment_status?: string }>;
+  Payment?: { amount?: number | string; status?: string; payment_status?: string };
+  Payments?: Array<{ amount?: number | string; status?: string; payment_status?: string }>;
+  refund_request?: { status?: string };
+  refundRequest?: { status?: string };
+  refund_requests?: Array<{ status?: string }>;
+  refundRequests?: Array<{ status?: string }>;
 };
 
 function unwrapData<T>(value: T | { data?: T }) {
@@ -68,18 +89,56 @@ function unwrapBooking(value: unknown) {
     passengers?: CustomerBookingPassenger[];
     booking_details?: CustomerBookingPassenger[];
     bookingDetails?: CustomerBookingPassenger[];
+    BookingDetail?: CustomerBookingPassenger[];
+    BookingDetails?: CustomerBookingPassenger[];
     details?: CustomerBookingPassenger[];
   };
   if (!wrapper.booking) return data as CustomerBooking;
-  const passengers = wrapper.passengers ?? wrapper.booking_details ?? wrapper.bookingDetails ?? wrapper.details;
+  const passengers = wrapper.passengers ?? wrapper.booking_details ?? wrapper.bookingDetails ?? wrapper.BookingDetail ?? wrapper.BookingDetails ?? wrapper.details;
   return { ...wrapper.booking, ...(passengers ? { passengers } : {}) };
 }
 
 export function getCustomerBookingId(booking: CustomerBooking) { return booking.booking_id ?? booking.id ?? 0; }
 export function getCustomerBookingCode(booking: CustomerBooking) { return booking.booking_code ?? booking.code ?? `BK-${getCustomerBookingId(booking)}`; }
 export function getCustomerBookingTourName(booking: CustomerBooking) { return booking.tour_name ?? booking.tour?.name ?? booking.tour?.title ?? booking.Tour?.name ?? booking.Tour?.title ?? `Tour #${booking.tour_id ?? ""}`; }
-export function getCustomerBookingPassengers(booking: CustomerBooking) { return booking.passengers ?? booking.booking_details ?? booking.details ?? booking.BookingDetails ?? []; }
-export function getCustomerBookingAmount(booking: CustomerBooking) { return Number(booking.total_amount ?? booking.amount ?? getCustomerBookingPassengers(booking).reduce((sum, passenger) => sum + Number(passenger.price || 0), 0)); }
+export function getCustomerBookingPassengers(booking: CustomerBooking) { return booking.passengers ?? booking.booking_details ?? booking.bookingDetails ?? booking.BookingDetail ?? booking.details ?? booking.BookingDetails ?? []; }
+export function getCustomerBookingPaymentStatus(booking: CustomerBooking) {
+  return booking.payment?.status ??
+    booking.Payment?.status ??
+    booking.payments?.[0]?.status ??
+    booking.Payments?.[0]?.status ??
+    booking.payment?.payment_status ??
+    booking.Payment?.payment_status ??
+    booking.payments?.[0]?.payment_status ??
+    booking.Payments?.[0]?.payment_status ??
+    booking.payment_status;
+}
+export function getCustomerBookingCancelStatus(booking: CustomerBooking) {
+  const explicitStatus = booking.cancel_status ?? booking.cancellation_status ?? booking.refund_request_status ?? booking.refund_status ?? booking.refund_request?.status ?? booking.refundRequest?.status ?? booking.refund_requests?.[0]?.status ?? booking.refundRequests?.[0]?.status;
+  if (explicitStatus) return explicitStatus;
+
+  const bookingStatus = (booking.status ?? "").toLowerCase();
+  if (!["cancelled", "canceled"].includes(bookingStatus)) return "";
+
+  const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "").toLowerCase();
+  if (paymentStatus === "refunded") return "completed";
+  if (paymentStatus === "paid") return "pending";
+  return "completed";
+}
+export function getCustomerBookingAmount(booking: CustomerBooking) {
+  return Number(
+    booking.total_amount ??
+    booking.final_amount ??
+    booking.paid_amount ??
+    booking.amount ??
+    booking.total_price ??
+    booking.payment?.amount ??
+    booking.Payment?.amount ??
+    booking.payments?.[0]?.amount ??
+    booking.Payments?.[0]?.amount ??
+    getCustomerBookingPassengers(booking).reduce((sum, passenger) => sum + Number(passenger.price || 0), 0)
+  );
+}
 
 export const bookingService = {
   async create(payload: CreateBookingPayload) {
@@ -94,5 +153,5 @@ export const bookingService = {
     const response = await api.get(`/bookings/${id}`);
     return unwrapBooking(response.data);
   },
-  cancel: (id: number) => api.patch(`/bookings/${id}/cancel`)
+  cancel: (id: number, reason?: string) => api.patch(`/bookings/${id}/cancel`, { reason: reason || null })
 };

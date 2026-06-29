@@ -167,6 +167,7 @@ export default function BookingPage() {
     try {
       const booking = await bookingService.create({
         tour_id: Number(tourId),
+        travel_date: travelDate,
         coupon_code: appliedCoupon ? couponCode.trim() : undefined,
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
@@ -252,7 +253,7 @@ export default function BookingPage() {
                 <input
                   type="date"
                   value={travelDate}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={getVietnamDateInputValue()}
                   onChange={(event) => {
                     setTravelDate(event.target.value);
                     setFieldErrors((current) => ({ ...current, travel_date: "" }));
@@ -388,7 +389,18 @@ function formatVnd(value: number) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
+}
+
+function getVietnamDateInputValue() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric"
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
 function getAvailableSlots(tour?: PublicTour) {
