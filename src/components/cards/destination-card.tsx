@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Heart, Star } from "lucide-react";
+import { SaveButton } from "@/components/common/save-button";
 import type { Destination } from "@/types";
 import { currency } from "@/lib/utils";
 
@@ -9,9 +10,7 @@ export function DestinationCard({ destination }: { destination: Destination }) {
       <div className="relative h-52 overflow-hidden">
         <img src={destination.image} alt={destination.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         {destination.badge ? <span className="absolute left-3 top-3 rounded-md bg-brand-600 px-3 py-1 text-xs font-bold text-white">{destination.badge}</span> : null}
-        <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/90 text-brand-600">
-          <Heart size={17} />
-        </span>
+        <SaveButton id={destination.id} type="destination" className="absolute right-3 top-3" />
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">

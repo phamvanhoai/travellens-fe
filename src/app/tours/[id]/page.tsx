@@ -3,6 +3,7 @@ import { CustomerRouteNavigationLoader } from "@/components/navigation/customer-
 import { Button } from "@/components/ui/button";
 import { tours } from "@/lib/data";
 import { currency } from "@/lib/utils";
+import { TourDetailSaveButton } from "@/components/common/tour-detail-save-button";
 
 export function generateStaticParams() {
   return tours.map((tour) => ({ id: tour.id }));
@@ -69,7 +70,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ id:
             <p className="mt-6 text-sm text-slate-500">From</p>
             <p className="text-3xl font-bold">{currency(tour.price)} <span className="text-sm font-normal text-slate-500">/ person</span></p>
             <Button href="/booking" className="mt-5 w-full">Check Availability</Button>
-            <Button variant="outline" className="mt-3 w-full">Add to Wishlist</Button>
+            <TourDetailSaveButton id={id} />
           </div>
           <div className="rounded-lg border border-slate-200 p-6">
             <h3 className="font-bold">Check Availability</h3>
