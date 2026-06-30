@@ -40,6 +40,9 @@ export type StaffRefundRequest = {
 };
 
 export type StaffRefundRequestFilters = {
+  page?: number;
+  limit?: number;
+  search?: string;
   status?: string;
   booking_id?: string;
   payment_id?: string;
@@ -57,10 +60,21 @@ function unwrapData<T>(responseData: T | { data?: T }) {
   return responseData as T;
 }
 
-function unwrapList(responseData: unknown) {
+type StaffRefundRequestListResponse = {
+  data: StaffRefundRequest[];
+  pagination?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    totalPages?: number;
+    total_pages?: number;
+  };
+};
+
+function unwrapList(responseData: unknown): StaffRefundRequestListResponse {
   const data = unwrapData<unknown>(responseData as { data?: unknown });
 
-  if (Array.isArray(data)) return data as StaffRefundRequest[];
+  if (Array.isArray(data)) return { data };
 
   if (data && typeof data === "object") {
     const record = data as {
@@ -68,12 +82,30 @@ function unwrapList(responseData: unknown) {
       refund_requests?: unknown;
       requests?: unknown;
       data?: unknown;
+      rows?: unknown;
+      items?: unknown;
+      pagination?: StaffRefundRequestListResponse["pagination"];
+      meta?: StaffRefundRequestListResponse["pagination"];
+      page?: number;
+      limit?: number;
+      total?: number;
+      totalPages?: number;
+      total_pages?: number;
     };
-    const nested = record.refundRequests ?? record.refund_requests ?? record.requests ?? record.data;
-    return Array.isArray(nested) ? nested as StaffRefundRequest[] : [];
+    const nested = record.refundRequests ?? record.refund_requests ?? record.requests ?? record.data ?? record.rows ?? record.items;
+    return {
+      data: Array.isArray(nested) ? nested as StaffRefundRequest[] : [],
+      pagination: record.pagination ?? record.meta ?? {
+        page: record.page,
+        limit: record.limit,
+        total: record.total,
+        totalPages: record.totalPages,
+        total_pages: record.total_pages
+      }
+    };
   }
 
-  return [];
+  return { data: [] };
 }
 
 export function getStaffRefundRequestId(item: StaffRefundRequest) {
@@ -103,6 +135,9 @@ export function getStaffRefundAmount(item: StaffRefundRequest) {
 export const staffRefundRequestService = {
   async list(filters: StaffRefundRequestFilters = {}) {
     const params = {
+      ...(filters.page ? { page: filters.page } : {}),
+      ...(filters.limit ? { limit: filters.limit } : {}),
+      ...(filters.search ? { search: filters.search } : {}),
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.booking_id ? { booking_id: Number(filters.booking_id) } : {}),
       ...(filters.payment_id ? { payment_id: Number(filters.payment_id) } : {})
