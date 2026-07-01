@@ -100,6 +100,8 @@ export type StaffBooking = {
 };
 
 export type StaffBookingUpdatePayload = {
+  customer_name?: string;
+  phone?: string;
   travel_date?: string;
   departure_at?: string | null;
   status?: string;
