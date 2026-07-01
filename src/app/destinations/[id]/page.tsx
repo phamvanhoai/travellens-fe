@@ -1,17 +1,76 @@
-import { Clock, Globe2, Heart, Languages, MapPin, Play, Share2, Star } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Clock, Globe2, Heart, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
-import { destinations, tours } from "@/lib/data";
+import { images, tours } from "@/lib/data";
+import {
+  destinationService,
+  type PublicTravelDestination,
+  toDestinationCardModel
+} from "@/services/destination.service";
+import type { Destination } from "@/types";
 
-export function generateStaticParams() {
-  return destinations.map((destination) => ({ id: destination.id }));
-}
+export default function DestinationDetailPage() {
+  const params = useParams<{ id: string }>();
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [nearbyDestinations, setNearbyDestinations] = useState<Destination[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-export default async function DestinationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const destination = destinations.find((item) => item.id === id) ?? destinations[0];
+  useEffect(() => {
+    async function loadDestination() {
+      if (!params.id) return;
+      setIsLoading(true);
+      setError("");
+      try {
+        const [detail, list] = await Promise.all([
+          destinationService.detail(params.id),
+          destinationService.list({ limit: 5 })
+        ]);
+        const mappedDestination = toDestinationCardModel(detail, images.santorini);
+        setDestination(mappedDestination);
+        setNearbyDestinations(
+          list.items
+            .filter((item: PublicTravelDestination) => String(item.travel_destination_id ?? item.destination_id ?? item.id) !== mappedDestination.id)
+            .slice(0, 4)
+            .map((item: PublicTravelDestination) => toDestinationCardModel(item, images.santorini))
+        );
+      } catch (err) {
+        console.error("Failed to fetch destination detail:", err);
+        setError("Cannot load this travel destination.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadDestination();
+  }, [params.id]);
+
+  if (isLoading) {
+    return (
+      <section className="mx-auto flex min-h-[520px] max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <Loader2 className="size-9 animate-spin text-brand-600" />
+      </section>
+    );
+  }
+
+  if (error || !destination) {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+          <h1 className="text-2xl font-bold">Destination not available</h1>
+          <p className="mt-2 text-sm text-slate-500">{error || "This travel destination could not be found."}</p>
+          <Button href="/destinations" className="mt-6">Back to Destinations</Button>
+        </div>
+      </section>
+    );
+  }
+
   const related = tours.slice(0, 4);
-  const nearby = destinations.filter((item) => item.id !== destination.id).slice(0, 4);
+  const nearby = nearbyDestinations.length ? nearbyDestinations : [];
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -49,12 +108,12 @@ export default async function DestinationDetailPage({ params }: { params: Promis
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
               <span><Clock className="mr-2 inline size-4" />{destination.bestTime}</span>
               <span><Languages className="mr-2 inline size-4" />English</span>
-              <span><Globe2 className="mr-2 inline size-4" />EUR/USD</span>
-              <span><MapPin className="mr-2 inline size-4" />GMT +3</span>
+              <span><Globe2 className="mr-2 inline size-4" />VND</span>
+              <span><MapPin className="mr-2 inline size-4" />GMT +7</span>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <Button variant="outline"><Heart size={16} /> Wishlist</Button>
-              <Button href="/booking">Book a Tour</Button>
+              <Button href={`/view360?destinationId=${destination.id}`}>View 360</Button>
             </div>
           </div>
 

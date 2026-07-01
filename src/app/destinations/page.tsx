@@ -6,7 +6,7 @@ import { DestinationCard } from "@/components/cards/destination-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
 import { images } from "@/lib/data";
-import { api } from "@/services/api";
+import { destinationService, toDestinationCardModel } from "@/services/destination.service";
 
 const categories = ["All Destinations", "Beach", "Mountain", "City", "Culture", "Adventure", "Nature"];
 
@@ -16,21 +16,24 @@ export default function DestinationsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const pageSize = 8;
 
   useEffect(() => {
     const fetchDestinations = async () => {
       setIsLoading(true);
+      setError("");
       try {
-        const { data } = await api.get("/travel-destinations", {
-          params: { page, limit: pageSize }
-        });
-        const items = data?.data?.items || [];
-        setItems(items);
-        setTotalItems(data?.data?.pagination?.total || 0);
-        setPageCount(data?.data?.pagination?.totalPages || Math.ceil((data?.data?.pagination?.total || 0) / pageSize) || 1);
+        const result = await destinationService.list({ page, limit: pageSize });
+        setItems(result.items);
+        setTotalItems(result.total);
+        setPageCount(result.totalPages);
       } catch (error) {
         console.error("Failed to fetch destinations:", error);
+        setError("Cannot load travel destinations.");
+        setItems([]);
+        setTotalItems(0);
+        setPageCount(1);
       } finally {
         setIsLoading(false);
       }
@@ -54,6 +57,10 @@ export default function DestinationsPage() {
         </div>
         <p className="mb-4 text-sm text-slate-500">Showing travel destinations</p>
         
+        {error ? (
+          <div className="mb-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
+        ) : null}
+
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
@@ -65,20 +72,8 @@ export default function DestinationsPage() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item) => {
-              const mappedDest = {
-                id: item.destination_id,
-                name: item.name,
-                country: item.country || "Vietnam",
-                category: item.destination_category || "Destination",
-                region: item.region || "Various",
-                image: item.thumbnail || images.santorini,
-                rating: 4.8,
-                reviews: "20",
-                priceFrom: 0,
-                description: item.description || "",
-                bestTime: ""
-              };
-              return <DestinationCard key={mappedDest.id} destination={mappedDest as any} />;
+              const mappedDestination = toDestinationCardModel(item, images.santorini);
+              return <DestinationCard key={mappedDestination.id} destination={mappedDestination} />;
             })}
           </div>
         )}
