@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { destinations, tours } from "@/lib/data";
 import { useAuthStore } from "@/store/use-auth-store";
 import { getAvatarImageSrc } from "@/lib/avatar";
+import { useSavedItemsStore } from "@/store/use-saved-items-store";
+import { HeaderWishlistDropdown } from "./header-wishlist-dropdown";
 
 const nav = [
   { href: "/", label: "Home" },
@@ -41,6 +43,14 @@ export function Header() {
     : user?.role === "staff"
       ? { href: "/staff", label: "Staff Workspace" }
       : { href: getDefaultRouteForRole(user?.role), label: "User Dashboard" };
+
+  const { init, initialized } = useSavedItemsStore();
+
+  useEffect(() => {
+    if (user && !initialized) {
+      init();
+    }
+  }, [user, initialized, init]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("travel360-theme");
@@ -174,42 +184,13 @@ export function Header() {
               aria-expanded={wishlistOpen}
             >
               <Heart size={17} />
-              <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">3</span>
+              {(useSavedItemsStore.getState().savedTours.length + useSavedItemsStore.getState().savedDestinations.length) > 0 && (
+                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                  {useSavedItemsStore.getState().savedTours.length + useSavedItemsStore.getState().savedDestinations.length}
+                </span>
+              )}
             </button>
-            {wishlistOpen ? (
-              <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                  <div>
-                    <p className="font-bold text-ink">Wishlist</p>
-                    <p className="text-xs text-slate-500">Saved trips and tours</p>
-                  </div>
-                  <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-600">3 saved</span>
-                </div>
-                <div className="max-h-80 overflow-auto p-2">
-                  {[
-                    { title: `${destinations[0].name}, ${destinations[0].country}`, image: destinations[0].image, meta: "Destination" },
-                    { title: tours[0].title, image: tours[0].image, meta: "Tour" },
-                    { title: `${destinations[2].name}, ${destinations[2].country}`, image: destinations[2].image, meta: "Destination" }
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-center gap-3 rounded-lg p-2 hover:bg-slate-50">
-                      <img src={item.image} alt="" className="size-14 rounded-md object-cover" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-ink">{item.title}</p>
-                        <p className="text-xs text-slate-500">{item.meta}</p>
-                      </div>
-                      <button className="grid size-8 place-items-center rounded-full text-slate-400 hover:bg-white hover:text-rose-500" aria-label="Remove from wishlist">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-slate-100 p-3">
-                  <Button href="/dashboard/saved" className="w-full" onClick={() => setWishlistOpen(false)}>
-                    View Saved
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+            {wishlistOpen ? <HeaderWishlistDropdown onClose={() => setWishlistOpen(false)} /> : null}
           </div>
           
           {user ? (
