@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, Camera, Clock3, Compass, MapPin, MessageSquareText, Play, Star, Users } from "lucide-react";
+import { BookOpen, Camera, Clock3, MapPin, MessageSquareText, Play, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DestinationRelatedItem, PublicTravelDestination } from "@/services/destination.service";
 import type { Destination } from "@/types";
@@ -55,25 +55,49 @@ export function DestinationTabs({
 
 function OverviewTab({ destination, detail }: { destination: Destination; detail: PublicTravelDestination }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-      <div>
-        <h2 className="text-xl font-bold">About {destination.name}</h2>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
-          {destination.description || "No overview has been added for this destination."}
-        </p>
-      </div>
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h3 className="font-bold">Destination Details</h3>
-        <p className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-          <Compass size={16} className="text-brand-600" /> {destination.category}
-        </p>
-        <p className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-          <MapPin size={16} className="text-brand-600" />
-          {formatCoordinates(detail.latitude, detail.longitude)}
-        </p>
-      </div>
+    <div>
+      <h2 className="text-xl font-bold">About {destination.name}</h2>
+      <RichDescription
+        html={detail.description}
+        fallback={destination.description || "No overview has been added for this destination."}
+      />
     </div>
   );
+}
+
+function RichDescription({ html, fallback }: { html?: string | null; fallback: string }) {
+  if (!html) return <p className="mt-3 text-sm leading-7 text-slate-600">{fallback}</p>;
+
+  const parts = html.split(/(<img\b[^>]*>)/gi);
+
+  return (
+    <div className="mt-3 space-y-4 text-sm leading-7 text-slate-600">
+      {parts.map((part, index) => {
+        if (/^<img\b/i.test(part)) {
+          const src = part.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+          const alt = part.match(/\balt=["']([^"']*)["']/i)?.[1] ?? destinationImageAlt(fallback);
+          if (!src || !/^https?:\/\//i.test(src)) return null;
+
+          return (
+            <img
+              key={`image-${index}`}
+              src={src}
+              alt={alt}
+              loading="lazy"
+              className="max-h-[520px] w-full rounded-lg object-cover"
+            />
+          );
+        }
+
+        const text = getPlainTextFromHtml(part);
+        return text ? <p key={`text-${index}`}>{text}</p> : null;
+      })}
+    </div>
+  );
+}
+
+function destinationImageAlt(fallback: string) {
+  return fallback.length > 80 ? "Destination image" : fallback;
 }
 
 function LocationsTab({ destination, locations }: { destination: Destination; locations: DestinationRelatedItem[] }) {
@@ -319,9 +343,4 @@ function formatDuration(tour: DestinationRelatedItem) {
   const days = readString(tour, ["duration_days"]);
   const nights = readString(tour, ["duration_nights"]);
   return [days ? `${days} days` : "", nights ? `${nights} nights` : ""].filter(Boolean).join(" ");
-}
-
-function formatCoordinates(latitude?: number | string | null, longitude?: number | string | null) {
-  if (latitude === undefined || latitude === null || longitude === undefined || longitude === null) return "Coordinates unavailable";
-  return `${latitude}, ${longitude}`;
 }

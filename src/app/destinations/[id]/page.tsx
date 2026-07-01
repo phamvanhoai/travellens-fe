@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Clock, Globe2, Heart, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
+import { Check, Clock, Globe2, Heart, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
 import { images } from "@/lib/data";
@@ -19,6 +19,7 @@ export default function DestinationDetailPage() {
   const [destinationDetail, setDestinationDetail] = useState<PublicTravelDestination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   useEffect(() => {
     async function loadDestination() {
@@ -65,6 +66,29 @@ export default function DestinationDetailPage() {
     ? `${destination.description.slice(0, 177).trimEnd()}...`
     : destination.description;
 
+  async function handleShare() {
+    const shareData = {
+      title: destination?.name ?? "Travel destination",
+      text: descriptionPreview,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareData.url);
+      setShareStatus("copied");
+      window.setTimeout(() => setShareStatus("idle"), 2000);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      setShareStatus("failed");
+      window.setTimeout(() => setShareStatus("idle"), 2000);
+    }
+  }
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-5 text-sm text-slate-500">Home / Destinations / {destination.region} / {destination.name}</div>
@@ -74,7 +98,14 @@ export default function DestinationDetailPage() {
             <img src={destination.image} alt={destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             <div className="absolute right-4 top-4 flex gap-2">
-              <button className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"><Share2 className="mr-2 inline size-4" />Share</button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"
+              >
+                {shareStatus === "copied" ? <Check className="mr-2 inline size-4" /> : <Share2 className="mr-2 inline size-4" />}
+                {shareStatus === "copied" ? "Copied" : shareStatus === "failed" ? "Try again" : "Share"}
+              </button>
               <button className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"><Heart className="mr-2 inline size-4" />Save</button>
             </div>
             <div className="absolute bottom-6 left-6 max-w-2xl text-white">
@@ -123,13 +154,22 @@ export default function DestinationDetailPage() {
           </div>
 
           <div className="rounded-lg border border-slate-200 p-6">
-            <h3 className="font-bold">Travel Guide</h3>
-            {["How to Get There", "Where to Stay", "Food & Dining", "Travel Tips"].map((item) => (
-              <p key={item} className="mt-4 text-sm font-semibold text-slate-700">
-                {item}
-                <span className="block text-xs font-normal text-slate-500">Helpful local guidance</span>
-              </p>
-            ))}
+            <h3 className="font-bold">Destination Details</h3>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase text-slate-400">Category</dt>
+                <dd className="mt-1 flex items-center gap-2 font-semibold text-slate-700">
+                  <Globe2 size={16} className="text-brand-600" /> {destination.category}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-slate-400">Coordinates</dt>
+                <dd className="mt-1 flex items-center gap-2 font-semibold text-slate-700">
+                  <MapPin size={16} className="text-brand-600" />
+                  {destinationDetail.latitude ?? "-"}, {destinationDetail.longitude ?? "-"}
+                </dd>
+              </div>
+            </dl>
           </div>
         </aside>
       </div>
