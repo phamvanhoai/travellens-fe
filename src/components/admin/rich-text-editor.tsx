@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bold, Heading2, Images, Italic, List, ListOrdered, Loader2, Quote, Redo2, RemoveFormatting, Search, Underline, Undo2, Upload, X } from "lucide-react";
+import { Bold, Heading2, Images, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2, RemoveFormatting, Search, Underline, Undo2, Upload, X } from "lucide-react";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import { adminMediaService, getAdminMediaId, getAdminMediaName, getAdminMediaUrl, type AdminMedia } from "@/services/admin-media.service";
 import { Pagination } from "@/components/common/pagination";
@@ -51,13 +51,21 @@ export function RichTextEditor({
   function insertMedia(media: AdminMedia) {
     const src = resolveBackendAssetUrl(getAdminMediaUrl(media));
     if (!src) return;
+    insertImage(src, getAdminMediaName(media));
+  }
+
+  function insertImageUrl(src: string) {
+    insertImage(src, "Description image");
+  }
+
+  function insertImage(src: string, alt: string) {
     editorRef.current?.focus();
     const selection = window.getSelection();
     if (selectionRef.current && selection) {
       selection.removeAllRanges();
       selection.addRange(selectionRef.current);
     }
-    document.execCommand("insertHTML", false, `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(getAdminMediaName(media))}"><p><br></p>`);
+    document.execCommand("insertHTML", false, `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}"><p><br></p>`);
     emitChange();
     setMediaOpen(false);
   }
@@ -99,18 +107,31 @@ export function RichTextEditor({
         onBlur={emitChange}
         onPaste={(event) => {
           event.preventDefault();
-          document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+          const pastedHtml = event.clipboardData.getData("text/html");
+          if (pastedHtml) {
+            document.execCommand("insertHTML", false, sanitizeRichTextHtml(pastedHtml));
+          } else {
+            document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+          }
           emitChange();
         }}
         className="min-h-56 px-4 py-3 text-sm leading-7 outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] [&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-brand-200 [&_blockquote]:pl-4 [&_h2]:my-3 [&_h2]:text-xl [&_h2]:font-bold [&_img]:my-4 [&_img]:max-h-96 [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:ml-6 [&_ol]:list-decimal [&_ul]:ml-6 [&_ul]:list-disc"
       />
     </div>
     {message ? <p className="mt-2 text-xs font-semibold text-rose-600">{message}</p> : null}
-    {mediaOpen ? <MediaLibrary onClose={() => setMediaOpen(false)} onInsert={insertMedia} /> : null}
+    {mediaOpen ? <MediaLibrary onClose={() => setMediaOpen(false)} onInsert={insertMedia} onInsertUrl={insertImageUrl} /> : null}
   </div>;
 }
 
-function MediaLibrary({ onClose, onInsert }: { onClose: () => void; onInsert: (media: AdminMedia) => void }) {
+function MediaLibrary({
+  onClose,
+  onInsert,
+  onInsertUrl
+}: {
+  onClose: () => void;
+  onInsert: (media: AdminMedia) => void;
+  onInsertUrl: (url: string) => void;
+}) {
   const [items, setItems] = useState<AdminMedia[]>([]);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -120,6 +141,8 @@ function MediaLibrary({ onClose, onInsert }: { onClose: () => void; onInsert: (m
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrlError, setImageUrlError] = useState("");
   const pageSize = 20;
 
   const loadMedia = useCallback(async (nextPage = 1, nextQuery = "") => {
@@ -173,10 +196,41 @@ function MediaLibrary({ onClose, onInsert }: { onClose: () => void; onInsert: (m
     }
   }
 
+  function insertUrl() {
+    const value = imageUrl.trim();
+    try {
+      const parsedUrl = new URL(value);
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") throw new Error("Invalid protocol");
+      setImageUrlError("");
+      onInsertUrl(parsedUrl.toString());
+    } catch {
+      setImageUrlError("Enter a valid http or https image URL.");
+    }
+  }
+
   return <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-4">
     <div className="max-h-[88vh] w-full max-w-4xl overflow-auto rounded-lg bg-white p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4"><div><h3 className="text-xl font-bold">Media Library</h3><p className="mt-1 text-sm text-slate-500">Upload an image or choose one already stored by the backend.</p></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close media library"><X size={18} /></button></div>
       {error ? <div className="mt-4 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
+      <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <label htmlFor="rich-text-image-url" className="text-sm font-semibold">Insert image from URL</label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Link2 className="absolute left-3 top-3 size-5 text-slate-400" />
+            <input
+              id="rich-text-image-url"
+              type="url"
+              value={imageUrl}
+              onChange={(event) => { setImageUrl(event.target.value); setImageUrlError(""); }}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); insertUrl(); } }}
+              className={`h-11 w-full rounded-lg border bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-600 ${imageUrlError ? "border-rose-500" : "border-slate-200"}`}
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+          <Button type="button" onClick={insertUrl} disabled={!imageUrl.trim()}><Images size={16} /> Insert URL</Button>
+        </div>
+        {imageUrlError ? <p className="mt-2 text-xs font-semibold text-rose-600">{imageUrlError}</p> : null}
+      </div>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <div className="flex min-w-0 flex-1 gap-2"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitSearch(); } }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-brand-600" placeholder="Search media..." /></div><Button type="button" variant="outline" disabled={loading} onClick={submitSearch}>Search</Button></div>
         <label className={`inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white ${uploading ? "pointer-events-none opacity-60" : ""}`}>{uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Image<input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(event) => { void uploadMedia(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
@@ -211,11 +265,12 @@ function sanitizeRichTextHtml(value: string) {
       return;
     }
     if (element.tagName === "IMG") {
-      const src = element.getAttribute("src") ?? "";
+      const src = getPastedImageSource(element);
       if (!/^(https?:\/\/|\/)/i.test(src)) {
         element.remove();
         return;
       }
+      element.setAttribute("src", src);
       Array.from(element.attributes).forEach((attribute) => {
         if (attribute.name !== "src" && attribute.name !== "alt") element.removeAttribute(attribute.name);
       });
@@ -225,6 +280,24 @@ function sanitizeRichTextHtml(value: string) {
   });
 
   return documentNode.body.innerHTML;
+}
+
+function getPastedImageSource(element: Element) {
+  const directSource = element.getAttribute("src")
+    || element.getAttribute("data-src")
+    || element.getAttribute("data-original")
+    || element.getAttribute("data-lazy-src");
+
+  if (directSource && !directSource.startsWith("data:image")) return directSource;
+
+  const srcSet = element.getAttribute("srcset") || element.getAttribute("data-srcset") || "";
+  const largestSource = srcSet
+    .split(",")
+    .map((candidate) => candidate.trim().split(/\s+/)[0])
+    .filter(Boolean)
+    .at(-1);
+
+  return largestSource ?? directSource ?? "";
 }
 
 function escapeHtmlAttribute(value: string) {

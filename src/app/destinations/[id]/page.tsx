@@ -1,17 +1,94 @@
-import { Clock, Globe2, Heart, Languages, MapPin, Play, Share2, Star } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Check, Clock, Globe2, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
+import { DestinationDetailSaveButton } from "@/components/common/destination-detail-save-button";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
-import { destinations, tours } from "@/lib/data";
+import { images } from "@/lib/data";
+import {
+  destinationService,
+  type PublicTravelDestination,
+  toDestinationDetailModel
+} from "@/services/destination.service";
+import type { Destination } from "@/types";
 
-export function generateStaticParams() {
-  return destinations.map((destination) => ({ id: destination.id }));
-}
+export default function DestinationDetailPage() {
+  const params = useParams<{ id: string }>();
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [destinationDetail, setDestinationDetail] = useState<PublicTravelDestination | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
 
-export default async function DestinationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const destination = destinations.find((item) => item.id === id) ?? destinations[0];
-  const related = tours.slice(0, 4);
-  const nearby = destinations.filter((item) => item.id !== destination.id).slice(0, 4);
+  useEffect(() => {
+    async function loadDestination() {
+      if (!params.id) return;
+      setIsLoading(true);
+      setError("");
+      try {
+        const detail = await destinationService.detail(params.id);
+        const mappedDestination = toDestinationDetailModel(detail, images.santorini);
+        setDestination(mappedDestination);
+        setDestinationDetail(detail);
+      } catch (err) {
+        console.error("Failed to fetch destination detail:", err);
+        setError("Cannot load this travel destination.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadDestination();
+  }, [params.id]);
+
+  if (isLoading) {
+    return (
+      <section className="mx-auto flex min-h-[520px] max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <Loader2 className="size-9 animate-spin text-brand-600" />
+      </section>
+    );
+  }
+
+  if (error || !destination || !destinationDetail) {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+          <h1 className="text-2xl font-bold">Destination not available</h1>
+          <p className="mt-2 text-sm text-slate-500">{error || "This travel destination could not be found."}</p>
+          <Button href="/destinations" className="mt-6">Back to Destinations</Button>
+        </div>
+      </section>
+    );
+  }
+
+  const descriptionPreview = destination.description.length > 180
+    ? `${destination.description.slice(0, 177).trimEnd()}...`
+    : destination.description;
+
+  async function handleShare() {
+    const shareData = {
+      title: destination?.name ?? "Travel destination",
+      text: descriptionPreview,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareData.url);
+      setShareStatus("copied");
+      window.setTimeout(() => setShareStatus("idle"), 2000);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      setShareStatus("failed");
+      window.setTimeout(() => setShareStatus("idle"), 2000);
+    }
+  }
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -22,8 +99,15 @@ export default async function DestinationDetailPage({ params }: { params: Promis
             <img src={destination.image} alt={destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             <div className="absolute right-4 top-4 flex gap-2">
-              <button className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"><Share2 className="mr-2 inline size-4" />Share</button>
-              <button className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"><Heart className="mr-2 inline size-4" />Save</button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"
+              >
+                {shareStatus === "copied" ? <Check className="mr-2 inline size-4" /> : <Share2 className="mr-2 inline size-4" />}
+                {shareStatus === "copied" ? "Copied" : shareStatus === "failed" ? "Try again" : "Share"}
+              </button>
+              <DestinationDetailSaveButton id={destination.id} />
             </div>
             <div className="absolute bottom-6 left-6 max-w-2xl text-white">
               <span className="rounded-md bg-brand-600 px-3 py-1 text-xs font-bold">Top Destination</span>
@@ -32,11 +116,13 @@ export default async function DestinationDetailPage({ params }: { params: Promis
                 <span><Star className="inline size-4 fill-amber-400 text-amber-400" /> {destination.rating} ({destination.reviews} reviews)</span>
                 <span><MapPin className="inline size-4" /> {destination.region}</span>
               </p>
-              <p className="mt-4 max-w-xl text-white/85">{destination.description}</p>
+              <p className="mt-4 max-w-xl line-clamp-3 text-sm leading-6 text-white/85 sm:text-base">
+                {descriptionPreview}
+              </p>
             </div>
           </div>
 
-          <DestinationTabs destination={destination} relatedTours={related} nearbyDestinations={nearby} />
+          <DestinationTabs destination={destination} detail={destinationDetail} />
         </div>
 
         <aside className="space-y-5">
@@ -45,16 +131,15 @@ export default async function DestinationDetailPage({ params }: { params: Promis
               <h2 className="text-2xl font-bold">{destination.name}, {destination.country}</h2>
               <span className="rounded-md bg-brand-600 px-3 py-1 text-xs font-bold text-white">{destination.badge ?? "Top"}</span>
             </div>
-            <p className="mt-3 text-sm text-slate-600">{destination.description}</p>
+            <p className="mt-3 line-clamp-5 text-sm leading-6 text-slate-600">{descriptionPreview}</p>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
               <span><Clock className="mr-2 inline size-4" />{destination.bestTime}</span>
               <span><Languages className="mr-2 inline size-4" />English</span>
-              <span><Globe2 className="mr-2 inline size-4" />EUR/USD</span>
-              <span><MapPin className="mr-2 inline size-4" />GMT +3</span>
+              <span><Globe2 className="mr-2 inline size-4" />VND</span>
+              <span><MapPin className="mr-2 inline size-4" />GMT +7</span>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button variant="outline"><Heart size={16} /> Wishlist</Button>
-              <Button href="/booking">Book a Tour</Button>
+            <div className="mt-6">
+              <Button href={`/view360?destinationId=${destination.id}`} className="w-full">View 360</Button>
             </div>
           </div>
 
@@ -69,13 +154,22 @@ export default async function DestinationDetailPage({ params }: { params: Promis
           </div>
 
           <div className="rounded-lg border border-slate-200 p-6">
-            <h3 className="font-bold">Travel Guide</h3>
-            {["How to Get There", "Where to Stay", "Food & Dining", "Travel Tips"].map((item) => (
-              <p key={item} className="mt-4 text-sm font-semibold text-slate-700">
-                {item}
-                <span className="block text-xs font-normal text-slate-500">Helpful local guidance</span>
-              </p>
-            ))}
+            <h3 className="font-bold">Destination Details</h3>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase text-slate-400">Category</dt>
+                <dd className="mt-1 flex items-center gap-2 font-semibold text-slate-700">
+                  <Globe2 size={16} className="text-brand-600" /> {destination.category}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-slate-400">Coordinates</dt>
+                <dd className="mt-1 flex items-center gap-2 font-semibold text-slate-700">
+                  <MapPin size={16} className="text-brand-600" />
+                  {destinationDetail.latitude ?? "-"}, {destinationDetail.longitude ?? "-"}
+                </dd>
+              </div>
+            </dl>
           </div>
         </aside>
       </div>

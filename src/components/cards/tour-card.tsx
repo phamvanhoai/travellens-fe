@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Clock3, Heart, MapPin, Star, Users } from "lucide-react";
+import { SaveButton } from "@/components/common/save-button";
 import type { Tour } from "@/types";
 import { currency } from "@/lib/utils";
 
@@ -9,9 +10,7 @@ export function TourCard({ tour }: { tour: Tour }) {
       <div className="relative h-52 overflow-hidden">
         <img src={tour.image} alt={tour.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         {tour.badge ? <span className="absolute left-3 top-3 rounded-md bg-orange-500 px-3 py-1 text-xs font-bold text-white">{tour.badge}</span> : null}
-        <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/90 text-brand-600">
-          <Heart size={17} />
-        </span>
+        <SaveButton id={tour.id} type="tour" className="absolute right-3 top-3" />
       </div>
       <div className="p-4">
         <h3 className="font-bold text-ink">{tour.title}</h3>

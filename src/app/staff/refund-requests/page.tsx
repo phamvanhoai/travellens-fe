@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, CircleDollarSign, RefreshCw, Search, ShieldCheck, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -21,23 +21,35 @@ type ActionType = "approve" | "reject" | "complete";
 type ActionState = { type: ActionType; item: StaffRefundRequest } | null;
 
 const pageSize = 8;
+const refundStatuses = ["pending", "approved", "rejected", "completed"];
 
 export default function StaffRefundRequestsPage() {
   const showToast = useToast();
   const [items, setItems] = useState<StaffRefundRequest[]>([]);
   const [filters, setFilters] = useState<StaffRefundRequestFilters>({});
   const [query, setQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [action, setAction] = useState<ActionState>(null);
 
-  async function load(nextFilters = filters) {
+  async function load(nextPage = page, nextFilters = filters, search = query) {
     try {
       setLoading(true);
       setError("");
-      const data = await staffRefundRequestService.list(nextFilters);
-      setItems(data);
+      const result = await staffRefundRequestService.list({
+        ...nextFilters,
+        page: nextPage,
+        limit: pageSize,
+        search: search || undefined
+      });
+      const total = result.pagination?.total ?? result.data.length;
+      setItems(result.data);
+      setTotalItems(total);
+      setPageCount(result.pagination?.totalPages ?? result.pagination?.total_pages ?? Math.max(1, Math.ceil(total / pageSize)));
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -46,40 +58,30 @@ export default function StaffRefundRequestsPage() {
   }
 
   useEffect(() => {
-    load();
+    load(1, {}, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const visible = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return items;
-
-    return items.filter((item) => {
-      const text = [
-        getStaffRefundRequestId(item),
-        getStaffRefundBookingId(item),
-        getStaffRefundPaymentId(item),
-        getStaffRefundPaymentCode(item),
-        getStaffRefundCustomer(item),
-        item.status,
-        item.reason,
-        item.staff_note,
-        item.transaction_code
-      ].join(" ").toLowerCase();
-
-      return text.includes(term);
-    });
-  }, [items, query]);
-
-  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const rows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rows = items;
 
-  function updateFilter(key: keyof StaffRefundRequestFilters, value: string) {
+  async function handleSearch() {
+    const value = searchInput.trim();
+    setQuery(value);
+    setPage(1);
+    await load(1, filters, value);
+  }
+
+  async function updateFilter(key: keyof StaffRefundRequestFilters, value: string) {
     const next = { ...filters, [key]: value || undefined };
     setFilters(next);
     setPage(1);
-    load(next);
+    await load(1, next, query);
+  }
+
+  async function handlePageChange(nextPage: number) {
+    setPage(nextPage);
+    await load(nextPage, filters, query);
   }
 
   async function runAction(payload: { staff_note: string; transaction_code: string }) {
@@ -95,7 +97,7 @@ export default function StaffRefundRequestsPage() {
 
       showToast({ title: "Refund request updated", variant: "success" });
       setAction(null);
-      load();
+      load(page, filters, query);
     } catch (err) {
       showToast({ title: "Could not update refund request", description: getErrorMessage(err), variant: "error" });
     }
@@ -109,29 +111,27 @@ export default function StaffRefundRequestsPage() {
             <h1 className="text-2xl font-bold">Staff Refund Requests</h1>
             <p className="mt-1 text-sm text-slate-500">Review, approve, reject and complete manual refund requests.</p>
           </div>
-          <Button type="button" variant="outline" onClick={() => load()} disabled={loading}>
+          <Button type="button" variant="outline" onClick={() => load(page, filters, query)} disabled={loading}>
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
           </Button>
         </div>
 
-        <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_160px_160px]">
+        <form className="mt-6 grid gap-3 lg:grid-cols-[1fr_120px_180px]" onSubmit={(event) => { event.preventDefault(); void handleSearch(); }}>
           <div className="relative">
             <Search className="absolute left-3 top-3 size-5 text-slate-400" />
             <input
-              value={query}
-              onChange={(event) => { setQuery(event.target.value); setPage(1); }}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600"
               placeholder="Search refund requests..."
             />
           </div>
-          <select value={filters.status ?? ""} onChange={(event) => updateFilter("status", event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600">
+          <Button type="submit" disabled={loading} className="h-11 justify-center"><Search size={17} /> Search</Button>
+          <select value={filters.status ?? ""} onChange={(event) => void updateFilter("status", event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600">
             <option value="">All statuses</option>
-            <option value="pending">pending</option>
-            <option value="completed">completed</option>
+            {refundStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
-          <input value={filters.booking_id ?? ""} onChange={(event) => updateFilter("booking_id", event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600" placeholder="Booking ID" inputMode="numeric" />
-          <input value={filters.payment_id ?? ""} onChange={(event) => updateFilter("payment_id", event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600" placeholder="Payment ID" inputMode="numeric" />
-        </div>
+        </form>
 
         {error ? <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{error}</div> : null}
 
@@ -180,7 +180,7 @@ export default function StaffRefundRequestsPage() {
           </table>
         </div>
 
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={visible.length} pageSize={pageSize} itemLabel="refund requests" onPageChange={setPage} />
+        <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="refund requests" onPageChange={(nextPage) => void handlePageChange(nextPage)} />
       </div>
 
       {action ? <ActionModal action={action} onClose={() => setAction(null)} onSubmit={runAction} /> : null}
