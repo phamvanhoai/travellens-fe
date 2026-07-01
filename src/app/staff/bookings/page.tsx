@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarCheck, Loader2, Minus, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { CalendarCheck, Loader2, Pencil, RefreshCw, Search, X } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,13 @@ type BookingFormValue = {
   id: number;
   code: string;
   customer: string;
+  phone: string;
   tour: string;
   adults: number;
   children: number;
   infants: number;
   amount: number;
+  remainingSeats: number;
   travelDate: string;
   status: StaffBookingStatus;
 };
@@ -103,11 +105,9 @@ export default function StaffBookingsPage() {
     setError("");
     try {
       await staffBookingService.update(payload.id, {
-        travel_date: payload.travelDate,
+        customer_name: payload.customer,
+        phone: payload.phone,
         status: payload.status,
-        adult_count: payload.adults,
-        child_count: payload.children,
-        infant_count: payload.infants
       });
       showToast({ variant: "success", title: "Booking updated", description: payload.code });
       setEditing(null);
@@ -197,59 +197,60 @@ export default function StaffBookingsPage() {
 
 function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValue; saving: boolean; onClose: () => void; onSave: (item: BookingFormValue) => void }) {
   const [form, setForm] = useState(item);
-  const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const today = useMemo(() => startOfDay(new Date()), []);
-  const totalSeats = form.adults + form.children;
-  const travelDate = form.travelDate ? startOfDay(new Date(`${form.travelDate}T00:00:00`)) : null;
+  const requestedSeats = item.adults + item.children;
+  const travelDate = item.travelDate ? startOfDay(new Date(`${item.travelDate}T00:00:00`)) : null;
   const travelDatePassed = Boolean(travelDate && travelDate < today);
-  const statusLocked = ["cancelled", "canceled", "expired", "completed"].includes(String(item.status).toLowerCase());
-  const editable = !travelDatePassed && !statusLocked && !saving;
-  const statusOptions = getAllowedStatuses(item.status);
-
-  function updatePassenger(field: "adults" | "children" | "infants", delta: number) {
-    const minimum = field === "adults" ? 1 : 0;
-    setForm((current) => ({ ...current, [field]: Math.max(minimum, current[field] + delta) }));
-  }
+  const statusLocked = ["cancelled", "canceled"].includes(String(item.status).toLowerCase());
+  const editable = !travelDatePassed && !saving;
+  const statusOptions = getEditStatusOptions(item.status);
 
   function submit() {
-    setMessage("");
-    if (travelDatePassed) {
-      setMessage("This booking cannot be edited because the travel date has passed.");
-      return;
-    }
-    if (statusLocked) {
-      setMessage("This booking status cannot be changed.");
-      return;
-    }
-    if (!travelDate || travelDate.getTime() === today.getTime()) {
-      setMessage("Travel date must be in the future.");
-      return;
-    }
-    if (!statusOptions.includes(form.status)) {
-      setMessage("This status change is not allowed.");
-      return;
-    }
-    onSave(form);
+    if (travelDatePassed) return;
+
+    const errors: Record<string, string> = {};
+    const customer = form.customer.trim();
+    const phone = form.phone.trim();
+
+    if (!customer) errors.customer = "Customer name is required.";
+    else if (customer.length < 2) errors.customer = "Customer name must contain at least 2 characters.";
+    else if (customer.length > 100) errors.customer = "Customer name must contain at most 100 characters.";
+    else if (!/^[\p{L}\s]+$/u.test(customer)) errors.customer = "Customer name must not contain special characters.";
+
+    if (!/^\d{10}$/.test(phone)) errors.phone = "Phone number must contain exactly 10 digits.";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    onSave({ ...form, customer, phone, status: statusLocked ? item.status : form.status });
   }
 
   return (
     <Modal title="Edit Booking" onClose={onClose} onSubmit={submit} saveDisabled={!editable} saving={saving}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Customer"><input value={form.customer} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
+        <Field label="Customer">
+          <input value={form.customer} disabled={!editable} onChange={(event) => { setForm({ ...form, customer: event.target.value }); setFieldErrors((current) => ({ ...current, customer: "" })); }} className={`input disabled:bg-slate-50 disabled:text-slate-500 ${fieldErrors.customer ? "border-rose-500" : ""}`} />
+          {fieldErrors.customer ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer}</span> : null}
+        </Field>
+        <Field label="Phone">
+          <input type="tel" value={form.phone} disabled={!editable} onChange={(event) => { setForm({ ...form, phone: event.target.value }); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`input disabled:bg-slate-50 disabled:text-slate-500 ${fieldErrors.phone ? "border-rose-500" : ""}`} />
+          {fieldErrors.phone ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}
+        </Field>
         <Field label="Tour"><input value={form.tour} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
-        <Field label="Travel Date"><input type="date" min={toDateInput(addDays(today, 1))} value={form.travelDate} disabled={!editable} onChange={(event) => setForm({ ...form, travelDate: event.target.value })} className="input disabled:bg-slate-50 disabled:text-slate-500" /></Field>
-        <Field label="Status"><select value={form.status} disabled={!editable} onChange={(event) => setForm({ ...form, status: event.target.value })} className="input disabled:bg-slate-50 disabled:text-slate-500">{statusOptions.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select></Field>
-        <PassengerStepper label="Adults" value={form.adults} minusDisabled={!editable || form.adults <= 1} plusDisabled={!editable} onMinus={() => updatePassenger("adults", -1)} onPlus={() => updatePassenger("adults", 1)} />
-        <PassengerStepper label="Children" value={form.children} minusDisabled={!editable || form.children <= 0} plusDisabled={!editable} onMinus={() => updatePassenger("children", -1)} onPlus={() => updatePassenger("children", 1)} />
-        <PassengerStepper label="Infants" value={form.infants} minusDisabled={!editable || form.infants <= 0} plusDisabled={!editable} onMinus={() => updatePassenger("infants", -1)} onPlus={() => updatePassenger("infants", 1)} />
+        <Field label="Travel Date"><input value={formatDate(form.travelDate)} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
+        <Field label="Status"><select value={form.status} disabled={!editable || statusLocked} onChange={(event) => setForm({ ...form, status: event.target.value as StaffBookingStatus })} className="input disabled:bg-slate-50 disabled:text-slate-500">{statusOptions.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select></Field>
+        <ReadOnlyMetric label="Adults" value={form.adults} />
+        <ReadOnlyMetric label="Children" value={form.children} />
+        <ReadOnlyMetric label="Infants" value={form.infants} />
         <AmountPreview amount={form.amount} />
       </div>
-      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-        <span className="font-semibold text-slate-800">Requested Seats:</span> {totalSeats}
+      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+        <span><span className="font-semibold text-slate-800">Remaining Seats:</span> {form.remainingSeats}</span>
+        <span><span className="font-semibold text-slate-800">Requested Seats:</span> {requestedSeats}</span>
       </div>
       {travelDatePassed ? <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">This booking cannot be edited because the travel date has passed.</p> : null}
       {statusLocked && !travelDatePassed ? <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-700">This booking status cannot be changed.</p> : null}
-      {message ? <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{message}</p> : null}
     </Modal>
   );
 }
@@ -277,11 +278,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function AmountPreview({ amount }: { amount: number }) {
-  return <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 shadow-sm"><p className="text-sm font-semibold text-brand-700">Current Amount</p><p className="mt-2 text-2xl font-bold text-brand-900">{formatVnd(amount)}</p></div>;
+  return <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 shadow-sm"><p className="text-sm font-semibold text-brand-700">Total Amount</p><p className="mt-2 text-2xl font-bold text-brand-900">{formatVnd(amount)}</p></div>;
 }
 
-function PassengerStepper({ label, value, minusDisabled, plusDisabled, onMinus, onPlus }: { label: string; value: number; minusDisabled: boolean; plusDisabled: boolean; onMinus: () => void; onPlus: () => void }) {
-  return <div className="block text-sm font-semibold"><span>{label}</span><div className="mt-2 flex h-11 overflow-hidden rounded-lg border border-slate-200"><button type="button" onClick={onMinus} disabled={minusDisabled} className="grid w-11 place-items-center border-r border-slate-200 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Decrease ${label}`}><Minus size={16} /></button><div className="grid flex-1 place-items-center bg-white text-sm font-bold">{value}</div><button type="button" onClick={onPlus} disabled={plusDisabled} className="grid w-11 place-items-center border-l border-slate-200 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label={`Increase ${label}`}><Plus size={16} /></button></div></div>;
+function ReadOnlyMetric({ label, value }: { label: string; value: number }) {
+  return <div className="block text-sm font-semibold"><span>{label}</span><div className="mt-2 grid h-11 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">{value}</div></div>;
 }
 
 function StatusBadge({ value }: { value: string }) {
@@ -304,14 +305,22 @@ function toFormValue(booking: StaffBooking): BookingFormValue {
     id: getStaffBookingId(booking),
     code: getStaffBookingCode(booking),
     customer: getStaffBookingCustomer(booking),
+    phone: getStaffBookingPhone(booking),
     tour: getStaffBookingTourName(booking),
     adults: getPassengerCount(booking, "adult"),
     children: getPassengerCount(booking, "child"),
     infants: getPassengerCount(booking, "infant"),
     amount: getStaffBookingAmount(booking),
+    remainingSeats: Number(booking.remaining_seats ?? booking.available_seats ?? booking.tour?.remaining_seats ?? booking.tour?.available_seats ?? 0),
     travelDate: toDateInputValue(getStaffBookingTravelDate(booking)),
     status: booking.status ?? "pending"
   };
+}
+
+function getStaffBookingPhone(booking: StaffBooking) {
+  const direct = booking as StaffBooking & { phone?: string; phone_number?: string; phoneNumber?: string; customer_phone?: string; customerPhone?: string };
+  const customer = typeof booking.customer === "object" && booking.customer ? booking.customer : null;
+  return String(direct.phone ?? direct.phone_number ?? direct.phoneNumber ?? direct.customer_phone ?? direct.customerPhone ?? customer?.phone ?? "");
 }
 
 function getPassengerCount(booking: StaffBooking, category: "adult" | "child" | "infant") {
@@ -330,11 +339,10 @@ function getPassengerCount(booking: StaffBooking, category: "adult" | "child" | 
   return category === "adult" && total > 0 ? total : 0;
 }
 
-function getAllowedStatuses(status: StaffBookingStatus) {
+function getEditStatusOptions(status: StaffBookingStatus) {
   const normalized = String(status || "pending").toLowerCase();
-  if (normalized === "pending") return ["pending", "confirmed", "cancelled"] as string[];
-  if (normalized === "confirmed") return ["confirmed", "completed"] as string[];
-  return [String(status || "pending")];
+  if (["cancelled", "canceled"].includes(normalized)) return [status];
+  return ["pending", "confirmed", "completed", "cancelled", "expired"] as StaffBookingStatus[];
 }
 
 function formatDate(value: string) {
@@ -361,12 +369,6 @@ function toDateInputValue(value: string) {
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
 }
 
 function toDateInput(date: Date) {
