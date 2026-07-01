@@ -23,6 +23,7 @@ type BookingFormValue = {
   id: number;
   code: string;
   customer: string;
+  phone: string;
   tour: string;
   adults: number;
   children: number;
