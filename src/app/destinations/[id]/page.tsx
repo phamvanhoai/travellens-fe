@@ -5,18 +5,18 @@ import { useParams } from "next/navigation";
 import { Clock, Globe2, Heart, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
-import { images, tours } from "@/lib/data";
+import { images } from "@/lib/data";
 import {
   destinationService,
   type PublicTravelDestination,
-  toDestinationCardModel
+  toDestinationDetailModel
 } from "@/services/destination.service";
 import type { Destination } from "@/types";
 
 export default function DestinationDetailPage() {
   const params = useParams<{ id: string }>();
   const [destination, setDestination] = useState<Destination | null>(null);
-  const [nearbyDestinations, setNearbyDestinations] = useState<Destination[]>([]);
+  const [destinationDetail, setDestinationDetail] = useState<PublicTravelDestination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,18 +26,10 @@ export default function DestinationDetailPage() {
       setIsLoading(true);
       setError("");
       try {
-        const [detail, list] = await Promise.all([
-          destinationService.detail(params.id),
-          destinationService.list({ limit: 5 })
-        ]);
-        const mappedDestination = toDestinationCardModel(detail, images.santorini);
+        const detail = await destinationService.detail(params.id);
+        const mappedDestination = toDestinationDetailModel(detail, images.santorini);
         setDestination(mappedDestination);
-        setNearbyDestinations(
-          list.items
-            .filter((item: PublicTravelDestination) => String(item.travel_destination_id ?? item.destination_id ?? item.id) !== mappedDestination.id)
-            .slice(0, 4)
-            .map((item: PublicTravelDestination) => toDestinationCardModel(item, images.santorini))
-        );
+        setDestinationDetail(detail);
       } catch (err) {
         console.error("Failed to fetch destination detail:", err);
         setError("Cannot load this travel destination.");
@@ -57,7 +49,7 @@ export default function DestinationDetailPage() {
     );
   }
 
-  if (error || !destination) {
+  if (error || !destination || !destinationDetail) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
@@ -69,8 +61,9 @@ export default function DestinationDetailPage() {
     );
   }
 
-  const related = tours.slice(0, 4);
-  const nearby = nearbyDestinations.length ? nearbyDestinations : [];
+  const descriptionPreview = destination.description.length > 180
+    ? `${destination.description.slice(0, 177).trimEnd()}...`
+    : destination.description;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -91,11 +84,13 @@ export default function DestinationDetailPage() {
                 <span><Star className="inline size-4 fill-amber-400 text-amber-400" /> {destination.rating} ({destination.reviews} reviews)</span>
                 <span><MapPin className="inline size-4" /> {destination.region}</span>
               </p>
-              <p className="mt-4 max-w-xl text-white/85">{destination.description}</p>
+              <p className="mt-4 max-w-xl line-clamp-3 text-sm leading-6 text-white/85 sm:text-base">
+                {descriptionPreview}
+              </p>
             </div>
           </div>
 
-          <DestinationTabs destination={destination} relatedTours={related} nearbyDestinations={nearby} />
+          <DestinationTabs destination={destination} detail={destinationDetail} />
         </div>
 
         <aside className="space-y-5">
@@ -104,7 +99,7 @@ export default function DestinationDetailPage() {
               <h2 className="text-2xl font-bold">{destination.name}, {destination.country}</h2>
               <span className="rounded-md bg-brand-600 px-3 py-1 text-xs font-bold text-white">{destination.badge ?? "Top"}</span>
             </div>
-            <p className="mt-3 text-sm text-slate-600">{destination.description}</p>
+            <p className="mt-3 line-clamp-5 text-sm leading-6 text-slate-600">{descriptionPreview}</p>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
               <span><Clock className="mr-2 inline size-4" />{destination.bestTime}</span>
               <span><Languages className="mr-2 inline size-4" />English</span>

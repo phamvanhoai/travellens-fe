@@ -28,12 +28,29 @@ export type PublicTravelDestination = {
   destination_category_name?: string | null;
   category_name?: string | null;
   category?: string | { name?: string | null } | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  locations?: DestinationRelatedItem[];
+  tours?: DestinationRelatedItem[];
+  view360?: DestinationRelatedItem[];
+  maps?: DestinationRelatedItem[];
+  reviews?: DestinationRelatedItem[];
+  blogs?: DestinationRelatedItem[];
 };
+
+export type DestinationRelatedItem = Record<string, unknown>;
 
 export type DestinationListResult = {
   items: PublicTravelDestination[];
   total: number;
   totalPages: number;
+};
+
+export type PublicDestinationCategory = {
+  destination_category_id?: number;
+  id?: number;
+  name: string;
+  description?: string | null;
 };
 
 function unwrapData<T>(value: T | { data?: T }) {
@@ -105,6 +122,13 @@ export function toDestinationCardModel(destination: PublicTravelDestination, fal
   };
 }
 
+export function toDestinationDetailModel(destination: PublicTravelDestination, fallbackImage: string): Destination {
+  return {
+    ...toDestinationCardModel(destination, fallbackImage),
+    description: getPlainTextFromHtml(destination.description ?? "")
+  };
+}
+
 function clampText(value: string, maxLength: number) {
   if (value.length <= maxLength) return value;
   const trimmed = value.slice(0, maxLength).trim();
@@ -113,12 +137,31 @@ function clampText(value: string, maxLength: number) {
 }
 
 export const destinationService = {
-  async list(params: { page?: number; limit?: number; search?: string; destination_category_id?: string } = {}) {
+  async list(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    destination_category_id?: string;
+    sortBy?: "created_at" | "updated_at" | "name";
+    sortOrder?: "ASC" | "DESC";
+  } = {}) {
     const response = await api.get("/travel-destinations", { params });
     return unwrapList(response.data);
   },
   async detail(id: string) {
     const response = await api.get(`/travel-destinations/${id}`);
     return unwrapDetail(response.data);
+  },
+  async categories() {
+    const response = await api.get("/destination-categories");
+    const data = unwrapData<unknown>(response.data as { data?: unknown });
+    if (Array.isArray(data)) return data as PublicDestinationCategory[];
+    if (data && typeof data === "object") {
+      const nested = (data as { categories?: unknown; destination_categories?: unknown; data?: unknown }).categories ??
+        (data as { destination_categories?: unknown }).destination_categories ??
+        (data as { data?: unknown }).data;
+      return Array.isArray(nested) ? nested as PublicDestinationCategory[] : [];
+    }
+    return [];
   }
 };
