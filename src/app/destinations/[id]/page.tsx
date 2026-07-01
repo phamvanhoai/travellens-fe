@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Check, Clock, Globe2, Heart, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
+import { Check, Clock, Globe2, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
+import { DestinationDetailSaveButton } from "@/components/common/destination-detail-save-button";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
 import { images } from "@/lib/data";
@@ -106,7 +107,7 @@ export default function DestinationDetailPage() {
                 {shareStatus === "copied" ? <Check className="mr-2 inline size-4" /> : <Share2 className="mr-2 inline size-4" />}
                 {shareStatus === "copied" ? "Copied" : shareStatus === "failed" ? "Try again" : "Share"}
               </button>
-              <button className="rounded-lg bg-black/45 px-4 py-2 text-sm font-semibold text-white"><Heart className="mr-2 inline size-4" />Save</button>
+              <DestinationDetailSaveButton id={destination.id} />
             </div>
             <div className="absolute bottom-6 left-6 max-w-2xl text-white">
               <span className="rounded-md bg-brand-600 px-3 py-1 text-xs font-bold">Top Destination</span>
@@ -137,9 +138,8 @@ export default function DestinationDetailPage() {
               <span><Globe2 className="mr-2 inline size-4" />VND</span>
               <span><MapPin className="mr-2 inline size-4" />GMT +7</span>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button variant="outline"><Heart size={16} /> Wishlist</Button>
-              <Button href={`/view360?destinationId=${destination.id}`}>View 360</Button>
+            <div className="mt-6">
+              <Button href={`/view360?destinationId=${destination.id}`} className="w-full">View 360</Button>
             </div>
           </div>
 
