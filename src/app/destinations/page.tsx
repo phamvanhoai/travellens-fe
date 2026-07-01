@@ -1,20 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Filter, Loader2 } from "lucide-react";
 import { DestinationCard } from "@/components/cards/destination-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
-import { destinations, images } from "@/lib/data";
+import { images } from "@/lib/data";
+import { api } from "@/services/api";
 
 const categories = ["All Destinations", "Beach", "Mountain", "City", "Culture", "Adventure", "Nature"];
 
 export default function DestinationsPage() {
   const [page, setPage] = useState(1);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const pageSize = 8;
-  const pageCount = Math.max(1, Math.ceil(destinations.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const paginatedDestinations = destinations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    const fetchDestinations = async () => {
+      setIsLoading(true);
+      try {
+        const { data } = await api.get("/travel-destinations", {
+          params: { page, limit: pageSize }
+        });
+        const items = data?.data?.items || [];
+        setItems(items);
+        setTotalItems(data?.data?.pagination?.total || 0);
+        setPageCount(data?.data?.pagination?.totalPages || Math.ceil((data?.data?.pagination?.total || 0) / pageSize) || 1);
+      } catch (error) {
+        console.error("Failed to fetch destinations:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDestinations();
+  }, [page]);
 
   return (
     <>
@@ -31,10 +53,41 @@ export default function DestinationsPage() {
           </button>
         </div>
         <p className="mb-4 text-sm text-slate-500">Showing travel destinations</p>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {paginatedDestinations.map((item) => <DestinationCard key={item.id} destination={item} />)}
-        </div>
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={destinations.length} pageSize={pageSize} itemLabel="destinations" onPageChange={setPage} />
+        
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300">
+            <p className="text-slate-500">No destinations found.</p>
+          </div>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {items.map((item) => {
+              const mappedDest = {
+                id: item.destination_id,
+                name: item.name,
+                country: item.country || "Vietnam",
+                category: item.destination_category || "Destination",
+                region: item.region || "Various",
+                image: item.thumbnail || images.santorini,
+                rating: 4.8,
+                reviews: "20",
+                priceFrom: 0,
+                description: item.description || "",
+                bestTime: ""
+              };
+              return <DestinationCard key={mappedDest.id} destination={mappedDest as any} />;
+            })}
+          </div>
+        )}
+        
+        {!isLoading && totalItems > 0 && (
+          <div className="mt-8">
+            <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="destinations" onPageChange={setPage} />
+          </div>
+        )}
       </section>
     </>
   );

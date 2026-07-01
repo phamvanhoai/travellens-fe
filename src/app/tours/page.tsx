@@ -1,18 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves, Loader2 } from "lucide-react";
 import { TourCard } from "@/components/cards/tour-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
-import { images, tours } from "@/lib/data";
+import { images } from "@/lib/data";
+import { api } from "@/services/api";
 
 export default function ToursPage() {
   const [page, setPage] = useState(1);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const pageSize = 6;
-  const pageCount = Math.max(1, Math.ceil(tours.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const paginatedTours = tours.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    const fetchTours = async () => {
+      setIsLoading(true);
+      try {
+        const { data } = await api.get("/tours", {
+          params: { page, limit: pageSize }
+        });
+        const items = data?.data?.items || data?.data || [];
+        setItems(Array.isArray(items) ? items : []);
+        setTotalItems(data?.data?.pagination?.total || (Array.isArray(items) ? items.length : 0));
+        setPageCount(data?.data?.pagination?.totalPages || Math.ceil((data?.data?.pagination?.total || items.length) / pageSize) || 1);
+      } catch (error) {
+        console.error("Failed to fetch tours:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTours();
+  }, [page]);
 
   return (
     <>
@@ -46,10 +68,41 @@ export default function ToursPage() {
             ))}
           </div>
           <p className="mb-4 text-sm text-slate-500">Showing available tours</p>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {paginatedTours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
-          </div>
-          <Pagination page={currentPage} pageCount={pageCount} totalItems={tours.length} pageSize={pageSize} itemLabel="tours" onPageChange={setPage} />
+          
+          {isLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50">
+              <p className="text-slate-500">No tours found.</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((tour) => {
+                const mappedTour = {
+                  id: tour.tour_id || tour.id,
+                  title: tour.name || tour.title,
+                  destination: tour.destination_name || "Various Locations",
+                  image: tour.thumbnail || images.swiss,
+                  rating: 4.8, // Fallback if backend doesn't provide
+                  reviews: "10",
+                  duration: `${tour.duration_days}d ${tour.duration_nights}n`,
+                  price: tour.price || 0,
+                  category: tour.tour_category || "Tour",
+                  capacity: `Max ${tour.capacity || 0} people`,
+                  badge: ""
+                };
+                return <TourCard key={mappedTour.id} tour={mappedTour as any} />;
+              })}
+            </div>
+          )}
+          
+          {!isLoading && totalItems > 0 && (
+            <div className="mt-8">
+              <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="tours" onPageChange={setPage} />
+            </div>
+          )}
         </div>
       </section>
     </>
