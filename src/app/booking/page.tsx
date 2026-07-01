@@ -31,6 +31,8 @@ export default function BookingPage() {
   const [passengers, setPassengers] = useState<PassengerDraft[]>([emptyPassenger()]);
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [seatNumber, setSeatNumber] = useState("");
+  const [specialRequest, setSpecialRequest] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
@@ -155,7 +157,8 @@ export default function BookingPage() {
     if (!tourId) errors.tour_id = "Tour is required.";
     if (!travelDate) errors.travel_date = "Travel date is required.";
     if (passengers.length === 0) errors.passengers = "Add at least one passenger.";
-    Object.assign(errors, validateCustomerContact(customerName, phone));
+    if (!customerName.trim()) errors.customer_name = "Customer name is required.";
+    if (!phone.trim()) errors.phone = "Phone number is required.";
     if (couponCode.trim() && !appliedCoupon) errors.coupon = "Please apply the coupon before submitting.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -171,11 +174,13 @@ export default function BookingPage() {
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
           age_category: passenger.age_category,
+          seat_number: index === 0 ? seatNumber.trim() || undefined : undefined,
           special_request: index === 0
             ? [
                 `Travel date: ${travelDate}`,
                 selectedTour?.schedule ? `Tour schedule: ${selectedTour.schedule}` : "",
-                `Phone: ${phone.trim()}`
+                `Phone: ${phone.trim()}`,
+                specialRequest.trim()
               ].filter(Boolean).join(" | ")
             : undefined
         }))
@@ -325,13 +330,21 @@ export default function BookingPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold">
                   Full Name
-                  <input value={customerName} onBlur={() => setFieldErrors((current) => ({ ...current, customer_name: validateCustomerName(customerName) }))} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, customer_name: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.customer_name ? "border-rose-500" : "border-slate-200"}`} />
+                  <input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, customer_name: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.customer_name ? "border-rose-500" : "border-slate-200"}`} />
                   {fieldErrors.customer_name ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer_name}</span> : null}
                 </label>
                 <label className="text-sm font-semibold">
                   Phone Number
-                  <input type="tel" value={phone} onBlur={() => setFieldErrors((current) => ({ ...current, phone: validatePhone(phone) }))} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.phone ? "border-rose-500" : "border-slate-200"}`} placeholder="0901234567" />
+                  <input type="tel" value={phone} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.phone ? "border-rose-500" : "border-slate-200"}`} placeholder="0901234567" />
                   {fieldErrors.phone ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}
+                </label>
+                <label className="text-sm font-semibold">
+                  Preferred Seat <span className="font-normal text-slate-400">(optional)</span>
+                  <textarea value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2" />
+                </label>
+                <label className="text-sm font-semibold">
+                  Special Request <span className="font-normal text-slate-400">(optional)</span>
+                  <textarea value={specialRequest} onChange={(event) => setSpecialRequest(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2" />
                 </label>
               </div>
             </div>
@@ -370,30 +383,6 @@ export default function BookingPage() {
 
 function passengerPrice(adultPrice: number, childPrice: number, category: PassengerDraft["age_category"]) {
   return category === "child" ? childPrice : category === "infant" ? 0 : adultPrice;
-}
-
-function validateCustomerContact(customerName: string, phone: string) {
-  const errors: Record<string, string> = {};
-  const nameError = validateCustomerName(customerName);
-  const phoneError = validatePhone(phone);
-
-  if (nameError) errors.customer_name = nameError;
-  if (phoneError) errors.phone = phoneError;
-
-  return errors;
-}
-
-function validateCustomerName(customerName: string) {
-  const name = customerName.trim();
-  if (!name) return "Customer name is required.";
-  if (name.length < 2) return "Customer name must contain at least 2 characters.";
-  if (name.length > 100) return "Customer name must contain at most 100 characters.";
-  if (!/^[\p{L}\s]+$/u.test(name)) return "Customer name must not contain special characters.";
-  return "";
-}
-
-function validatePhone(phone: string) {
-  return /^\d{10}$/.test(phone.trim()) ? "" : "Phone number must contain exactly 10 digits.";
 }
 
 function formatVnd(value: number) {
