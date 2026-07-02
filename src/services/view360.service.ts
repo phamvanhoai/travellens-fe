@@ -35,6 +35,18 @@ export type View360Experience = {
   images: Array<{ id: number; src: string; orderIndex: number }>;
 };
 
+export type View360Weather = {
+  locationId: number;
+  locationName: string;
+  temperature: number | null;
+  feelsLike: number | null;
+  humidity: number | null;
+  precipitation: number | null;
+  windSpeed: number | null;
+  condition: string;
+  updatedAt: string;
+};
+
 function unwrapList<T>(value: unknown): T[] {
   const data = value && typeof value === "object" && "data" in value
     ? (value as { data?: unknown }).data
@@ -66,6 +78,17 @@ function getPanoramaImageUrl(value: string) {
 function getNarrationAudioUrl(value: string) {
   const source = resolveBackendAssetUrl(value);
   return source ? `/api/view360/audio?url=${encodeURIComponent(source)}` : "";
+}
+
+function readNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function unwrapObject(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const record = value as { data?: unknown };
+  return record.data && typeof record.data === "object" ? record.data as Record<string, unknown> : value as Record<string, unknown>;
 }
 
 export const view360Service = {
@@ -114,5 +137,28 @@ export const view360Service = {
       })
       .filter((scene) => scene.id && scene.images.length > 0)
       .sort((a, b) => a.orderIndex - b.orderIndex || a.id - b.id);
+  },
+
+  async getWeather(locationId: number) {
+    const response = await fetch(`/api/locations/${locationId}/weather`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000)
+    });
+    const payload = await response.json() as { message?: string };
+    if (!response.ok) throw new Error(payload.message ?? "The weather API is unavailable.");
+
+    const data = unwrapObject(payload);
+    const weather = unwrapObject(data?.weather) ?? {};
+    return {
+      locationId: Number(data?.location_id ?? locationId),
+      locationName: String(data?.location_name ?? "Current location"),
+      temperature: readNumber(weather.temperature),
+      feelsLike: readNumber(weather.feels_like),
+      humidity: readNumber(weather.humidity),
+      precipitation: readNumber(weather.precipitation),
+      windSpeed: readNumber(weather.wind_speed),
+      condition: String(weather.condition ?? "Weather unavailable"),
+      updatedAt: String(weather.updated_at ?? "")
+    } satisfies View360Weather;
   }
 };
