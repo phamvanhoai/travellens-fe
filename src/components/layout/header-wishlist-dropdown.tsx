@@ -5,17 +5,40 @@ import { Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSavedItemsStore } from "@/store/use-saved-items-store";
 import { savedItemService } from "@/services/saved-item.service";
+import { useAuthStore } from "@/store/use-auth-store";
 import { useToast } from "@/components/common/toast";
 import Link from "next/link";
 
+function hasAuthToken() {
+  if (typeof window === "undefined") return false;
+  return Boolean(localStorage.getItem("travel360_token") ?? localStorage.getItem("token"));
+}
+
+function isUnauthorized(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "response" in error &&
+      (error as { response?: { status?: number } }).response?.status === 401
+  );
+}
+
 export function HeaderWishlistDropdown({ onClose }: { onClose: () => void }) {
   const { savedTours, savedDestinations, toggleTour, toggleDestination } = useSavedItemsStore();
+  const logout = useAuthStore((state) => state.logout);
   const showToast = useToast();
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchItems = async () => {
+      if (!hasAuthToken()) {
+        logout();
+        setItems([]);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const [toursRes, destsRes] = await Promise.all([
           savedItemService.getSavedTours({ limit: 5 }),
@@ -43,14 +66,20 @@ export function HeaderWishlistDropdown({ onClose }: { onClose: () => void }) {
 
         setItems(merged);
       } catch (error) {
-        console.error("Failed to fetch wishlist", error);
+        if (isUnauthorized(error)) {
+          logout();
+          setItems([]);
+          return;
+        }
+
+        console.warn("Failed to fetch wishlist");
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchItems();
-  }, [savedTours.length, savedDestinations.length]); // refetch if count changes
+  }, [logout, savedTours.length, savedDestinations.length]); // refetch if count changes
 
   const handleRemove = async (id: number, type: "tour" | "destination", e: React.MouseEvent) => {
     e.preventDefault();

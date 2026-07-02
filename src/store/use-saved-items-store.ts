@@ -2,6 +2,24 @@ import { create } from 'zustand';
 import { savedItemService } from '@/services/saved-item.service';
 import { useAuthStore } from '@/store/use-auth-store';
 
+function hasAuthToken() {
+  if (typeof window === "undefined") return false;
+  return Boolean(localStorage.getItem("travel360_token") ?? localStorage.getItem("token"));
+}
+
+function isUnauthorized(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "response" in error &&
+      (error as { response?: { status?: number } }).response?.status === 401
+  );
+}
+
+function clearExpiredSession() {
+  useAuthStore.getState().logout();
+}
+
 interface SavedItemsState {
   savedTours: number[];
   savedDestinations: number[];
@@ -22,6 +40,11 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
   init: async () => {
     const user = useAuthStore.getState().user;
     if (!user) return;
+    if (!hasAuthToken()) {
+      clearExpiredSession();
+      set({ savedTours: [], savedDestinations: [], initialized: false });
+      return;
+    }
 
     try {
       const { data } = await savedItemService.getSavedIds();
@@ -31,7 +54,13 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
         initialized: true
       });
     } catch (error) {
-      console.error("Failed to initialize saved items", error);
+      if (isUnauthorized(error)) {
+        clearExpiredSession();
+        set({ savedTours: [], savedDestinations: [], initialized: false });
+        return;
+      }
+
+      console.warn("Failed to initialize saved items");
     }
   },
 
@@ -54,7 +83,7 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
           ? [...state.savedTours, tourId]
           : state.savedTours.filter(id => id !== tourId)
       }));
-      console.error("Failed to toggle tour", error);
+      if (isUnauthorized(error)) clearExpiredSession();
       throw error;
     }
   },
@@ -78,7 +107,7 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
           ? [...state.savedDestinations, destinationId]
           : state.savedDestinations.filter(id => id !== destinationId)
       }));
-      console.error("Failed to toggle destination", error);
+      if (isUnauthorized(error)) clearExpiredSession();
       throw error;
     }
   },
