@@ -31,6 +31,34 @@ export type CustomerBlogPayload = {
   location_ids: number[];
 };
 
+export type BlogComment = {
+  comment_id?: number;
+  blog_comment_id?: number;
+  commentId?: number;
+  blogCommentId?: number;
+  id?: number;
+  blog_id?: number;
+  user_id?: number;
+  parent_comment_id?: number | null;
+  content?: string | null;
+  comment?: string | null;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  user_name?: string;
+  customer_name?: string;
+  user?: { user_id?: number; id?: number; name?: string; email?: string };
+  User?: { user_id?: number; id?: number; name?: string; email?: string };
+  replies?: BlogComment[];
+  Replies?: BlogComment[];
+};
+
+export type BlogCommentPayload = {
+  content: string;
+  comment?: string;
+  parent_comment_id?: number | null;
+};
+
 function unwrapData<T>(value: T | { data?: T }) {
   if (value && typeof value === "object" && "data" in value) {
     const data = (value as { data?: T }).data as T;
@@ -50,6 +78,26 @@ function unwrapList(value: unknown) {
   return [];
 }
 
+function unwrapCommentList(value: unknown) {
+  const data = unwrapData<unknown>(value as { data?: unknown });
+  if (Array.isArray(data)) return data as BlogComment[];
+  if (data && typeof data === "object") {
+    const nested = (data as { comments?: unknown; rows?: unknown; items?: unknown; results?: unknown; data?: unknown }).comments ??
+      (data as { rows?: unknown }).rows ??
+      (data as { items?: unknown }).items ??
+      (data as { results?: unknown }).results ??
+      (data as { data?: unknown }).data;
+    return Array.isArray(nested) ? nested as BlogComment[] : [];
+  }
+  return [];
+}
+
+function unwrapComment(value: unknown) {
+  const data = unwrapData<unknown>(value as { data?: unknown });
+  if (data && typeof data === "object" && "comment" in data) return (data as { comment?: BlogComment }).comment as BlogComment;
+  return data as BlogComment;
+}
+
 export function getCustomerBlogId(blog: CustomerBlog) { return blog.blog_id ?? blog.id ?? 0; }
 export function getCustomerBlogUserId(blog: CustomerBlog) { return blog.user_id ?? blog.user?.user_id ?? blog.user?.id ?? blog.User?.user_id ?? blog.User?.id ?? 0; }
 export function getCustomerBlogAuthor(blog: CustomerBlog) { return blog.user_name ?? blog.author_name ?? blog.user?.name ?? blog.User?.name ?? "Travel360 traveler"; }
@@ -63,6 +111,11 @@ export function getCustomerBlogExcerpt(blog: CustomerBlog, maxLength = 180) {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trim()}...`;
 }
+export function getBlogCommentId(comment: BlogComment) { return Number(comment.comment_id ?? comment.blog_comment_id ?? comment.commentId ?? comment.blogCommentId ?? comment.id ?? 0); }
+export function getBlogCommentUserId(comment: BlogComment) { return comment.user_id ?? comment.user?.user_id ?? comment.user?.id ?? comment.User?.user_id ?? comment.User?.id ?? 0; }
+export function getBlogCommentAuthor(comment: BlogComment) { return comment.user_name ?? comment.customer_name ?? comment.user?.name ?? comment.User?.name ?? comment.user?.email ?? comment.User?.email ?? "Traveler"; }
+export function getBlogCommentContent(comment: BlogComment) { return comment.content ?? comment.comment ?? ""; }
+export function getBlogCommentReplies(comment: BlogComment) { return [...(comment.replies ?? []), ...(comment.Replies ?? [])]; }
 
 function extractFirstImage(value?: string | null) {
   return value?.match(/\bsrc=["']([^"']+)["']/i)?.[1];
@@ -77,5 +130,25 @@ export const blogService = {
   async detail(id: string | number) { const response = await api.get(`/blogs/${id}`); return unwrapData<CustomerBlog>(response.data); },
   async create(payload: CustomerBlogPayload) { const response = await api.post("/blogs", payload); return unwrapData<CustomerBlog>(response.data); },
   async update(id: number, payload: CustomerBlogPayload) { const response = await api.put(`/blogs/${id}`, payload); return unwrapData<CustomerBlog>(response.data); },
-  async remove(id: number) { const response = await api.delete(`/blogs/${id}`); return unwrapData<unknown>(response.data); }
+  async remove(id: number) { const response = await api.delete(`/blogs/${id}`); return unwrapData<unknown>(response.data); },
+  async listComments(blogId: number | string, params: { page?: number; limit?: number } = {}) {
+    const response = await api.get(`/blogs/${blogId}/comments`, { params });
+    return unwrapCommentList(response.data);
+  },
+  async createComment(blogId: number | string, payload: BlogCommentPayload) {
+    const response = await api.post(`/blogs/${blogId}/comments`, payload);
+    return unwrapComment(response.data);
+  },
+  async replyComment(blogId: number | string, commentId: number, payload: BlogCommentPayload) {
+    const response = await api.post(`/blogs/${blogId}/comments/${commentId}/replies`, payload);
+    return unwrapComment(response.data);
+  },
+  async updateComment(blogId: number | string, commentId: number, payload: BlogCommentPayload) {
+    const response = await api.put(`/blogs/${blogId}/comments/${commentId}`, payload);
+    return unwrapComment(response.data);
+  },
+  async deleteComment(blogId: number | string, commentId: number) {
+    const response = await api.delete(`/blogs/${blogId}/comments/${commentId}`);
+    return unwrapData<unknown>(response.data);
+  }
 };
