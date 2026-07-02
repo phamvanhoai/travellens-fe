@@ -2,10 +2,11 @@
 
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarCheck, Loader2, Pencil, RefreshCw, Search, X } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Loader2, Minus, Pencil, Plus, RefreshCw, Search, Tag, Trash2, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { couponService, type CouponValidationResult } from "@/services/coupon.service";
 import {
   getStaffBookingAmount,
   getStaffBookingCode,
@@ -16,8 +17,11 @@ import {
   getStaffBookingTravelDate,
   staffBookingService,
   type StaffBooking,
+  type StaffBookingCreatePayload,
+  type StaffCustomer,
   type StaffBookingStatus
 } from "@/services/staff-booking.service";
+import { getPublicTourId, getPublicTourName, tourService, type PublicTour } from "@/services/tour.service";
 
 type BookingFormValue = {
   id: number;
@@ -49,6 +53,7 @@ export default function StaffBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<BookingFormValue | null>(null);
 
   const loadBookings = useCallback(async (nextPage: number, search: string, status: string) => {
@@ -121,6 +126,24 @@ export default function StaffBookingsPage() {
     }
   }
 
+  async function create(payload: StaffBookingCreatePayload) {
+    setSaving(true);
+    setError("");
+    try {
+      const booking = await staffBookingService.create(payload);
+      showToast({ variant: "success", title: "Booking created", description: `${getStaffBookingCode(booking)}. Notification email sent to the customer.` });
+      setCreating(false);
+      await loadBookings(1, query, statusFilter);
+      setPage(1);
+    } catch (err) {
+      const message = getApiError(err, "Cannot create this booking.");
+      setError(message);
+      showToast({ variant: "error", title: "Create failed", description: message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -129,9 +152,14 @@ export default function StaffBookingsPage() {
             <h1 className="text-2xl font-bold">Staff Bookings</h1>
             <p className="mt-1 text-sm text-slate-500">Manage tour bookings and update booking status.</p>
           </div>
-          <Button type="button" variant="outline" onClick={() => void loadBookings(page, query, statusFilter)} disabled={loading}>
-            <RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" onClick={() => setCreating(true)} disabled={loading || saving}>
+              <Plus size={17} /> Create Booking
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void loadBookings(page, query, statusFilter)} disabled={loading}>
+              <RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh
+            </Button>
+          </div>
         </div>
 
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
@@ -190,8 +218,300 @@ export default function StaffBookingsPage() {
         <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="bookings" onPageChange={(nextPage) => void handlePageChange(nextPage)} />
       </div>
 
+      {creating ? <CreateBookingModal saving={saving} onClose={() => setCreating(false)} onCreate={create} /> : null}
       {editing ? <BookingModal item={editing} saving={saving} onClose={() => setEditing(null)} onSave={save} /> : null}
     </>
+  );
+}
+
+type PassengerCategory = "adult" | "child" | "infant";
+
+const emptyCounts: Record<PassengerCategory, number> = {
+  adult: 1,
+  child: 0,
+  infant: 0
+};
+
+function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; onClose: () => void; onCreate: (payload: StaffBookingCreatePayload) => Promise<void> }) {
+  const showToast = useToast();
+  const [tours, setTours] = useState<PublicTour[]>([]);
+  const [tourId, setTourId] = useState("");
+  const [travelDate, setTravelDate] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customer, setCustomer] = useState<StaffCustomer | null>(null);
+  const [contactPhone, setContactPhone] = useState("");
+  const [passengerName, setPassengerName] = useState("");
+  const [seatNumber, setSeatNumber] = useState("");
+  const [specialRequest, setSpecialRequest] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [counts, setCounts] = useState<Record<PassengerCategory, number>>(emptyCounts);
+  const [loadingTours, setLoadingTours] = useState(true);
+  const [lookingUpCustomer, setLookingUpCustomer] = useState(false);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    async function loadTours() {
+      try {
+        const result = await tourService.list();
+        setTours(result);
+        const firstTour = result[0];
+        if (firstTour) setTourId(String(getPublicTourId(firstTour)));
+      } catch (err) {
+        const message = getApiError(err, "Cannot load available tours.");
+        setFieldErrors((current) => ({ ...current, tours: message }));
+      } finally {
+        setLoadingTours(false);
+      }
+    }
+
+    void loadTours();
+  }, []);
+
+  const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
+  const adultPrice = Number(selectedTour?.price ?? 0);
+  const childPrice = Number(selectedTour?.child_price ?? adultPrice * 0.65);
+  const availableSlots = getAvailableSlots(selectedTour);
+  const passengerTotal = counts.adult + counts.child + counts.infant;
+  const subtotal = counts.adult * adultPrice + counts.child * childPrice;
+  const discountAmount = getCouponDiscountAmount(appliedCoupon, subtotal);
+  const finalTotal = getCouponFinalAmount(appliedCoupon, subtotal);
+
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    const couponAmount = Number(appliedCoupon.booking_amount ?? appliedCoupon.bookingAmount ?? 0);
+    if (couponAmount && couponAmount !== subtotal) {
+      setAppliedCoupon(null);
+      setFieldErrors((current) => ({ ...current, coupon: "Booking amount changed. Please apply the coupon again." }));
+    }
+  }, [appliedCoupon, subtotal]);
+
+  function changeCount(category: PassengerCategory, delta: number) {
+    setCounts((current) => {
+      const nextTotal = passengerTotal + delta;
+      if (delta > 0 && availableSlots !== null && nextTotal > availableSlots) {
+        setFieldErrors((errors) => ({ ...errors, passengers: `Only ${availableSlots} slot${availableSlots === 1 ? " is" : "s are"} available for this tour.` }));
+        return current;
+      }
+      const nextValue = Math.max(0, current[category] + delta);
+      const next = { ...current, [category]: nextValue };
+      if (next.adult + next.child + next.infant > 0) setFieldErrors((errors) => ({ ...errors, passengers: "" }));
+      return next;
+    });
+    setAppliedCoupon(null);
+  }
+
+  async function applyCoupon() {
+    const code = couponCode.trim();
+    setAppliedCoupon(null);
+    setFieldErrors((current) => ({ ...current, coupon: "" }));
+
+    if (!code) {
+      setFieldErrors((current) => ({ ...current, coupon: "Enter a coupon code before applying." }));
+      return;
+    }
+
+    if (subtotal <= 0) {
+      setFieldErrors((current) => ({ ...current, coupon: "Select passengers before applying a coupon." }));
+      return;
+    }
+
+    setValidatingCoupon(true);
+    try {
+      const result = await couponService.validate({ code, booking_amount: subtotal });
+      setAppliedCoupon({ ...result, code: result.code ?? result.coupon?.code ?? code, booking_amount: result.booking_amount ?? result.bookingAmount ?? subtotal });
+      showToast({ variant: "success", title: "Coupon applied", description: code });
+    } catch (err) {
+      const message = getApiError(err, "Coupon cannot be applied.");
+      setFieldErrors((current) => ({ ...current, coupon: message }));
+      showToast({ variant: "error", title: "Coupon invalid", description: message });
+    } finally {
+      setValidatingCoupon(false);
+    }
+  }
+
+  async function lookupCustomer() {
+    const email = customerEmail.trim();
+    setCustomer(null);
+    setFieldErrors((current) => ({ ...current, customer_email: "", customer_lookup: "" }));
+
+    if (!email) {
+      setFieldErrors((current) => ({ ...current, customer_email: "Customer email is required." }));
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFieldErrors((current) => ({ ...current, customer_email: "Enter a valid customer email." }));
+      return;
+    }
+
+    setLookingUpCustomer(true);
+    try {
+      const result = await staffBookingService.lookupCustomer(email);
+      const lookupCustomer = result.customer ?? null;
+      const userId = lookupCustomer ? getLookupCustomerId(lookupCustomer) : 0;
+      if (result.exists === false || !lookupCustomer) {
+        setFieldErrors((current) => ({ ...current, customer_lookup: result.message || "Customer not found, inactive, or not a customer account." }));
+        return;
+      }
+
+      if (!userId) {
+        setFieldErrors((current) => ({ ...current, customer_lookup: "Customer was found but does not include a valid user_id." }));
+        return;
+      }
+
+      setCustomer(lookupCustomer);
+      setPassengerName(getLookupCustomerName(lookupCustomer));
+      setContactPhone(String(lookupCustomer.phone ?? ""));
+      showToast({ variant: "success", title: "Customer found", description: `${getLookupCustomerName(lookupCustomer)} - #${userId}` });
+    } catch (err) {
+      const message = getApiError(err, "Customer not found, inactive, or not a customer account.");
+      setFieldErrors((current) => ({ ...current, customer_lookup: message }));
+      showToast({ variant: "error", title: "Lookup failed", description: message });
+    } finally {
+      setLookingUpCustomer(false);
+    }
+  }
+
+  async function submit() {
+    const errors: Record<string, string> = {};
+    const cleanPassengerName = passengerName.trim();
+    const cleanContactPhone = contactPhone.trim();
+    const userId = customer ? getLookupCustomerId(customer) : 0;
+
+    if (!tourId) errors.tour_id = "Tour is required.";
+    if (!travelDate) errors.travel_date = "Travel date is required.";
+    if (!customerEmail.trim()) errors.customer_email = "Customer email is required.";
+    if (!userId) errors.customer_lookup = "Lookup an active customer by email before creating the booking.";
+    if (cleanContactPhone && !/^\d{10}$/.test(cleanContactPhone)) errors.contact_phone = "Contact phone must contain exactly 10 digits.";
+    if (!cleanPassengerName) errors.passenger_name = "Passenger name is required.";
+    else if (cleanPassengerName.length < 2) errors.passenger_name = "Passenger name must contain at least 2 characters.";
+    if (passengerTotal <= 0) errors.passengers = "Add at least one passenger.";
+    if (availableSlots !== null && passengerTotal > availableSlots) errors.passengers = `Only ${availableSlots} slots are available for this tour.`;
+    if (couponCode.trim() && !appliedCoupon) errors.coupon = "Please apply the coupon before submitting.";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const passengers = (["adult", "child", "infant"] as const).flatMap((category) =>
+      Array.from({ length: counts[category] }, (_, index) => ({
+        passenger_name: cleanPassengerName,
+        age_category: category,
+        seat_number: index === 0 ? seatNumber.trim() || undefined : undefined,
+        special_request: index === 0 ? specialRequest.trim() || undefined : undefined
+      }))
+    );
+
+    await onCreate({
+      user_id: userId,
+      tour_id: Number(tourId),
+      contact_phone: cleanContactPhone || null,
+      travel_date: travelDate,
+      departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
+      coupon_code: appliedCoupon ? couponCode.trim() : null,
+      passengers
+    });
+  }
+
+  return (
+    <Modal title="Create Booking" onClose={onClose} onSubmit={() => void submit()} saveDisabled={loadingTours || saving || validatingCoupon || lookingUpCustomer} saving={saving}>
+      {fieldErrors.tours ? <div className="mb-4 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{fieldErrors.tours}</div> : null}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Tour">
+          <select value={tourId} disabled={loadingTours} onChange={(event) => { setTourId(event.target.value); setAppliedCoupon(null); setFieldErrors((current) => ({ ...current, tour_id: "", passengers: "", coupon: "" })); }} className={`input ${fieldErrors.tour_id ? "border-rose-500" : ""}`}>
+            <option value="">Select a tour</option>
+            {tours.map((tour) => <option key={getPublicTourId(tour)} value={getPublicTourId(tour)}>{getPublicTourName(tour)} - {formatVnd(Number(tour.price ?? 0))}</option>)}
+          </select>
+          {fieldErrors.tour_id ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.tour_id}</span> : null}
+          {availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots: {availableSlots}</span> : null}
+        </Field>
+        <Field label="Travel Date">
+          <input type="date" min={getVietnamDateInputValue()} value={travelDate} onChange={(event) => { setTravelDate(event.target.value); setFieldErrors((current) => ({ ...current, travel_date: "" })); }} className={`input ${fieldErrors.travel_date ? "border-rose-500" : ""}`} />
+          {fieldErrors.travel_date ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.travel_date}</span> : null}
+          {selectedTour?.schedule ? <span className="mt-2 block text-xs font-semibold text-slate-500">Time: {selectedTour.schedule}</span> : null}
+        </Field>
+        <Field label="Customer Email">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <input
+              type="email"
+              value={customerEmail}
+              onChange={(event) => {
+                setCustomerEmail(event.target.value);
+                setCustomer(null);
+                setContactPhone("");
+                setFieldErrors((current) => ({ ...current, customer_email: "", customer_lookup: "" }));
+              }}
+              className={`h-11 rounded-lg border px-3 text-sm outline-none focus:border-brand-600 ${fieldErrors.customer_email || fieldErrors.customer_lookup ? "border-rose-500" : customer ? "border-emerald-500" : "border-slate-200"}`}
+              placeholder="customer@example.com"
+            />
+            <Button type="button" variant="outline" className="px-4" onClick={() => void lookupCustomer()} disabled={saving || lookingUpCustomer}>
+              {lookingUpCustomer ? <Loader2 className="size-4 animate-spin" /> : <Search size={16} />} Lookup
+            </Button>
+          </div>
+          {fieldErrors.customer_email ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer_email}</span> : null}
+          {fieldErrors.customer_lookup ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer_lookup}</span> : null}
+          {customer ? <CustomerLookupCard customer={customer} /> : null}
+        </Field>
+        <Field label="Passenger Name">
+          <input value={passengerName} onChange={(event) => { setPassengerName(event.target.value); setFieldErrors((current) => ({ ...current, passenger_name: "" })); }} className={`input ${fieldErrors.passenger_name ? "border-rose-500" : ""}`} />
+          {fieldErrors.passenger_name ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.passenger_name}</span> : null}
+        </Field>
+        <Field label="Contact Phone">
+          <input type="tel" value={contactPhone} onChange={(event) => { setContactPhone(event.target.value); setFieldErrors((current) => ({ ...current, contact_phone: "" })); }} className={`input ${fieldErrors.contact_phone ? "border-rose-500" : ""}`} placeholder="0901234567" />
+          {fieldErrors.contact_phone ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.contact_phone}</span> : null}
+        </Field>
+      </div>
+
+      <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <p className="font-bold">Passenger Quantity</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(["adult", "child", "infant"] as const).map((category) => (
+            <div key={category} className="flex items-center justify-between rounded-lg bg-white p-3">
+              <div>
+                <p className="font-bold capitalize">{category}</p>
+                <p className="text-xs text-slate-500">{formatVnd(passengerPrice(adultPrice, childPrice, category))}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => changeCount(category, -1)} disabled={saving || counts[category] === 0} className="grid size-8 place-items-center rounded-full border border-slate-200 disabled:opacity-40" aria-label={`Remove ${category}`}><Minus size={14} /></button>
+                <span className="w-5 text-center font-bold">{counts[category]}</span>
+                <button type="button" onClick={() => changeCount(category, 1)} disabled={saving || (availableSlots !== null && passengerTotal >= availableSlots)} className="grid size-8 place-items-center rounded-full border border-slate-200 disabled:opacity-40" aria-label={`Add ${category}`}><Plus size={14} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {fieldErrors.passengers ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.passengers}</p> : null}
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Field label="Preferred Seat">
+          <textarea value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} className="input min-h-24 py-2" />
+        </Field>
+        <Field label="Special Request">
+          <textarea value={specialRequest} onChange={(event) => setSpecialRequest(event.target.value)} className="input min-h-24 py-2" />
+        </Field>
+      </div>
+
+      <div className="mt-5 rounded-lg border border-slate-200 p-4">
+        <p className="font-bold">Coupon Code <span className="font-normal text-slate-400">(optional)</span></p>
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <input value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setAppliedCoupon(null); setFieldErrors((current) => ({ ...current, coupon: "" })); }} className={`h-11 rounded-lg border px-3 text-sm outline-none focus:border-brand-600 ${fieldErrors.coupon ? "border-rose-500" : appliedCoupon ? "border-emerald-500" : "border-slate-200"}`} placeholder="SUMMER20" />
+          {appliedCoupon ? (
+            <Button type="button" variant="outline" className="px-4 text-rose-600" onClick={() => { setCouponCode(""); setAppliedCoupon(null); }} disabled={saving}><Trash2 size={16} /> Remove</Button>
+          ) : (
+            <Button type="button" variant="outline" className="px-4" onClick={() => void applyCoupon()} disabled={saving || validatingCoupon || !couponCode.trim()}>{validatingCoupon ? <Loader2 className="size-4 animate-spin" /> : <Tag size={16} />} Apply</Button>
+          )}
+        </div>
+        {appliedCoupon ? <span className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-700"><CheckCircle2 className="size-4" /> Coupon applied. Discount {formatVnd(discountAmount)}.</span> : null}
+        {fieldErrors.coupon ? <span className="mt-2 flex items-center gap-1 text-xs font-semibold text-rose-600"><XCircle className="size-4" /> {fieldErrors.coupon}</span> : null}
+      </div>
+
+      <div className="mt-5 rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm">
+        <p className="flex justify-between"><span>Subtotal</span><span>{formatVnd(subtotal)}</span></p>
+        {appliedCoupon ? <p className="mt-2 flex justify-between text-emerald-700"><span>Discount</span><span>-{formatVnd(discountAmount)}</span></p> : null}
+        <p className="mt-3 flex justify-between border-t border-brand-200 pt-3 text-lg font-bold"><span>Total</span><span>{formatVnd(finalTotal)}</span></p>
+      </div>
+    </Modal>
   );
 }
 
@@ -252,6 +572,18 @@ function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValu
       {travelDatePassed ? <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">This booking cannot be edited because the travel date has passed.</p> : null}
       {statusLocked && !travelDatePassed ? <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-700">This booking status cannot be changed.</p> : null}
     </Modal>
+  );
+}
+
+function CustomerLookupCard({ customer }: { customer: StaffCustomer }) {
+  return (
+    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+      <p className="font-bold">Customer #{getLookupCustomerId(customer)}</p>
+      <p className="mt-1">{getLookupCustomerName(customer)}</p>
+      {customer.email ? <p className="mt-1">{customer.email}</p> : null}
+      {customer.phone ? <p className="mt-1">{customer.phone}</p> : null}
+      <p className="mt-1">Role: {customer.role ?? "customer"} | Status: {customer.status ?? "active"}</p>
+    </div>
   );
 }
 
@@ -373,6 +705,61 @@ function startOfDay(date: Date) {
 
 function toDateInput(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getLookupCustomerId(customer: StaffCustomer) {
+  return Number(customer.user_id ?? customer.id ?? 0);
+}
+
+function getLookupCustomerName(customer: StaffCustomer) {
+  return customer.name ?? customer.full_name ?? customer.fullName ?? customer.email ?? `User #${getLookupCustomerId(customer)}`;
+}
+
+function passengerPrice(adultPrice: number, childPrice: number, category: PassengerCategory) {
+  return category === "child" ? childPrice : category === "infant" ? 0 : adultPrice;
+}
+
+function getAvailableSlots(tour?: PublicTour) {
+  if (!tour) return null;
+  const direct = tour.available_slots ?? tour.remaining_slots ?? tour.available_capacity;
+  if (direct !== undefined && direct !== null && Number.isFinite(Number(direct))) return Math.max(0, Number(direct));
+  if (typeof tour.capacity === "number") return Math.max(0, tour.capacity);
+  const numbers = String(tour.capacity ?? "").match(/\d+/g)?.map(Number) ?? [];
+  return numbers.length ? Math.max(...numbers) : null;
+}
+
+function buildDepartureAt(date: string, schedule?: string) {
+  const timeMatch = schedule?.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  const hour = timeMatch?.[1]?.padStart(2, "0") ?? "08";
+  const minute = timeMatch?.[2] ?? "00";
+  return `${date}T${hour}:${minute}:00+07:00`;
+}
+
+function getVietnamDateInputValue() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric"
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function getCouponDiscountAmount(coupon: CouponValidationResult | null, subtotal: number) {
+  if (!coupon) return 0;
+  const direct = Number(coupon.discount_amount ?? coupon.discountAmount);
+  if (Number.isFinite(direct) && direct > 0) return Math.min(direct, subtotal);
+  const finalAmount = Number(coupon.final_amount ?? coupon.finalAmount);
+  if (Number.isFinite(finalAmount)) return Math.max(0, subtotal - finalAmount);
+  return 0;
+}
+
+function getCouponFinalAmount(coupon: CouponValidationResult | null, subtotal: number) {
+  if (!coupon) return subtotal;
+  const direct = Number(coupon.final_amount ?? coupon.finalAmount);
+  if (Number.isFinite(direct) && direct >= 0) return direct;
+  return Math.max(0, subtotal - getCouponDiscountAmount(coupon, subtotal));
 }
 
 function getApiError(error: unknown, fallback: string) {
