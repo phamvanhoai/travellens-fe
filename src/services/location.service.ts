@@ -4,14 +4,52 @@ export type PublicLocation = {
   location_id?: number;
   id?: number;
   name: string;
-  description?: string;
+  title?: string;
+  description?: string | null;
+  address?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  rating?: number | string | null;
+  average_rating?: number | string | null;
+  reviews_count?: number | string | null;
+  review_count?: number | string | null;
+  thumbnail?: string | null;
+  thumbnail_url?: string | null;
+  image?: string | null;
+  image_url?: string | null;
+  map_url?: string | null;
+  map_file?: string | null;
   travel_destination_id?: number;
   travel_destination_name?: string;
+  travel_destination?: {
+    travel_destination_id?: number;
+    destination_id?: number;
+    id?: number;
+    name?: string | null;
+    country?: string | null;
+    city?: string | null;
+    thumbnail?: string | null;
+    thumbnail_url?: string | null;
+    image?: string | null;
+    image_url?: string | null;
+  } | null;
+  TravelDestination?: PublicLocation["travel_destination"];
+  maps?: Record<string, unknown>[];
+  Maps?: Record<string, unknown>[];
+  view360?: Record<string, unknown>[];
+  view360s?: Record<string, unknown>[];
+  View360s?: Record<string, unknown>[];
+  reviews?: Record<string, unknown>[];
+  Reviews?: Record<string, unknown>[];
 };
 
 function unwrapData<T>(responseData: T | { data?: T }) {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
-    return (responseData as { data?: T }).data as T;
+    const data = (responseData as { data?: T }).data as T;
+    if (data && typeof data === "object" && "location" in data) {
+      return (data as { location?: T }).location as T;
+    }
+    return data;
   }
   return responseData as T;
 }
