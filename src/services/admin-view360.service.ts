@@ -35,6 +35,37 @@ export type AdminView360Payload = {
   order_index: string;
 };
 
+export type View360HotspotType = "info" | "navigation" | "link" | "location";
+
+export type AdminView360Hotspot = {
+  hotspot_id?: number;
+  id?: number;
+  view360_id?: number | string;
+  type?: View360HotspotType;
+  title?: string | null;
+  description?: string | null;
+  yaw?: number | string;
+  pitch?: number | string;
+  target_view360_id?: number | string | null;
+  target_url?: string | null;
+  order_index?: number | string | null;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminView360HotspotPayload = {
+  type: View360HotspotType;
+  title: string | null;
+  description: string | null;
+  yaw: number;
+  pitch: number;
+  target_view360_id: number | null;
+  target_url: string | null;
+  order_index: number;
+  is_active: boolean;
+};
+
 function unwrapData<T>(responseData: unknown): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as { data: T }).data;
@@ -80,6 +111,10 @@ export function getView360ImageSrc(image: AdminView360Image) {
   return image.image_url ?? image.image_file ?? "";
 }
 
+export function getView360HotspotId(hotspot: AdminView360Hotspot) {
+  return Number(hotspot.hotspot_id ?? hotspot.id ?? 0);
+}
+
 export const adminView360Service = {
   async listByLocation(locationId: number) {
     const response = await api.get(`/admin/locations/${locationId}/view360`);
@@ -107,6 +142,22 @@ export const adminView360Service = {
   },
   async removeImage(imageId: number) {
     const response = await api.delete(`/admin/view360-images/${imageId}`);
+    return response.data;
+  },
+  async listHotspots(viewId: number) {
+    const response = await api.get(`/admin/view360/${viewId}/hotspots`);
+    return unwrapList<AdminView360Hotspot>(response.data);
+  },
+  async createHotspot(viewId: number, payload: AdminView360HotspotPayload) {
+    const response = await api.post(`/admin/view360/${viewId}/hotspots`, payload);
+    return unwrapData<AdminView360Hotspot>(response.data);
+  },
+  async updateHotspot(hotspotId: number, payload: AdminView360HotspotPayload) {
+    const response = await api.put(`/admin/view360-hotspots/${hotspotId}`, payload);
+    return unwrapData<AdminView360Hotspot>(response.data);
+  },
+  async removeHotspot(hotspotId: number) {
+    const response = await api.delete(`/admin/view360-hotspots/${hotspotId}`);
     return response.data;
   }
 };
