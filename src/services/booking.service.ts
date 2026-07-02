@@ -21,6 +21,19 @@ export type CustomerBookingPassenger = BookingPassengerPayload & {
   price?: number | string;
 };
 
+export type CustomerTourReview = {
+  review_id?: number;
+  id?: number;
+  booking_id?: number;
+  tour_id?: number;
+  user_id?: number;
+  rating?: number;
+  comment?: string | null;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type CustomerBooking = {
   booking_id?: number;
   id?: number;
@@ -64,6 +77,12 @@ export type CustomerBooking = {
   refundRequest?: { status?: string };
   refund_requests?: Array<{ status?: string }>;
   refundRequests?: Array<{ status?: string }>;
+  review?: CustomerTourReview | null;
+  Review?: CustomerTourReview | null;
+  tour_review?: CustomerTourReview | null;
+  tourReview?: CustomerTourReview | null;
+  reviews?: CustomerTourReview[];
+  Reviews?: CustomerTourReview[];
 };
 
 function unwrapData<T>(value: T | { data?: T }) {
@@ -139,6 +158,9 @@ export function getCustomerBookingAmount(booking: CustomerBooking) {
     getCustomerBookingPassengers(booking).reduce((sum, passenger) => sum + Number(passenger.price || 0), 0)
   );
 }
+export function getCustomerBookingReview(booking: CustomerBooking) {
+  return booking.review ?? booking.Review ?? booking.tour_review ?? booking.tourReview ?? booking.reviews?.[0] ?? booking.Reviews?.[0] ?? null;
+}
 
 export const bookingService = {
   async create(payload: CreateBookingPayload) {
@@ -152,6 +174,18 @@ export const bookingService = {
   async detail(id: number) {
     const response = await api.get(`/bookings/${id}`);
     return unwrapBooking(response.data);
+  },
+  async createTourReview(bookingId: number, payload: { rating: number; comment: string }) {
+    const response = await api.post(`/bookings/${bookingId}/review`, payload);
+    return unwrapData<CustomerTourReview>(response.data);
+  },
+  async updateTourReview(bookingId: number, payload: { rating: number; comment: string }) {
+    const response = await api.put(`/bookings/${bookingId}/review`, payload);
+    return unwrapData<CustomerTourReview>(response.data);
+  },
+  async deleteTourReview(bookingId: number) {
+    const response = await api.delete(`/bookings/${bookingId}/review`);
+    return unwrapData<unknown>(response.data);
   },
   cancel: (id: number, reason?: string) => api.patch(`/bookings/${id}/cancel`, { reason: reason || null })
 };

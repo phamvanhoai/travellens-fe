@@ -2,12 +2,13 @@
 
 import axios from "axios";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, CreditCard, Loader2, RefreshCw, Search, X, XCircle } from "lucide-react";
+import { CalendarCheck, CreditCard, Loader2, Pencil, RefreshCw, Search, Star, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import {
   bookingService,
+  getCustomerBookingReview,
   getCustomerBookingAmount,
   getCustomerBookingCancelStatus,
   getCustomerBookingCode,
@@ -30,6 +31,7 @@ export default function BookingsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<CustomerBooking | null>(null);
+  const [reviewing, setReviewing] = useState<CustomerBooking | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelReasonError, setCancelReasonError] = useState("");
   const showToast = useToast();
@@ -108,6 +110,27 @@ export default function BookingsPage() {
     }
   }
 
+  async function saveTourReview(form: ReviewFormValue) {
+    if (!reviewing) return;
+    const bookingId = getCustomerBookingId(reviewing);
+    const existingReview = getCustomerBookingReview(reviewing);
+    const payload = { rating: Number(form.rating), comment: form.comment.trim() };
+
+    try {
+      const saved = existingReview
+        ? await bookingService.updateTourReview(bookingId, payload)
+        : await bookingService.createTourReview(bookingId, payload);
+      setItems((current) => current.map((booking) => getCustomerBookingId(booking) === bookingId
+        ? { ...booking, review: { ...saved, rating: saved.rating ?? payload.rating, comment: saved.comment ?? payload.comment }, Review: undefined, reviews: undefined, Reviews: undefined }
+        : booking));
+      showToast({ variant: "success", title: existingReview ? "Review updated" : "Review submitted", description: getCustomerBookingTourName(reviewing) });
+      setReviewing(null);
+    } catch (err) {
+      const message = getReviewApiError(err, existingReview ? "Cannot update this tour review." : "Cannot submit this tour review.");
+      showToast({ variant: "error", title: existingReview ? "Update failed" : "Submit failed", description: message });
+    }
+  }
+
   function openCancelDialog(booking: CustomerBooking) {
     setSelected(booking);
     setCancelReason("");
@@ -129,7 +152,7 @@ export default function BookingsPage() {
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Booking", "Tour", "Desired Arrival Date", "Passengers", "Payment Status", "Amount", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading your bookings...</td></tr>
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">This account has no bookings yet.</td></tr>
-            : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "unpaid"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const needsPayment = canPayBooking(booking); const bookingId = getCustomerBookingId(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={bookingId} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3">{cancelActionStatus ? <Status value={cancelActionStatus} /> : needsPayment ? <Button href={`/payment/checkout?bookingId=${bookingId}`} className="h-9 px-3"><CreditCard size={15} /> Pay Now</Button> : <button type="button" onClick={() => openCancelDialog(booking)} disabled={!canCancel} title={canCancel ? "Cancel booking" : "This booking can no longer be cancelled"} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"><XCircle size={15} /> Cancel</button>}</td></tr>; })}
+            : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "unpaid"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const needsPayment = canPayBooking(booking); const canReview = canReviewBooking(booking); const review = getCustomerBookingReview(booking); const bookingId = getCustomerBookingId(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={bookingId} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3"><div className="flex flex-wrap gap-2">{cancelActionStatus ? <Status value={cancelActionStatus} /> : needsPayment ? <Button href={`/payment/checkout?bookingId=${bookingId}`} className="h-9 px-3"><CreditCard size={15} /> Pay Now</Button> : canCancel ? <button type="button" onClick={() => openCancelDialog(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50"><XCircle size={15} /> Cancel</button> : null}{canReview ? review ? <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 font-semibold text-slate-700 hover:bg-slate-50"><Pencil size={15} /> Review</button> : <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-amber-200 px-3 font-semibold text-amber-700 hover:bg-amber-50"><Star size={15} /> Review Tour</button> : null}</div></td></tr>; })}
       </tbody></table></div>
       <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} />
     </div>
@@ -147,7 +170,80 @@ export default function BookingsPage() {
         onConfirm={() => void cancelBooking()}
       />
     ) : null}
+    {reviewing ? <TourReviewDialog booking={reviewing} onCancel={() => setReviewing(null)} onSave={saveTourReview} /> : null}
   </>;
+}
+
+type ReviewFormValue = { rating: string; comment: string };
+
+function TourReviewDialog({ booking, onCancel, onSave }: { booking: CustomerBooking; onCancel: () => void; onSave: (form: ReviewFormValue) => Promise<void> }) {
+  const existingReview = getCustomerBookingReview(booking);
+  const [form, setForm] = useState<ReviewFormValue>({
+    rating: String(existingReview?.rating ?? 5),
+    comment: existingReview?.comment ?? ""
+  });
+  const [saving, setSaving] = useState(false);
+  const [commentError, setCommentError] = useState("");
+
+  async function submit() {
+    const comment = form.comment.trim();
+    if (!comment) {
+      setCommentError("Comment is required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave({ ...form, comment });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4">
+      <form className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">{existingReview ? "Edit Tour Review" : "Review Tour"}</h2>
+            <p className="mt-1 text-sm text-slate-500">{getCustomerBookingTourName(booking)}</p>
+          </div>
+          <button type="button" onClick={onCancel} disabled={saving} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <label className="mt-5 block text-sm font-semibold">
+          Rating
+          <span className="mt-2 flex gap-1">
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <button key={rating} type="button" onClick={() => setForm((current) => ({ ...current, rating: String(rating) }))} className="text-amber-400" aria-label={`${rating} stars`}>
+                <Star className={`size-6 ${rating <= Number(form.rating) ? "fill-amber-400" : "text-slate-300"}`} />
+              </button>
+            ))}
+          </span>
+        </label>
+        <label className="mt-5 block text-sm font-semibold">
+          Comment
+          <textarea
+            value={form.comment}
+            onChange={(event) => { setCommentError(""); setForm((current) => ({ ...current, comment: event.target.value.slice(0, 1000) })); }}
+            className={`mt-2 min-h-32 w-full resize-y rounded-lg border px-3 py-3 text-sm outline-none focus:border-brand-600 ${commentError ? "border-rose-500" : "border-slate-200"}`}
+            placeholder="Share your tour experience..."
+            disabled={saving}
+            maxLength={1000}
+          />
+        </label>
+        <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+          <span className="font-semibold text-rose-600">{commentError}</span>
+          <span className="text-slate-400">{form.comment.length}/1000</span>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
+          <Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} {existingReview ? "Update Review" : "Submit Review"}</Button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 function CancelBookingDialog({
@@ -246,10 +342,23 @@ function canCancelBooking(booking: CustomerBooking) {
 }
 
 function canPayBooking(booking: CustomerBooking) {
+  if (getCustomerBookingAmount(booking) <= 0) return false;
   const bookingStatus = (booking.status ?? "pending").toLowerCase();
   const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "unpaid").toLowerCase();
   if (["cancel_pending", "cancelled", "canceled", "expired", "refunded", "completed"].includes(bookingStatus)) return false;
   return ["unpaid", "pending", "failed"].includes(paymentStatus);
+}
+
+function canReviewBooking(booking: CustomerBooking) {
+  const bookingStatus = (booking.status ?? "").toLowerCase();
+  const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "").toLowerCase();
+  if (["cancel_pending", "cancelled", "canceled", "expired", "refunded", "rejected"].includes(bookingStatus)) return false;
+  const isPaidOrCompleted = ["paid", "completed"].includes(paymentStatus) || ["completed"].includes(bookingStatus);
+  if (!isPaidOrCompleted) return false;
+  if (bookingStatus === "completed") return true;
+
+  const departure = getBookingDepartureDate(booking);
+  return Boolean(departure && departure.getTime() <= Date.now());
 }
 
 function getCancelActionStatus(booking: CustomerBooking) {
@@ -294,3 +403,13 @@ function formatDate(value?: string) { if (!value) return "-"; const date = new D
 function readBookingMetadata() { try { return JSON.parse(localStorage.getItem("travel360_booking_metadata") ?? "{}") as Record<string, { booked_at: string; arrival_time: string; amount: number; passengers: Array<"adult" | "child" | "infant"> }>; } catch { return {}; } }
 function readPaymentMap() { try { return JSON.parse(localStorage.getItem("travel360_payment_by_booking") ?? "{}") as Record<string, number>; } catch { return {}; } }
 function getApiError(error: unknown, fallback: string) { if (!axios.isAxiosError(error)) return fallback; const data = error.response?.data as { message?: string; error?: string } | undefined; if (error.response?.status === 401) return "Please sign in to view your bookings."; return data?.message ?? data?.error ?? fallback; }
+function getReviewApiError(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) return fallback;
+  const data = error.response?.data as { message?: string; error?: string } | undefined;
+  if (error.response?.status === 400) return data?.message ?? "This booking is not eligible for review.";
+  if (error.response?.status === 401) return "Please sign in to review this tour.";
+  if (error.response?.status === 403) return "This review does not belong to your account.";
+  if (error.response?.status === 404) return data?.message ?? "Booking or review was not found.";
+  if (error.response?.status === 409) return data?.message ?? "This booking has already been reviewed.";
+  return data?.message ?? data?.error ?? fallback;
+}
