@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import L, { type LatLngExpression } from "leaflet";
-import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { Circle, LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { LocateFixed, MapPin, RefreshCw, Search, Star, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { destinationService, type PublicDestinationCategory } from "@/services/destination.service";
@@ -50,6 +50,7 @@ export default function CustomerTravelMap() {
   const [popularOnly, setPopularOnly] = useState(false);
   const [radius, setRadius] = useState("5");
   const [userPosition, setUserPosition] = useState<LatLngExpression | null>(null);
+  const [nearbyRadiusKm, setNearbyRadiusKm] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
@@ -86,6 +87,20 @@ export default function CustomerTravelMap() {
     }
   }
 
+  async function loadNearbySuggestions(lat: number, lng: number, nextRadius = Number(radius) || 5) {
+    setLoading(true);
+    setError("");
+    setNearbyRadiusKm(nextRadius);
+
+    try {
+      setMarkers(await mapService.nearby({ lat, lng, radius: nextRadius }));
+    } catch (err) {
+      setError("Cannot load nearby place suggestions from API.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     destinationService.categories()
       .then(setCategories)
@@ -113,13 +128,10 @@ export default function CustomerTravelMap() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const nextPosition: LatLngExpression = [position.coords.latitude, position.coords.longitude];
+        const nextRadius = Number(radius) || 5;
         setUserPosition(nextPosition);
         setLocating(false);
-        void loadMapData({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          radius: Number(radius) || 5
-        });
+        void loadNearbySuggestions(position.coords.latitude, position.coords.longitude, nextRadius);
       },
       () => {
         setLocating(false);
@@ -228,7 +240,7 @@ export default function CustomerTravelMap() {
             </Button>
             <Button type="button" variant="outline" onClick={useCurrentLocation} disabled={locating || loading} className="w-full">
               {locating ? <RefreshCw className="size-4 animate-spin" /> : <LocateFixed size={16} />}
-              Near Me
+              Nearby Suggestions
             </Button>
           </div>
         </form>
@@ -276,6 +288,19 @@ export default function CustomerTravelMap() {
             </LayersControl.BaseLayer>
           </LayersControl>
           <MapBounds markers={visibleMarkers} userPosition={userPosition} />
+          {userPosition && nearbyRadiusKm ? (
+            <Circle
+              center={userPosition}
+              radius={nearbyRadiusKm * 1000}
+              pathOptions={{
+                color: "#2563eb",
+                fillColor: "#3b82f6",
+                fillOpacity: 0.12,
+                opacity: 0.75,
+                weight: 2
+              }}
+            />
+          ) : null}
           {visibleMarkers.map((marker) => (
             <Marker key={marker.id} icon={markerIcon} position={[marker.latitude, marker.longitude]}>
               <Popup>
