@@ -35,6 +35,22 @@ export type View360Experience = {
   images: Array<{ id: number; src: string; orderIndex: number }>;
 };
 
+export type View360HotspotType = "info" | "navigation" | "link" | "location";
+
+export type View360Hotspot = {
+  id: number;
+  view360Id: number;
+  type: View360HotspotType;
+  title: string;
+  description: string;
+  yaw: number;
+  pitch: number;
+  targetView360Id: number | null;
+  targetUrl: string;
+  orderIndex: number;
+  isActive: boolean;
+};
+
 export type View360Weather = {
   locationId: number;
   locationName: string;
@@ -89,6 +105,10 @@ function unwrapObject(value: unknown) {
   if (!value || typeof value !== "object") return null;
   const record = value as { data?: unknown };
   return record.data && typeof record.data === "object" ? record.data as Record<string, unknown> : value as Record<string, unknown>;
+}
+
+function getHotspotId(hotspot: Record<string, unknown>) {
+  return Number(hotspot.hotspot_id ?? hotspot.id ?? 0);
 }
 
 export const view360Service = {
@@ -160,5 +180,31 @@ export const view360Service = {
       condition: String(weather.condition ?? "Weather unavailable"),
       updatedAt: String(weather.updated_at ?? "")
     } satisfies View360Weather;
+  },
+
+  async listHotspots(view360Id: number) {
+    const response = await fetch(`/api/view360/${view360Id}/hotspots`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000)
+    });
+    const payload = await response.json() as { message?: string };
+    if (!response.ok) throw new Error(payload.message ?? "The hotspot API is unavailable.");
+
+    return unwrapList<Record<string, unknown>>(payload)
+      .map<View360Hotspot>((hotspot) => ({
+        id: getHotspotId(hotspot),
+        view360Id: Number(hotspot.view360_id ?? view360Id),
+        type: ["info", "navigation", "link", "location"].includes(String(hotspot.type)) ? hotspot.type as View360HotspotType : "info",
+        title: String(hotspot.title ?? "Point of interest"),
+        description: String(hotspot.description ?? ""),
+        yaw: Number(hotspot.yaw ?? 0),
+        pitch: Number(hotspot.pitch ?? 0),
+        targetView360Id: hotspot.target_view360_id == null ? null : Number(hotspot.target_view360_id),
+        targetUrl: String(hotspot.target_url ?? ""),
+        orderIndex: Number(hotspot.order_index ?? 0),
+        isActive: hotspot.is_active !== false
+      }))
+      .filter((hotspot) => hotspot.id && Number.isFinite(hotspot.yaw) && Number.isFinite(hotspot.pitch) && hotspot.isActive)
+      .sort((a, b) => a.orderIndex - b.orderIndex || a.id - b.id);
   }
 };

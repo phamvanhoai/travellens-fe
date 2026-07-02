@@ -24,7 +24,7 @@ import {
   Wind
 } from "lucide-react";
 import { PanoramaViewer } from "@/components/view360/panorama-viewer";
-import { view360Service, type View360Experience, type View360Weather } from "@/services/view360.service";
+import { view360Service, type View360Experience, type View360Hotspot, type View360Weather } from "@/services/view360.service";
 
 export default function View360Page() {
   const rootRef = useRef<HTMLElement>(null);
@@ -45,6 +45,8 @@ export default function View360Page() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState("");
   const [sceneNavigationCollapsed, setSceneNavigationCollapsed] = useState(false);
+  const [hotspots, setHotspots] = useState<View360Hotspot[]>([]);
+  const [activeHotspot, setActiveHotspot] = useState<View360Hotspot | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -89,6 +91,7 @@ export default function View360Page() {
     setActiveImageIndex(0);
     setPanoramaLoading(true);
     setError("");
+    setActiveHotspot(null);
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -131,6 +134,28 @@ export default function View360Page() {
     };
   }, [activeScene?.locationId]);
 
+  useEffect(() => {
+    if (!activeScene?.id) {
+      setHotspots([]);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadHotspots() {
+      try {
+        const result = await view360Service.listHotspots(activeScene.id);
+        if (!cancelled) setHotspots(result);
+      } catch {
+        if (!cancelled) setHotspots([]);
+      }
+    }
+
+    void loadHotspots();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeScene?.id]);
+
   async function toggleAudio() {
     const audio = audioRef.current;
     if (!audio || !activeScene?.audioUrl) return;
@@ -164,6 +189,18 @@ export default function View360Page() {
 
   function selectScene(sceneId: number) {
     setActiveSceneId(sceneId);
+  }
+
+  function handleHotspotClick(hotspot: View360Hotspot) {
+    if (hotspot.type === "navigation" && hotspot.targetView360Id && experiences.some((scene) => scene.id === hotspot.targetView360Id)) {
+      selectScene(hotspot.targetView360Id);
+      return;
+    }
+    if (hotspot.type === "link" && hotspot.targetUrl) {
+      window.open(hotspot.targetUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setActiveHotspot(hotspot);
   }
 
   function moveScene(direction: -1 | 1) {
@@ -204,6 +241,8 @@ export default function View360Page() {
         key={activeImage.id || activeImage.src}
         imageUrl={activeImage.src}
         autoRotate={autoRotate}
+        hotspots={hotspots}
+        onHotspotClick={handleHotspotClick}
         onLoadingChange={handlePanoramaLoading}
         onError={handlePanoramaError}
       />
@@ -319,6 +358,22 @@ export default function View360Page() {
           </button>
         ))}
       </div>
+
+      {activeHotspot ? (
+        <div className="absolute left-4 right-4 top-24 max-w-sm rounded-lg border border-white/15 bg-black/65 p-4 shadow-2xl backdrop-blur-xl sm:left-6 sm:right-auto">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase text-white/50">{activeHotspot.type}</p>
+              <h3 className="mt-1 text-base font-bold">{activeHotspot.title}</h3>
+            </div>
+            <button type="button" onClick={() => setActiveHotspot(null)} className="grid size-8 place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close hotspot">×</button>
+          </div>
+          {activeHotspot.description ? <p className="mt-3 text-sm leading-6 text-white/70">{activeHotspot.description}</p> : null}
+          {activeHotspot.targetView360Id && activeHotspot.type !== "navigation" ? (
+            <button type="button" onClick={() => selectScene(activeHotspot.targetView360Id ?? activeScene.id)} className="mt-4 h-10 rounded-lg bg-white px-4 text-sm font-bold text-slate-950">Open Scene</button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? <div className="absolute left-1/2 top-20 -translate-x-1/2 rounded-lg border border-rose-300/30 bg-rose-950/80 px-4 py-3 text-sm font-semibold backdrop-blur-md">{error}</div> : null}
       <audio

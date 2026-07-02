@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Headphones, ImagePlus, Languages, Music, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Video, X } from "lucide-react";
+import { Headphones, ImagePlus, Languages, MapPin, Music, Pencil, Plus, RefreshCw, Save, Search, Trash2, Upload, Video, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -10,9 +10,12 @@ import { adminLocationService, getLocationId, type AdminLocation } from "@/servi
 import {
   adminView360Service,
   getView360Audio,
+  getView360HotspotId,
   getView360Id,
   getView360ImageId,
   getView360ImageSrc,
+  type AdminView360Hotspot,
+  type AdminView360HotspotPayload,
   type AdminView360,
   type AdminView360Image,
   type AdminView360Payload
@@ -310,6 +313,7 @@ export default function AdminView360Page() {
         <ExperienceForm
           key={editing ? getView360Id(editing) : "create"}
           initialValue={editing ? editingInitialValue : createInitialValue}
+          viewId={editing ? getView360Id(editing) : 0}
           title={editing ? "Edit View360" : "Create View360"}
           locations={locations}
           saving={saving}
@@ -326,6 +330,7 @@ export default function AdminView360Page() {
             setCreating(false);
             setFieldErrors({});
           }}
+          sceneOptions={items}
           onSave={save}
         />
       ) : null}
@@ -338,6 +343,7 @@ export default function AdminView360Page() {
 function ExperienceForm({
   title,
   initialValue,
+  viewId,
   locations,
   saving,
   editing,
@@ -345,10 +351,12 @@ function ExperienceForm({
   onSetFieldErrors,
   onClearFieldError,
   onClose,
+  sceneOptions,
   onSave
 }: {
   title: string;
   initialValue: FormValue;
+  viewId: number;
   locations: AdminLocation[];
   saving: boolean;
   editing: boolean;
@@ -356,6 +364,7 @@ function ExperienceForm({
   onSetFieldErrors: (errors: View360FieldErrors) => void;
   onClearFieldError: (field: View360FieldName) => void;
   onClose: () => void;
+  sceneOptions: View360Row[];
   onSave: (payload: FormValue) => void;
 }) {
   const [form, setForm] = useState(initialValue);
@@ -422,6 +431,11 @@ function ExperienceForm({
             onClearFieldError("images");
             setForm({ ...form, images });
           }} />
+          {editing ? <HotspotsEditor viewId={viewId} images={form.images.filter((image) => !image.removed)} sceneOptions={sceneOptions} /> : (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Save this View360 first, then edit it again to add interactive hotspots.
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -431,6 +445,293 @@ function ExperienceForm({
       </form>
     </div>
   );
+}
+
+const emptyHotspotForm = {
+  type: "info",
+  title: "",
+  description: "",
+  yaw: "0",
+  pitch: "0",
+  target_view360_id: "",
+  target_url: "",
+  order_index: "0",
+  is_active: true
+};
+
+type HotspotFormValue = typeof emptyHotspotForm;
+
+function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; images: ImageDraft[]; sceneOptions: View360Row[] }) {
+  const [hotspots, setHotspots] = useState<AdminView360Hotspot[]>([]);
+  const [form, setForm] = useState<HotspotFormValue>(emptyHotspotForm);
+  const [editingHotspotId, setEditingHotspotId] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const showToast = useToast();
+
+  const loadHotspots = useCallback(async () => {
+    if (!viewId) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const result = await adminView360Service.listHotspots(viewId);
+      setHotspots(result);
+    } catch {
+      setMessage("Cannot load hotspots for this View360.");
+    } finally {
+      setLoading(false);
+    }
+  }, [viewId]);
+
+  useEffect(() => {
+    void loadHotspots();
+  }, [loadHotspots]);
+
+  function resetForm() {
+    setForm(emptyHotspotForm);
+    setEditingHotspotId(0);
+  }
+
+  function changeType(type: string) {
+    setForm({
+      ...form,
+      type,
+      target_view360_id: type === "navigation" ? form.target_view360_id : "",
+      target_url: type === "link" ? form.target_url : ""
+    });
+  }
+
+  function editHotspot(hotspot: AdminView360Hotspot) {
+    setEditingHotspotId(getView360HotspotId(hotspot));
+    setForm({
+      type: hotspot.type ?? "info",
+      title: hotspot.title ?? "",
+      description: hotspot.description ?? "",
+      yaw: hotspot.yaw == null ? "0" : String(hotspot.yaw),
+      pitch: hotspot.pitch == null ? "0" : String(hotspot.pitch),
+      target_view360_id: hotspot.target_view360_id == null ? "" : String(hotspot.target_view360_id),
+      target_url: hotspot.target_url ?? "",
+      order_index: hotspot.order_index == null ? "0" : String(hotspot.order_index),
+      is_active: hotspot.is_active !== false
+    });
+  }
+
+  function toPayload(): AdminView360HotspotPayload | null {
+    const yaw = Number(form.yaw);
+    const pitch = Number(form.pitch);
+    const orderIndex = Number(form.order_index || 0);
+    if (!Number.isFinite(yaw) || yaw < -180 || yaw > 360) {
+      setMessage("Yaw must be a number between -180 and 360.");
+      return null;
+    }
+    if (!Number.isFinite(pitch) || pitch < -90 || pitch > 90) {
+      setMessage("Pitch must be a number between -90 and 90.");
+      return null;
+    }
+    return {
+      type: form.type as AdminView360HotspotPayload["type"],
+      title: form.title.trim() || null,
+      description: form.description.trim() || null,
+      yaw,
+      pitch,
+      target_view360_id: form.target_view360_id ? Number(form.target_view360_id) : null,
+      target_url: form.target_url.trim() || null,
+      order_index: Number.isFinite(orderIndex) ? orderIndex : 0,
+      is_active: form.is_active
+    };
+  }
+
+  async function saveHotspot() {
+    const payload = toPayload();
+    if (!payload) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      if (editingHotspotId) {
+        await adminView360Service.updateHotspot(editingHotspotId, payload);
+        showToast({ variant: "success", title: "Hotspot updated", description: payload.title ?? "Interactive point" });
+      } else {
+        await adminView360Service.createHotspot(viewId, payload);
+        showToast({ variant: "success", title: "Hotspot created", description: payload.title ?? "Interactive point" });
+      }
+      resetForm();
+      await loadHotspots();
+    } catch (err) {
+      const errorMessage = getBackendErrorMessage(err, "Cannot save hotspot.");
+      setMessage(errorMessage);
+      showToast({ variant: "error", title: "Hotspot save failed", description: errorMessage });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteHotspot(hotspot: AdminView360Hotspot) {
+    const hotspotId = getView360HotspotId(hotspot);
+    if (!hotspotId) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      await adminView360Service.removeHotspot(hotspotId);
+      if (editingHotspotId === hotspotId) resetForm();
+      await loadHotspots();
+      showToast({ variant: "success", title: "Hotspot deleted", description: hotspot.title ?? "Interactive point" });
+    } catch (err) {
+      const errorMessage = getBackendErrorMessage(err, "Cannot delete hotspot.");
+      setMessage(errorMessage);
+      showToast({ variant: "error", title: "Delete failed", description: errorMessage });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function placeHotspot(event: React.MouseEvent<HTMLButtonElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+    const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+    const yaw = x * 360;
+    const pitch = 90 - y * 180;
+    setForm({
+      ...form,
+      yaw: yaw.toFixed(1),
+      pitch: pitch.toFixed(1)
+    });
+  }
+
+  const previewImage = images[0]?.src ?? "";
+  const draftMarker = toMarkerPosition(Number(form.yaw), Number(form.pitch));
+
+  return (
+    <section className="rounded-lg border border-slate-200 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-bold">Interactive Hotspots</h3>
+          <p className="mt-1 text-xs font-normal text-slate-500">Use yaw and pitch to place pins inside the 360 scene.</p>
+        </div>
+        <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{hotspots.length} points</span>
+      </div>
+
+      {message ? <div className="mt-3 rounded-md bg-amber-50 p-3 text-xs font-semibold text-amber-700">{message}</div> : null}
+
+      <div className="mt-4">
+        <p className="mb-2 text-sm font-semibold">Place on Panorama</p>
+        {previewImage ? (
+          <button
+            type="button"
+            onClick={placeHotspot}
+            className="relative block aspect-[2/1] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-left"
+          >
+            <img src={previewImage} alt="" className="h-full w-full object-cover" />
+            {hotspots.map((hotspot) => {
+              const marker = toMarkerPosition(Number(hotspot.yaw ?? 0), Number(hotspot.pitch ?? 0));
+              return (
+                <span
+                  key={getView360HotspotId(hotspot)}
+                  className="absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white bg-brand-600 text-white shadow-lg"
+                  style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+                  title={hotspot.title ?? "Hotspot"}
+                >
+                  <MapPin size={14} />
+                </span>
+              );
+            })}
+            <span
+              className="absolute grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white bg-rose-600 text-white shadow-lg ring-4 ring-rose-500/25"
+              style={{ left: `${draftMarker.x}%`, top: `${draftMarker.y}%` }}
+            >
+              <MapPin size={15} />
+            </span>
+            <span className="absolute bottom-3 left-3 rounded-md bg-black/65 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+              Click on the panorama to set yaw/pitch
+            </span>
+          </button>
+        ) : (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+            Upload at least one View360 image to place hotspots visually.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Field label="Type">
+          <select value={form.type} onChange={(event) => changeType(event.target.value)} className="input">
+            <option value="info">Info</option>
+            <option value="navigation">Navigation</option>
+            <option value="link">Link</option>
+            <option value="location">Location</option>
+          </select>
+        </Field>
+        <Field label="Title">
+          <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="input" placeholder="Main gate" />
+        </Field>
+        {form.type === "navigation" ? (
+          <Field label="Target Scene">
+            <select value={form.target_view360_id} onChange={(event) => setForm({ ...form, target_view360_id: event.target.value })} className="input">
+              <option value="">Select scene to open</option>
+              {sceneOptions.filter((scene) => getView360Id(scene) !== viewId).map((scene) => (
+                <option key={getView360Id(scene)} value={getView360Id(scene)}>
+                  #{getView360Id(scene)} · {scene.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : null}
+        {form.type === "link" ? (
+          <Field label="Target URL">
+            <input value={form.target_url} onChange={(event) => setForm({ ...form, target_url: event.target.value })} className="input" placeholder="https://example.com" />
+          </Field>
+        ) : null}
+        <Field label="Order Index">
+          <input type="number" min="0" value={form.order_index} onChange={(event) => setForm({ ...form, order_index: event.target.value })} className="input" />
+        </Field>
+        <Field label="Coordinates">
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input readOnly value={`Yaw ${form.yaw}`} className="input bg-slate-50 text-slate-500" />
+            <input readOnly value={`Pitch ${form.pitch}`} className="input bg-slate-50 text-slate-500" />
+          </div>
+        </Field>
+        <label className="mt-7 inline-flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} className="size-4 rounded border-slate-300" />
+          Active
+        </label>
+      </div>
+      <Field label="Description">
+        <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input min-h-20 py-3" />
+      </Field>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        {editingHotspotId ? <Button type="button" variant="outline" onClick={resetForm}>New Hotspot</Button> : null}
+        <Button type="button" disabled={saving} onClick={() => void saveHotspot()}><Save size={16} /> {saving ? "Saving..." : editingHotspotId ? "Update Hotspot" : "Add Hotspot"}</Button>
+      </div>
+
+      <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        {loading ? <p className="p-4 text-sm text-slate-500">Loading hotspots...</p> : null}
+        {!loading && hotspots.length === 0 ? <p className="p-4 text-sm text-slate-500">No hotspots yet.</p> : null}
+        {hotspots.map((hotspot) => (
+          <div key={getView360HotspotId(hotspot)} className="flex items-center gap-3 p-3">
+            <span className="grid size-9 place-items-center rounded-lg bg-brand-50 text-brand-600"><MapPin size={16} /></span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold">{hotspot.title || "Untitled hotspot"}</p>
+              <p className="text-xs text-slate-500">{hotspot.type ?? "info"} · yaw {hotspot.yaw ?? 0} · pitch {hotspot.pitch ?? 0}</p>
+            </div>
+            <Button type="button" variant="outline" className="h-9 px-3" onClick={() => editHotspot(hotspot)}><Pencil size={14} /> Edit</Button>
+            <button type="button" onClick={() => void deleteHotspot(hotspot)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label="Delete hotspot"><Trash2 size={15} /></button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function toMarkerPosition(yaw: number, pitch: number) {
+  const safeYaw = Number.isFinite(yaw) ? yaw : 0;
+  const safePitch = Number.isFinite(pitch) ? pitch : 0;
+  const normalizedYaw = ((safeYaw % 360) + 360) % 360;
+  const clampedPitch = Math.max(-90, Math.min(90, safePitch));
+  return {
+    x: (normalizedYaw / 360) * 100,
+    y: ((90 - clampedPitch) / 180) * 100
+  };
 }
 
 function UploadAudio({ value, message, onChange }: { value: string; message?: string; onChange: (preview: string, file: File | null) => void }) {
