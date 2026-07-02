@@ -8,7 +8,7 @@ import type { DestinationRelatedItem, PublicTravelDestination } from "@/services
 import type { Destination } from "@/types";
 import { getPlainTextFromHtml } from "@/utils/html";
 
-const tabs = ["Overview", "Things to Do", "Tours", "360 Experience", "Map", "Reviews", "Travel Guide"] as const;
+const tabs = ["Overview", "Locations", "Tours", "360 Experience", "Map", "Reviews", "Travel Guide"] as const;
 
 type Tab = (typeof tabs)[number];
 
@@ -42,7 +42,7 @@ export function DestinationTabs({
 
       <div className="mt-7">
         {activeTab === "Overview" ? <OverviewTab destination={destination} detail={detail} /> : null}
-        {activeTab === "Things to Do" ? <LocationsTab destination={destination} locations={detail.locations ?? []} /> : null}
+        {activeTab === "Locations" ? <LocationsTab destination={destination} locations={detail.locations ?? []} /> : null}
         {activeTab === "Tours" ? <ToursTab destination={destination} tours={detail.tours ?? []} /> : null}
         {activeTab === "360 Experience" ? <ExperienceTab destination={destination} scenes={detail.view360 ?? []} /> : null}
         {activeTab === "Map" ? <MapsTab destination={destination} maps={detail.maps ?? []} /> : null}
@@ -105,7 +105,7 @@ function LocationsTab({ destination, locations }: { destination: Destination; lo
 
   return (
     <div>
-      <h2 className="text-xl font-bold">Things to Do in {destination.name}</h2>
+      <h2 className="text-xl font-bold">Locations in {destination.name}</h2>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         {locations.map((location, index) => {
           const id = readId(location, ["location_id", "id"]);
