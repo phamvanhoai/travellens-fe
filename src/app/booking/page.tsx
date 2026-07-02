@@ -199,6 +199,11 @@ export default function BookingPage() {
 
       showToast({ variant: "success", title: "Booking created", description: "Your booking was created successfully." });
       if (bookingId) {
+        if (finalTotal <= 0) {
+          showToast({ variant: "info", title: "No payment required", description: "This booking total is 0 VND." });
+          router.push("/dashboard/bookings");
+          return;
+        }
         router.push(`/payment/checkout?bookingId=${String(bookingId)}`);
         return;
       }

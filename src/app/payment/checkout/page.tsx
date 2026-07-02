@@ -8,6 +8,11 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import {
+  bookingService,
+  getCustomerBookingAmount,
+  getCustomerBookingPaymentStatus
+} from "@/services/booking.service";
+import {
   getCustomerPaymentCode,
   getCustomerPaymentId,
   paymentService,
@@ -33,6 +38,7 @@ function PaymentCheckoutContent() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [bookingProcessed, setBookingProcessed] = useState(false);
+  const [noPaymentRequired, setNoPaymentRequired] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const showToast = useToast();
 
@@ -52,7 +58,21 @@ function PaymentCheckoutContent() {
       setLoading(true);
       setError("");
       setBookingProcessed(false);
+      setNoPaymentRequired(false);
       try {
+        const booking = await bookingService.detail(Number(id)).catch(() => null);
+        if (booking) {
+          const amount = getCustomerBookingAmount(booking);
+          const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "").toLowerCase();
+          const bookingStatus = (booking.status ?? "").toLowerCase();
+          if (amount <= 0 || ["paid", "completed"].includes(paymentStatus) || ["confirmed", "completed"].includes(bookingStatus)) {
+            setNoPaymentRequired(amount <= 0);
+            setBookingProcessed(amount > 0);
+            setError("");
+            return;
+          }
+        }
+
         const existingPaymentId = Number(queryPaymentId) || getStoredPaymentId(id);
         if (existingPaymentId) {
           const existingPayment = await paymentService.detail(existingPaymentId);
@@ -149,6 +169,19 @@ function PaymentCheckoutContent() {
   }
 
   if (error || !payment) {
+    if (noPaymentRequired) {
+      return (
+        <section className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6 lg:px-8">
+          <CheckCircle2 className="mx-auto size-16 text-emerald-600" />
+          <h1 className="mt-5 text-3xl font-bold">No Payment Required</h1>
+          <p className="mt-3 text-slate-600">This booking total is 0 VND, so no payment checkout is needed.</p>
+          <div className="mt-8 flex justify-center gap-3">
+            <Button href="/dashboard/bookings" variant="outline">My Bookings</Button>
+          </div>
+        </section>
+      );
+    }
+
     if (bookingProcessed) {
       return (
         <section className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6 lg:px-8">
