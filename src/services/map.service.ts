@@ -9,6 +9,17 @@ export type TravelMapParams = {
   keyword?: string;
 };
 
+export type TravelMapFilterParams = {
+  destination_category_id?: number;
+  has_view360?: boolean;
+  min_rating?: number;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  nearby_only?: boolean;
+  popular_only?: boolean;
+};
+
 export type TravelMapMarker = {
   id: string;
   sourceId?: number | string;
@@ -147,7 +158,7 @@ export const mapService = {
     const response = await api.get("/maps/nearby", { params });
     return normalizeMarkers(response.data);
   },
-  async filter(params: Record<string, string | number | boolean | undefined>) {
+  async filter(params: TravelMapFilterParams = {}) {
     const response = await api.get("/maps/filter", { params });
     return normalizeMarkers(response.data);
   }

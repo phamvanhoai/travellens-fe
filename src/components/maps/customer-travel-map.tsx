@@ -5,7 +5,8 @@ import L, { type LatLngExpression } from "leaflet";
 import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { LocateFixed, MapPin, RefreshCw, Search, Star, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { mapService, type TravelMapMarker, type TravelMapParams } from "@/services/map.service";
+import { destinationService, type PublicDestinationCategory } from "@/services/destination.service";
+import { mapService, type TravelMapFilterParams, type TravelMapMarker } from "@/services/map.service";
 
 const defaultCenter: LatLngExpression = [10.7769, 106.7009];
 
@@ -40,51 +41,66 @@ function MapBounds({ markers, userPosition }: { markers: TravelMapMarker[]; user
 
 export default function CustomerTravelMap() {
   const [markers, setMarkers] = useState<TravelMapMarker[]>([]);
+  const [categories, setCategories] = useState<PublicDestinationCategory[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [category, setCategory] = useState("");
+  const [destinationCategoryId, setDestinationCategoryId] = useState("");
+  const [hasView360, setHasView360] = useState("");
+  const [minRating, setMinRating] = useState("");
+  const [popularOnly, setPopularOnly] = useState(false);
   const [radius, setRadius] = useState("5");
   const [userPosition, setUserPosition] = useState<LatLngExpression | null>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
 
-  const categories = useMemo(() => {
-    const values = markers.map((marker) => marker.category).filter((value): value is string => Boolean(value));
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-  }, [markers]);
+  const visibleMarkers = useMemo(() => {
+    const normalizedKeyword = keyword.toLowerCase();
+    if (!normalizedKeyword) return markers;
+    return markers.filter((marker) => `${marker.name} ${marker.description ?? ""} ${marker.category ?? ""}`.toLowerCase().includes(normalizedKeyword));
+  }, [keyword, markers]);
 
-  async function loadMapData(overrides: Partial<TravelMapParams> = {}) {
+  async function loadMapData(overrides: Partial<TravelMapFilterParams> = {}) {
     setLoading(true);
     setError("");
 
     try {
       const [lat, lng] = Array.isArray(userPosition) ? userPosition : [];
-      const params: TravelMapParams = {
-        keyword: keyword || undefined,
-        category: category || undefined,
+      const params: TravelMapFilterParams = {
+        destination_category_id: destinationCategoryId ? Number(destinationCategoryId) : undefined,
+        has_view360: hasView360 === "" ? undefined : hasView360 === "true",
+        min_rating: minRating ? Number(minRating) : undefined,
+        popular_only: popularOnly || undefined,
         lat: typeof lat === "number" ? lat : undefined,
         lng: typeof lng === "number" ? lng : undefined,
         radius: typeof lat === "number" && typeof lng === "number" ? Number(radius) || 5 : undefined,
+        nearby_only: typeof lat === "number" && typeof lng === "number" ? true : undefined,
         ...overrides
       };
 
-      setMarkers(await mapService.travel(params));
+      setMarkers(await mapService.filter(params));
     } catch (err) {
-      setError("Cannot load travel map data from API.");
+      setError("Cannot filter map markers from API.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    destinationService.categories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
     void loadMapData();
   }, []);
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault();
     setKeyword(keywordInput.trim());
-    void loadMapData({ keyword: keywordInput.trim() || undefined });
+    void loadMapData();
+  }
+
+  function getCategoryId(category: PublicDestinationCategory) {
+    return category.destination_category_id ?? category.id ?? 0;
   }
 
   function useCurrentLocation() {
@@ -138,16 +154,60 @@ export default function CustomerTravelMap() {
           <label className="block text-sm font-semibold">
             Category
             <select
-              value={category}
+              value={destinationCategoryId}
               onChange={(event) => {
-                setCategory(event.target.value);
-                void loadMapData({ category: event.target.value || undefined });
+                setDestinationCategoryId(event.target.value);
+                void loadMapData({ destination_category_id: event.target.value ? Number(event.target.value) : undefined });
               }}
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
             >
               <option value="">All categories</option>
-              {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+              {categories.map((item) => <option key={getCategoryId(item)} value={getCategoryId(item)}>{item.name}</option>)}
             </select>
+          </label>
+
+          <label className="block text-sm font-semibold">
+            View360
+            <select
+              value={hasView360}
+              onChange={(event) => {
+                setHasView360(event.target.value);
+                void loadMapData({ has_view360: event.target.value === "" ? undefined : event.target.value === "true" });
+              }}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+            >
+              <option value="">Any</option>
+              <option value="true">Has 360</option>
+              <option value="false">No 360</option>
+            </select>
+          </label>
+
+          <label className="block text-sm font-semibold">
+            Minimum rating
+            <select
+              value={minRating}
+              onChange={(event) => {
+                setMinRating(event.target.value);
+                void loadMapData({ min_rating: event.target.value ? Number(event.target.value) : undefined });
+              }}
+              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+            >
+              <option value="">Any rating</option>
+              {["3", "4", "4.5", "5"].map((item) => <option key={item} value={item}>{item}+ stars</option>)}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={popularOnly}
+              onChange={(event) => {
+                setPopularOnly(event.target.checked);
+                void loadMapData({ popular_only: event.target.checked || undefined });
+              }}
+              className="size-4 rounded border-slate-300 text-brand-600"
+            />
+            Popular only
           </label>
 
           <label className="block text-sm font-semibold">
@@ -176,9 +236,9 @@ export default function CustomerTravelMap() {
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
 
         <div className="mt-5 border-t border-slate-100 pt-5">
-          <p className="text-sm font-bold">{loading ? "Loading..." : `${markers.length} places found`}</p>
+          <p className="text-sm font-bold">{loading ? "Loading..." : `${visibleMarkers.length} places found`}</p>
           <div className="mt-3 max-h-[360px] space-y-3 overflow-auto pr-1">
-            {markers.map((marker) => (
+            {visibleMarkers.map((marker) => (
               <a key={marker.id} href={marker.type === "location" ? `/locations/${marker.sourceId}` : `/destinations/${marker.sourceId}`} className="block rounded-lg border border-slate-200 p-3 hover:border-brand-500">
                 <span className="flex items-start gap-3">
                   {marker.imageUrl ? <img src={marker.imageUrl} alt="" className="size-12 rounded-md object-cover" /> : <span className="grid size-12 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={18} /></span>}
@@ -194,7 +254,7 @@ export default function CustomerTravelMap() {
                 </span>
               </a>
             ))}
-            {!loading && markers.length === 0 ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No map markers found.</p> : null}
+            {!loading && visibleMarkers.length === 0 ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No map markers found.</p> : null}
           </div>
         </div>
       </aside>
@@ -215,8 +275,8 @@ export default function CustomerTravelMap() {
               />
             </LayersControl.BaseLayer>
           </LayersControl>
-          <MapBounds markers={markers} userPosition={userPosition} />
-          {markers.map((marker) => (
+          <MapBounds markers={visibleMarkers} userPosition={userPosition} />
+          {visibleMarkers.map((marker) => (
             <Marker key={marker.id} icon={markerIcon} position={[marker.latitude, marker.longitude]}>
               <Popup>
                 <div className="w-56">
