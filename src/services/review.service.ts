@@ -61,6 +61,14 @@ export const reviewService = {
     const response = await api.post(`/locations/${locationId}/reviews`, payload);
     return unwrapData<CustomerReview>(response.data);
   },
+  async updateForLocation(locationId: number, reviewId: number, payload: { rating: number; comment: string }) {
+    const response = await api.put(`/locations/${locationId}/reviews/${reviewId}`, payload);
+    return unwrapData<CustomerReview>(response.data);
+  },
+  async deleteForLocation(locationId: number, reviewId: number) {
+    const response = await api.delete(`/locations/${locationId}/reviews/${reviewId}`);
+    return unwrapData<unknown>(response.data);
+  },
   async uploadPhotos(reviewId: number, photos: File[]) {
     const formData = new FormData();
     photos.forEach((photo) => formData.append("photos", photo));
