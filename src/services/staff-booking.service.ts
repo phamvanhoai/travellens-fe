@@ -113,6 +113,42 @@ export type StaffBookingUpdatePayload = {
   infants?: number;
 };
 
+export type StaffBookingCreatePassengerPayload = {
+  passenger_name: string;
+  age_category: "adult" | "child" | "infant";
+  seat_number?: string;
+  special_request?: string;
+};
+
+export type StaffBookingCreatePayload = {
+  user_id: number;
+  tour_id: number;
+  contact_phone?: string | null;
+  travel_date: string;
+  departure_at?: string | null;
+  coupon_code?: string | null;
+  passengers: StaffBookingCreatePassengerPayload[];
+};
+
+export type StaffCustomer = {
+  user_id?: number;
+  id?: number;
+  name?: string;
+  full_name?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string | null;
+  role?: string;
+  status?: string;
+};
+
+export type StaffCustomerLookupResult = {
+  exists?: boolean;
+  reason?: "not_found" | "not_customer" | "inactive" | string | null;
+  message?: string | null;
+  customer?: StaffCustomer | null;
+};
+
 type ListResponse = {
   data: StaffBooking[];
   pagination?: {
@@ -194,6 +230,25 @@ function unwrapBooking(responseData: unknown) {
 
   const passengers = wrapper.passengers ?? wrapper.Passengers ?? wrapper.booking_details ?? wrapper.bookingDetails ?? wrapper.BookingDetail ?? wrapper.BookingDetails ?? wrapper.details;
   return { ...wrapper.booking, ...(passengers ? { passengers } : {}) };
+}
+
+function unwrapCustomer(responseData: unknown) {
+  const data = unwrapData<unknown>(responseData as { data?: unknown });
+  if (!data || typeof data !== "object") return { exists: false, message: "Customer lookup returned an invalid response.", customer: null };
+
+  const wrapper = data as {
+    exists?: boolean;
+    reason?: string | null;
+    message?: string | null;
+    customer?: StaffCustomer | null;
+    user?: StaffCustomer | null;
+    data?: StaffCustomerLookupResult | StaffCustomer;
+  };
+
+  if ("exists" in wrapper || "customer" in wrapper) return data as StaffCustomerLookupResult;
+
+  const customer = wrapper.user ?? wrapper.data as StaffCustomer | undefined ?? data as StaffCustomer;
+  return { exists: Boolean(customer?.user_id ?? customer?.id), customer };
 }
 
 export function getStaffBookingId(booking: StaffBooking) {
@@ -290,6 +345,14 @@ export function getStaffBookingTravelDate(booking: StaffBooking) {
 }
 
 export const staffBookingService = {
+  async lookupCustomer(email: string) {
+    const response = await api.get("/staff/customers/lookup", { params: { email } });
+    return unwrapCustomer(response.data);
+  },
+  async create(payload: StaffBookingCreatePayload) {
+    const response = await api.post("/staff/bookings", payload);
+    return unwrapBooking(response.data);
+  },
   async list(params: StaffBookingListParams = {}) {
     const response = await api.get("/staff/bookings", { params });
     return unwrapList(response.data);
