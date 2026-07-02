@@ -1,29 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { MapPin } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import type { View360Hotspot } from "@/services/view360.service";
 
 export function PanoramaViewer({
   imageUrl,
   autoRotate,
+  hotspots = [],
+  onHotspotClick,
   onLoadingChange,
   onError
 }: {
   imageUrl: string;
   autoRotate: boolean;
+  hotspots?: View360Hotspot[];
+  onHotspotClick?: (hotspot: View360Hotspot) => void;
   onLoadingChange: (loading: boolean) => void;
   onError: (message: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const autoRotateRef = useRef(autoRotate);
+  const hotspotsRef = useRef(hotspots);
+  const [hotspotPositions, setHotspotPositions] = useState<Array<{ id: number; x: number; y: number; visible: boolean }>>([]);
 
   useEffect(() => {
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
 
   useEffect(() => {
+    hotspotsRef.current = hotspots;
+  }, [hotspots]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const viewerContainer = container;
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -58,6 +71,7 @@ export function PanoramaViewer({
     let startLatitude = 0;
     let frameId = 0;
     let texture: THREE.Texture | null = null;
+    let hotspotFrameCount = 0;
 
     onLoadingChange(true);
     const loader = new THREE.TextureLoader();
@@ -91,7 +105,37 @@ export function PanoramaViewer({
         100 * Math.cos(phi),
         100 * Math.sin(phi) * Math.sin(theta)
       );
+      camera.updateMatrixWorld();
+      hotspotFrameCount += 1;
+      if (hotspotFrameCount % 2 === 0) updateHotspotPositions();
       renderer.render(scene, camera);
+    }
+
+    function updateHotspotPositions() {
+      const width = viewerContainer.clientWidth;
+      const height = Math.max(viewerContainer.clientHeight, 1);
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+
+      setHotspotPositions(hotspotsRef.current.map((hotspot) => {
+        const hotspotPhi = THREE.MathUtils.degToRad(90 - hotspot.pitch);
+        const hotspotTheta = THREE.MathUtils.degToRad(hotspot.yaw);
+        const worldPosition = new THREE.Vector3(
+          100 * Math.sin(hotspotPhi) * Math.cos(hotspotTheta),
+          100 * Math.cos(hotspotPhi),
+          100 * Math.sin(hotspotPhi) * Math.sin(hotspotTheta)
+        );
+        const direction = worldPosition.clone().normalize();
+        const projected = worldPosition.clone().project(camera);
+        const visible = cameraDirection.dot(direction) > 0 && projected.x >= -1.08 && projected.x <= 1.08 && projected.y >= -1.08 && projected.y <= 1.08;
+
+        return {
+          id: hotspot.id,
+          x: ((projected.x + 1) / 2) * width,
+          y: ((-projected.y + 1) / 2) * height,
+          visible
+        };
+      }));
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -151,5 +195,27 @@ export function PanoramaViewer({
     };
   }, [imageUrl, onError, onLoadingChange]);
 
-  return <div ref={containerRef} className="absolute inset-0 bg-black" />;
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-black">
+      <div className="pointer-events-none absolute inset-0">
+        {hotspots.map((hotspot) => {
+          const position = hotspotPositions.find((item) => item.id === hotspot.id);
+          if (!position?.visible) return null;
+          return (
+            <button
+              key={hotspot.id}
+              type="button"
+              onClick={() => onHotspotClick?.(hotspot)}
+              className="pointer-events-auto absolute grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-brand-600 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)] ring-4 ring-white/20 transition hover:scale-110 hover:bg-brand-500"
+              style={{ left: position.x, top: position.y }}
+              title={hotspot.title}
+              aria-label={hotspot.title}
+            >
+              <MapPin size={19} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
