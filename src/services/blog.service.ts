@@ -4,6 +4,8 @@ export type CustomerBlog = {
   blog_id?: number;
   id?: number;
   user_id?: number;
+  category_ids?: Array<number | string>;
+  categories?: Array<{ blog_category_id?: number; id?: number; name?: string }>;
   title: string;
   content?: string;
   excerpt?: string | null;
@@ -26,6 +28,7 @@ export type CustomerBlog = {
 
 export type CustomerBlogPayload = {
   user_id: number;
+  category_ids?: number[];
   title: string;
   content: string;
   location_ids: number[];
@@ -103,6 +106,8 @@ export function getCustomerBlogUserId(blog: CustomerBlog) { return blog.user_id 
 export function getCustomerBlogAuthor(blog: CustomerBlog) { return blog.user_name ?? blog.author_name ?? blog.user?.name ?? blog.User?.name ?? "Travel360 traveler"; }
 export function getCustomerBlogLocationIds(blog: CustomerBlog) { if (Array.isArray(blog.location_ids)) return blog.location_ids.map(Number).filter(Boolean); return [...(blog.locations ?? []), ...(blog.Locations ?? [])].map((location) => location.location_id ?? location.id ?? 0).filter(Boolean); }
 export function getCustomerBlogLocations(blog: CustomerBlog) { return [...(blog.locations ?? []), ...(blog.Locations ?? [])]; }
+export function getCustomerBlogCategoryIds(blog: CustomerBlog) { if (Array.isArray(blog.category_ids)) return blog.category_ids.map(Number).filter(Boolean); return (blog.categories ?? []).map((category) => Number(category.blog_category_id ?? category.id ?? 0)).filter(Boolean); }
+export function getCustomerBlogCategoryNames(blog: CustomerBlog) { return (blog.categories ?? []).map((category) => category.name).filter((name): name is string => Boolean(name)); }
 export function getCustomerBlogImage(blog: CustomerBlog, fallback: string) {
   return blog.thumbnail_url ?? blog.thumbnail ?? blog.image_url ?? blog.image ?? extractFirstImage(blog.content) ?? fallback;
 }

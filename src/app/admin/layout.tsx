@@ -16,6 +16,7 @@ const links = [
   [CalendarCheck, "Bookings", "/admin/bookings"],
   [CreditCard, "Payments", "/admin/payments"],
   [Newspaper, "Blogs", "/admin/blogs"],
+  [Tags, "Blog Categories", "/admin/blog-categories"],
   [MessageSquareText, "Reviews", "/admin/reviews"],
   [Users, "Users", "/admin/users"],
   [BarChart3, "Statistics", "/admin/statistics"]
