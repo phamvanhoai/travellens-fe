@@ -10,6 +10,8 @@ import { getRichTextPlainText, RichTextEditor } from "@/components/admin/rich-te
 import { Button } from "@/components/ui/button";
 import {
   adminBlogService,
+  getAdminBlogCategoryIds,
+  getAdminBlogCategoryNames,
   getAdminBlogAuthorName,
   getAdminBlogId,
   getAdminBlogLocationIds,
@@ -20,24 +22,27 @@ import {
 } from "@/services/admin-blog.service";
 import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import { adminUserService, getAdminUserId, type AdminUser } from "@/services/admin-user.service";
+import { adminBlogCategoryService, getBlogCategoryId, type BlogCategory } from "@/services/blog-category.service";
 
 type BlogFormValue = {
   user_id: string;
+  category_ids: string[];
   title: string;
   content: string;
   location_ids: string[];
 };
 
-type BlogFieldName = "user_id" | "title" | "content" | "location_ids";
+type BlogFieldName = "user_id" | "category_ids" | "title" | "content" | "location_ids";
 type BlogFieldErrors = Partial<Record<BlogFieldName, string>>;
 
-const emptyBlog: BlogFormValue = { user_id: "", title: "", content: "", location_ids: [] };
+const emptyBlog: BlogFormValue = { user_id: "", category_ids: [], title: "", content: "", location_ids: [] };
 const pageSize = 5;
 
 export default function AdminBlogsPage() {
   const [items, setItems] = useState<AdminBlog[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [locations, setLocations] = useState<AdminLocation[]>([]);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -62,14 +67,16 @@ export default function AdminBlogsPage() {
     setLoading(true);
     setError("");
     try {
-      const [blogs, userResult, locationResult] = await Promise.all([
+      const [blogs, userResult, locationResult, categoryResult] = await Promise.all([
         adminBlogService.list(),
         adminUserService.list({ page: 1, limit: 100, status: "active" }),
-        adminLocationService.list({ page: 1, limit: 100 })
+        adminLocationService.list({ page: 1, limit: 100 }),
+        adminBlogCategoryService.list()
       ]);
       setItems(blogs);
       setUsers(userResult.data ?? []);
       setLocations(locationResult.data ?? []);
+      setCategories(categoryResult);
     } catch (err) {
       const message = getApiError(err, "Cannot load blogs from API.");
       setError(message);
@@ -104,6 +111,7 @@ export default function AdminBlogsPage() {
   async function saveBlog(form: BlogFormValue) {
     const payload: AdminBlogPayload = {
       user_id: Number(form.user_id),
+      category_ids: form.category_ids.map(Number),
       title: form.title.trim(),
       content: form.content.trim(),
       location_ids: form.location_ids.map(Number)
@@ -172,16 +180,17 @@ export default function AdminBlogsPage() {
 
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Blog", "Author", "Locations", "Content", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
+            <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Blog", "Category", "Author", "Locations", "Content", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={6} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading blogs...</td></tr>
-                : paginatedItems.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-slate-500">No blogs found.</td></tr>
+              {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading blogs...</td></tr>
+                : paginatedItems.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No blogs found.</td></tr>
                   : paginatedItems.map((item) => {
                     const names = getAdminBlogLocations(item).map((location) => location.name).filter(Boolean);
                     const fallbackNames = getAdminBlogLocationIds(item).map((id) => locationNames.get(id) ?? `#${id}`);
                     return <tr key={getAdminBlogId(item)} className="border-t border-slate-100">
                       <td className="p-3 font-bold">#{getAdminBlogId(item)}</td>
                       <td className="p-3 font-semibold"><Newspaper className="mr-2 inline size-4 text-brand-600" />{item.title}</td>
+                      <td className="max-w-52 p-3 text-slate-600">{getAdminBlogCategoryNames(item).join(", ") || "Uncategorized"}</td>
                       <td className="p-3">{getAdminBlogAuthorName(item)}</td>
                       <td className="max-w-52 p-3 text-slate-600">{(names.length ? names : fallbackNames).join(", ") || "-"}</td>
                       <td className="max-w-64 truncate p-3 text-slate-600">{getRichTextPlainText(item.content) || "-"}</td>
@@ -194,13 +203,13 @@ export default function AdminBlogsPage() {
         <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="blogs" onPageChange={setPage} />
       </div>
 
-      {creating || editing ? <BlogForm key={editing ? getAdminBlogId(editing) : "create"} initialValue={editing ? toFormValue(editing) : emptyBlog} users={users} locations={locations} saving={saving} onClose={() => { setEditing(null); setCreating(false); }} onSave={saveBlog} /> : null}
+      {creating || editing ? <BlogForm key={editing ? getAdminBlogId(editing) : "create"} initialValue={editing ? toFormValue(editing) : emptyBlog} users={users} locations={locations} categories={categories} saving={saving} onClose={() => { setEditing(null); setCreating(false); }} onSave={saveBlog} /> : null}
       {deleting ? <ConfirmDialog title="Delete blog?" message={`Delete “${deleting.title}”? This action cannot be undone.`} onCancel={() => setDeleting(null)} onConfirm={() => void deleteBlog()} /> : null}
     </>
   );
 }
 
-function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: { initialValue: BlogFormValue; users: AdminUser[]; locations: AdminLocation[]; saving: boolean; onClose: () => void; onSave: (payload: BlogFormValue) => Promise<void> }) {
+function BlogForm({ initialValue, users, locations, categories, saving, onClose, onSave }: { initialValue: BlogFormValue; users: AdminUser[]; locations: AdminLocation[]; categories: BlogCategory[]; saving: boolean; onClose: () => void; onSave: (payload: BlogFormValue) => Promise<void> }) {
   const [form, setForm] = useState(initialValue);
   const [fieldErrors, setFieldErrors] = useState<BlogFieldErrors>({});
   const isEditing = Boolean(initialValue.title);
@@ -219,6 +228,11 @@ function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: {
     setForm((current) => ({ ...current, location_ids: current.location_ids.includes(id) ? current.location_ids.filter((item) => item !== id) : [...current.location_ids, id] }));
   }
 
+  function toggleCategory(id: string) {
+    clearFieldError("category_ids");
+    setForm((current) => ({ ...current, category_ids: current.category_ids.includes(id) ? current.category_ids.filter((item) => item !== id) : [...current.category_ids, id] }));
+  }
+
   return <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"><form noValidate className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => {
     event.preventDefault();
     const nextFieldErrors = validateBlogForm(form);
@@ -230,6 +244,7 @@ function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: {
     <div className="mt-6 grid gap-4">
       <Field label="Title" message={fieldErrors.title}><input value={form.title} onChange={(event) => { clearFieldError("title"); setForm({ ...form, title: event.target.value }); }} className="input" /></Field>
       <Field label="Author" message={fieldErrors.user_id}><select value={form.user_id} onChange={(event) => { clearFieldError("user_id"); setForm({ ...form, user_id: event.target.value }); }} className="input"><option value="">Select an author</option>{users.map((user) => <option key={getAdminUserId(user)} value={getAdminUserId(user)}>{user.name} ({user.email})</option>)}</select></Field>
+      <fieldset><legend className="text-sm font-semibold">Categories</legend><div className={`mt-2 grid max-h-40 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.category_ids ? "border-rose-500" : "border-slate-200"}`}>{categories.length === 0 ? <p className="text-sm text-slate-500">No categories available.</p> : categories.map((category) => { const id = String(getBlogCategoryId(category)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.category_ids.includes(id)} onChange={() => toggleCategory(id)} /><span>{category.name}</span></label>; })}</div>{fieldErrors.category_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.category_ids}</p> : null}</fieldset>
       <RichTextEditor label="Content" placeholder="Write your blog content here..." value={form.content} message={fieldErrors.content} onChange={(content) => { clearFieldError("content"); setForm((current) => ({ ...current, content })); }} />
       <fieldset><legend className="text-sm font-semibold">Locations</legend><div className={`mt-2 grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.location_ids ? "border-rose-500" : "border-slate-200"}`}>{locations.length === 0 ? <p className="text-sm text-slate-500">No locations available.</p> : locations.map((location, index) => { const id = String(getLocationId(location)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.location_ids.includes(id)} onChange={() => toggleLocation(id)} /> <span>{getBlogLocationLabel(location, index, locations)}</span></label>; })}</div>{fieldErrors.location_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.location_ids}</p> : null}</fieldset>
     </div>
@@ -245,6 +260,7 @@ function validateBlogForm(form: BlogFormValue): BlogFieldErrors {
   const errors: BlogFieldErrors = {};
   if (!form.title.trim()) errors.title = "Blog title is required.";
   if (!form.user_id) errors.user_id = "Author is required.";
+  if (form.category_ids.length === 0) errors.category_ids = "Select at least one category.";
   if (!getRichTextPlainText(form.content)) errors.content = "Blog content is required.";
   if (form.location_ids.length === 0) errors.location_ids = "Select at least one location.";
   return errors;
@@ -257,7 +273,7 @@ function getBlogLocationLabel(location: AdminLocation, index: number, locations:
 }
 
 function toFormValue(blog: AdminBlog): BlogFormValue {
-  return { user_id: String(getAdminBlogUserId(blog) || ""), title: blog.title, content: blog.content ?? "", location_ids: getAdminBlogLocationIds(blog).map(String) };
+  return { user_id: String(getAdminBlogUserId(blog) || ""), category_ids: getAdminBlogCategoryIds(blog).map(String), title: blog.title, content: blog.content ?? "", location_ids: getAdminBlogLocationIds(blog).map(String) };
 }
 
 function getApiError(error: unknown, fallback: string) {

@@ -13,15 +13,20 @@ import {
   getCustomerBlogExcerpt,
   getCustomerBlogId,
   getCustomerBlogImage,
+  getCustomerBlogCategoryIds,
+  getCustomerBlogCategoryNames,
   getCustomerBlogLocations,
   type CustomerBlog
 } from "@/services/blog.service";
+import { blogCategoryService, getBlogCategoryId, type BlogCategory } from "@/services/blog-category.service";
 
 const pageSize = 6;
 
 export default function BlogsPage() {
   const [items, setItems] = useState<CustomerBlog[]>([]);
   const [query, setQuery] = useState("");
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [categoryId, setCategoryId] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,11 +47,18 @@ export default function BlogsPage() {
     void loadBlogs();
   }, []);
 
+  useEffect(() => {
+    blogCategoryService.list({ page: 1, limit: 100 }).then(setCategories).catch(() => setCategories([]));
+  }, []);
+
   const visibleItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter((blog) => `${blog.title} ${getCustomerBlogExcerpt(blog, 300)} ${getCustomerBlogAuthor(blog)}`.toLowerCase().includes(normalized));
-  }, [items, query]);
+    return items.filter((blog) => {
+      const matchesCategory = !categoryId || getCustomerBlogCategoryIds(blog).includes(Number(categoryId));
+      const matchesSearch = !normalized || `${blog.title} ${getCustomerBlogExcerpt(blog, 300)} ${getCustomerBlogAuthor(blog)} ${getCustomerBlogCategoryNames(blog).join(" ")}`.toLowerCase().includes(normalized);
+      return matchesCategory && matchesSearch;
+    });
+  }, [items, query, categoryId]);
   const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paginatedBlogs = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -60,7 +72,7 @@ export default function BlogsPage() {
           <span className="mx-2">/</span>
           <span className="text-slate-700">Blogs</span>
         </nav>
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-3 size-5 text-slate-400" />
             <input
@@ -73,6 +85,10 @@ export default function BlogsPage() {
               placeholder="Search stories..."
             />
           </div>
+          <select value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }} className="h-11 min-w-52 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-600" aria-label="Filter by blog category">
+            <option value="">All categories</option>
+            {categories.map((category) => <option key={getBlogCategoryId(category)} value={getBlogCategoryId(category)}>{category.name}</option>)}
+          </select>
         </div>
 
         {error ? (
@@ -97,10 +113,11 @@ export default function BlogsPage() {
                   <Link key={id || blog.title} href={`/blogs/${id}`} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
                     <img src={getCustomerBlogImage(blog, images.balloons)} alt={blog.title} className="h-56 w-full object-cover" />
                     <div className="p-5">
-                      <p className="text-xs font-bold uppercase tracking-wide text-brand-600">{locations[0] ?? "Travel guide"}</p>
+                      <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-brand-600">{getCustomerBlogCategoryNames(blog).join(" / ") || "Travel guide"}</p>
                       <h2 className="mt-2 text-xl font-bold">{blog.title}</h2>
                       <p className="mt-3 line-clamp-2 text-sm text-slate-600">{getCustomerBlogExcerpt(blog)}</p>
                       <p className="mt-4 text-xs font-semibold text-slate-400">By {getCustomerBlogAuthor(blog)}</p>
+                      {locations[0] ? <p className="mt-1 text-xs text-slate-400">{locations[0]}</p> : null}
                     </div>
                   </Link>
                 );

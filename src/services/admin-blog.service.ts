@@ -19,6 +19,8 @@ export type AdminBlog = {
   blog_id?: number;
   id?: number;
   user_id?: number;
+  category_ids?: Array<number | string>;
+  categories?: Array<{ blog_category_id?: number; id?: number; name?: string }>;
   title: string;
   content?: string;
   author_name?: string;
@@ -38,10 +40,20 @@ export type AdminBlog = {
 
 export type AdminBlogPayload = {
   user_id: number;
+  category_ids: number[];
   title: string;
   content: string;
   location_ids: number[];
 };
+
+export function getAdminBlogCategoryIds(blog: AdminBlog) {
+  if (Array.isArray(blog.category_ids)) return [...new Set(blog.category_ids.map(Number).filter(Boolean))];
+  return (blog.categories ?? []).map((category) => Number(category.blog_category_id ?? category.id ?? 0)).filter(Boolean);
+}
+
+export function getAdminBlogCategoryNames(blog: AdminBlog) {
+  return (blog.categories ?? []).map((category) => category.name).filter((name): name is string => Boolean(name));
+}
 
 function unwrapData<T>(responseData: T | { data?: T }) {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
