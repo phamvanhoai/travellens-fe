@@ -17,6 +17,7 @@ const nav = [
   { href: "/", label: "Home" },
   { href: "/destinations", label: "Destinations" },
   { href: "/tours", label: "Tours" },
+  { href: "/travel-feed", label: "Travel Feed" },
   { href: "/maps/travel", label: "Travel Map" },
   { href: "/view360", label: "360 Experience" },
   { href: "/blogs", label: "Blogs" },
