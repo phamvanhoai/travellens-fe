@@ -22,6 +22,11 @@ export type AdminBlog = {
   category_ids?: Array<number | string>;
   categories?: Array<{ blog_category_id?: number; id?: number; name?: string }>;
   title: string;
+  slug?: string;
+  thumbnail?: string | null;
+  thumbnail_url?: string | null;
+  status?: "draft" | "published" | "archived";
+  published_at?: string | null;
   content?: string;
   author_name?: string;
   user_name?: string;
@@ -39,10 +44,14 @@ export type AdminBlog = {
 };
 
 export type AdminBlogPayload = {
-  user_id: number;
   category_ids: number[];
   title: string;
+  slug?: string;
+  thumbnail?: string | null;
+  thumbnail_file?: File | null;
   content: string;
+  status: "draft" | "published" | "archived";
+  published_at?: string | null;
   location_ids: number[];
 };
 
@@ -84,6 +93,11 @@ export function getAdminBlogId(blog: AdminBlog) {
   return blog.blog_id ?? blog.id ?? 0;
 }
 
+export function getAdminBlogPath(blog: AdminBlog) {
+  const identifier = blog.slug?.trim() || String(getAdminBlogId(blog));
+  return identifier && identifier !== "0" ? `/blogs/${encodeURIComponent(identifier)}` : "/blogs";
+}
+
 export function getAdminBlogUserId(blog: AdminBlog) {
   return blog.user_id ?? blog.author?.user_id ?? blog.author?.id ?? blog.user?.user_id ?? blog.user?.id ?? 0;
 }
@@ -121,8 +135,8 @@ export function getAdminBlogLocationIds(blog: AdminBlog) {
 }
 
 export const adminBlogService = {
-  async list() {
-    const response = await api.get("/admin/blogs");
+  async list(params: { status?: AdminBlogPayload["status"]; blog_category_id?: number } = {}) {
+    const response = await api.get("/admin/blogs", { params });
     return unwrapList(response.data);
   },
   async detail(id: number) {
@@ -130,11 +144,11 @@ export const adminBlogService = {
     return unwrapBlog(response.data);
   },
   async create(payload: AdminBlogPayload) {
-    const response = await api.post("/admin/blogs", payload);
+    const response = await api.post("/admin/blogs", toBlogRequest(payload));
     return unwrapBlog(response.data);
   },
   async update(id: number, payload: AdminBlogPayload) {
-    const response = await api.put(`/admin/blogs/${id}`, payload);
+    const response = await api.put(`/admin/blogs/${id}`, toBlogRequest(payload));
     return unwrapBlog(response.data);
   },
   async remove(id: number) {
@@ -142,3 +156,21 @@ export const adminBlogService = {
     return unwrapData<unknown>(response.data);
   }
 };
+
+function toBlogRequest(payload: AdminBlogPayload) {
+  if (!payload.thumbnail_file) {
+    const { thumbnail_file: _file, ...json } = payload;
+    return json;
+  }
+
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  if (payload.slug) formData.append("slug", payload.slug);
+  formData.append("thumbnail_file", payload.thumbnail_file);
+  formData.append("content", payload.content);
+  formData.append("status", payload.status);
+  if (payload.published_at) formData.append("published_at", payload.published_at);
+  formData.append("category_ids", JSON.stringify(payload.category_ids));
+  formData.append("location_ids", JSON.stringify(payload.location_ids));
+  return formData;
+}

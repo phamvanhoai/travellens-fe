@@ -46,10 +46,9 @@ export default function BlogDetailPage() {
       setCommentsLoading(true);
       setError("");
       try {
-        const [blogDetail, blogComments] = await Promise.all([
-          blogService.detail(params.id),
-          blogService.listComments(params.id, { page: 1, limit: 50 }).catch(() => [])
-        ]);
+        const blogDetail = await blogService.detail(params.id);
+        const commentBlogId = blogDetail.blog_id ?? blogDetail.id ?? params.id;
+        const blogComments = await blogService.listComments(commentBlogId, { page: 1, limit: 50 }).catch(() => []);
         setBlog(blogDetail);
         setComments(blogComments);
       } catch {
@@ -64,11 +63,12 @@ export default function BlogDetailPage() {
   }, [params.id]);
 
   const currentUserId = getCurrentUserId(user);
+  const commentBlogId = blog?.blog_id ?? blog?.id ?? params.id;
 
   async function reloadComments() {
     setCommentsLoading(true);
     try {
-      setComments(await blogService.listComments(params.id, { page: 1, limit: 50 }));
+      setComments(await blogService.listComments(commentBlogId, { page: 1, limit: 50 }));
     } finally {
       setCommentsLoading(false);
     }
@@ -84,7 +84,7 @@ export default function BlogDetailPage() {
 
     setSubmittingComment(true);
     try {
-      await blogService.createComment(params.id, { content, comment: content });
+      await blogService.createComment(commentBlogId, { content, comment: content });
       await reloadComments();
       setCommentText("");
       showToast({ variant: "success", title: "Comment posted", description: "Your comment was added." });
@@ -109,7 +109,7 @@ export default function BlogDetailPage() {
 
     setBusyCommentId(parentId);
     try {
-      await blogService.replyComment(params.id, parentId, { content, comment: content });
+      await blogService.replyComment(commentBlogId, parentId, { content, comment: content });
       await reloadComments();
       setReplyingCommentId(null);
       setDraftText("");
@@ -127,7 +127,7 @@ export default function BlogDetailPage() {
 
     setBusyCommentId(commentId);
     try {
-      await blogService.updateComment(params.id, commentId, { content, comment: content });
+      await blogService.updateComment(commentBlogId, commentId, { content, comment: content });
       await reloadComments();
       setEditingCommentId(null);
       setDraftText("");
@@ -142,7 +142,7 @@ export default function BlogDetailPage() {
   async function deleteComment(commentId: number) {
     setBusyCommentId(commentId);
     try {
-      await blogService.deleteComment(params.id, commentId);
+      await blogService.deleteComment(commentBlogId, commentId);
       await reloadComments();
       showToast({ variant: "success", title: "Comment deleted" });
     } catch (err) {
