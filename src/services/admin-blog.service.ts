@@ -93,6 +93,11 @@ export function getAdminBlogId(blog: AdminBlog) {
   return blog.blog_id ?? blog.id ?? 0;
 }
 
+export function getAdminBlogPath(blog: AdminBlog) {
+  const identifier = blog.slug?.trim() || String(getAdminBlogId(blog));
+  return identifier && identifier !== "0" ? `/blogs/${encodeURIComponent(identifier)}` : "/blogs";
+}
+
 export function getAdminBlogUserId(blog: AdminBlog) {
   return blog.user_id ?? blog.author?.user_id ?? blog.author?.id ?? blog.user?.user_id ?? blog.user?.id ?? 0;
 }

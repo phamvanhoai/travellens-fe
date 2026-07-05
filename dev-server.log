@@ -28,3 +28,36 @@
  ✓ Compiled in 1663ms (2145 modules)
  GET /admin/blogs 200 in 393ms
  GET /admin/blogs 200 in 500ms
+ GET /admin/blogs 200 in 248ms
+ ✓ Compiled in 2s (2145 modules)
+ GET /admin/blogs 200 in 231ms
+ ✓ Compiled in 1320ms (2145 modules)
+ GET /admin/blogs 200 in 260ms
+ GET /admin/blogs 200 in 489ms
+ ○ Compiling /blogs/[id] ...
+ ✓ Compiled /blogs/[id] in 924ms (2150 modules)
+ GET /blogs/9 200 in 1730ms
+ ✓ Compiled in 954ms (2164 modules)
+ GET /blogs/9 200 in 124ms
+ GET /admin/blogs 200 in 505ms
+ GET /blogs/9 200 in 203ms
+ ✓ Compiled in 1318ms (2164 modules)
+ GET /blogs/9 200 in 178ms
+ GET /admin/blogs 200 in 185ms
+ ✓ Compiled in 232ms (945 modules)
+ GET /blogs/9 200 in 82ms
+ GET /admin/blogs 200 in 88ms
+ ✓ Compiled in 432ms (2164 modules)
+ GET /blogs/9 200 in 124ms
+ GET /admin/blogs 200 in 133ms
+ ✓ Compiled in 212ms (945 modules)
+ GET /blogs/9 200 in 169ms
+ GET /admin/blogs 200 in 168ms
+ ✓ Compiled in 583ms (2164 modules)
+ GET /blogs/9 200 in 123ms
+ GET /admin/blogs 200 in 130ms
+ ✓ Compiled in 422ms (2164 modules)
+ GET /blogs/9 200 in 100ms
+ GET /admin/blogs 200 in 105ms
+ GET /blogs/9 200 in 580ms
+ GET /blogs/b-n-ninh-ki-u-9 200 in 201ms

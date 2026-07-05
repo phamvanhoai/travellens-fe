@@ -2,8 +2,9 @@
 
 import axios from "axios";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Newspaper, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Eye, Loader2, Newspaper, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -16,6 +17,7 @@ import {
   getAdminBlogCategoryNames,
   getAdminBlogAuthorName,
   getAdminBlogId,
+  getAdminBlogPath,
   getAdminBlogLocationIds,
   getAdminBlogLocations,
   type AdminBlog,
@@ -210,7 +212,7 @@ export default function AdminBlogsPage() {
                       <td className="p-3">{getAdminBlogAuthorName(item)}</td>
                       <td className="max-w-52 p-3 text-slate-600">{(names.length ? names : fallbackNames).join(", ") || "-"}</td>
                       <td className="max-w-64 truncate p-3 text-slate-600">{getRichTextPlainText(item.content) || "-"}</td>
-                      <td className="p-3"><span className="flex gap-2"><Button variant="outline" className="h-9 px-3" onClick={() => void openEdit(item)}><Pencil size={15} /> Edit</Button><button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${item.title}`}><Trash2 size={15} /></button></span></td>
+                      <td className="p-3"><span className="flex gap-2"><Link href={getAdminBlogPath(item)} target="_blank" rel="noopener noreferrer" title="View article" aria-label={`View ${item.title} in a new tab`} className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"><Eye size={16} /></Link><button type="button" title="Edit article" aria-label={`Edit ${item.title}`} onClick={() => void openEdit(item)} className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"><Pencil size={15} /></button><button type="button" title="Delete article" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${item.title}`}><Trash2 size={15} /></button></span></td>
                     </tr>;
                   })}
             </tbody>

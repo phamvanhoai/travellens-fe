@@ -12,6 +12,7 @@ import {
   getCustomerBlogAuthor,
   getCustomerBlogExcerpt,
   getCustomerBlogId,
+  getCustomerBlogPath,
   getCustomerBlogImage,
   getCustomerBlogCategoryIds,
   getCustomerBlogCategoryNames,
@@ -110,7 +111,7 @@ export default function BlogsPage() {
                 const id = getCustomerBlogId(blog);
                 const locations = getCustomerBlogLocations(blog).map((location) => location.name).filter(Boolean);
                 return (
-                  <Link key={id || blog.title} href={`/blogs/${id}`} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
+                  <Link key={id || blog.title} href={getCustomerBlogPath(blog)} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
                     <img src={getCustomerBlogImage(blog, images.balloons)} alt={blog.title} className="h-56 w-full object-cover" />
                     <div className="p-5">
                       <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-brand-600">{getCustomerBlogCategoryNames(blog).join(" / ") || "Travel guide"}</p>

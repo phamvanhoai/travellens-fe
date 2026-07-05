@@ -261,11 +261,12 @@ function TravelGuideTab({ destination, blogs }: { destination: Destination; blog
       <div className="mt-5 grid gap-5 md:grid-cols-2">
         {blogs.map((blog, index) => {
           const id = readId(blog, ["blog_id", "id"]);
+          const slug = readString(blog, ["slug"]);
           const title = readString(blog, ["title", "name"]) || `Travel Guide ${index + 1}`;
           const image = readString(blog, ["thumbnail_url", "thumbnail", "image_url", "image"]);
           const excerpt = cleanText(readString(blog, ["content", "description", "excerpt"]));
           return (
-            <Link key={id || `${title}-${index}`} href={id ? `/blogs/${id}` : "/blogs"} className="overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:border-brand-300">
+            <Link key={id || `${title}-${index}`} href={slug ? `/blogs/${encodeURIComponent(slug)}` : id ? `/blogs/${id}` : "/blogs"} className="overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:border-brand-300">
               {image ? <img src={image} alt={title} className="h-44 w-full object-cover" /> : null}
               <div className="p-5">
                 <BookOpen className="size-7 text-brand-600" />
