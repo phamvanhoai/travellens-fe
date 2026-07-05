@@ -7,6 +7,7 @@ export type CustomerBlog = {
   category_ids?: Array<number | string>;
   categories?: Array<{ blog_category_id?: number; id?: number; name?: string }>;
   title: string;
+  slug?: string | null;
   content?: string;
   excerpt?: string | null;
   description?: string | null;
@@ -102,6 +103,10 @@ function unwrapComment(value: unknown) {
 }
 
 export function getCustomerBlogId(blog: CustomerBlog) { return blog.blog_id ?? blog.id ?? 0; }
+export function getCustomerBlogPath(blog: CustomerBlog) {
+  const identifier = blog.slug?.trim() || String(getCustomerBlogId(blog));
+  return identifier && identifier !== "0" ? `/blogs/${encodeURIComponent(identifier)}` : "/blogs";
+}
 export function getCustomerBlogUserId(blog: CustomerBlog) { return blog.user_id ?? blog.user?.user_id ?? blog.user?.id ?? blog.User?.user_id ?? blog.User?.id ?? 0; }
 export function getCustomerBlogAuthor(blog: CustomerBlog) { return blog.user_name ?? blog.author_name ?? blog.user?.name ?? blog.User?.name ?? "Travel360 traveler"; }
 export function getCustomerBlogLocationIds(blog: CustomerBlog) { if (Array.isArray(blog.location_ids)) return blog.location_ids.map(Number).filter(Boolean); return [...(blog.locations ?? []), ...(blog.Locations ?? [])].map((location) => location.location_id ?? location.id ?? 0).filter(Boolean); }
@@ -132,7 +137,22 @@ function plainText(value: string) {
 
 export const blogService = {
   async list() { const response = await api.get("/blogs"); return unwrapList(response.data); },
-  async detail(id: string | number) { const response = await api.get(`/blogs/${id}`); return unwrapData<CustomerBlog>(response.data); },
+  async detail(identifier: string | number) {
+    try {
+      const response = await api.get(`/blogs/${encodeURIComponent(String(identifier))}`);
+      return unwrapData<CustomerBlog>(response.data);
+    } catch (error) {
+      const isNumericId = /^\d+$/.test(String(identifier));
+      if (isNumericId) throw error;
+
+      const listResponse = await api.get("/blogs");
+      const match = unwrapList(listResponse.data).find((blog) => blog.slug === String(identifier));
+      const id = match ? getCustomerBlogId(match) : 0;
+      if (!id) throw error;
+      const response = await api.get(`/blogs/${id}`);
+      return unwrapData<CustomerBlog>(response.data);
+    }
+  },
   async create(payload: CustomerBlogPayload) { const response = await api.post("/blogs", payload); return unwrapData<CustomerBlog>(response.data); },
   async update(id: number, payload: CustomerBlogPayload) { const response = await api.put(`/blogs/${id}`, payload); return unwrapData<CustomerBlog>(response.data); },
   async remove(id: number) { const response = await api.delete(`/blogs/${id}`); return unwrapData<unknown>(response.data); },
