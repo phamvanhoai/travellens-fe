@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bold, Heading2, Images, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2, RemoveFormatting, Search, Underline, Undo2, Upload, X } from "lucide-react";
+import { Bold, Heading2, Images, Italic, Link2, List, ListOrdered, Loader2, Pencil, Quote, Redo2, RemoveFormatting, Search, Trash2, Underline, Undo2, Upload, X } from "lucide-react";
+import axios from "axios";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import { adminMediaService, getAdminMediaId, getAdminMediaName, getAdminMediaUrl, type AdminMedia } from "@/services/admin-media.service";
 import { Pagination } from "@/components/common/pagination";
@@ -143,6 +145,10 @@ function MediaLibrary({
   const [error, setError] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageUrlError, setImageUrlError] = useState("");
+  const [renaming, setRenaming] = useState<AdminMedia | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleting, setDeleting] = useState<AdminMedia | null>(null);
+  const [processing, setProcessing] = useState(false);
   const pageSize = 20;
 
   const loadMedia = useCallback(async (nextPage = 1, nextQuery = "") => {
@@ -208,6 +214,38 @@ function MediaLibrary({
     }
   }
 
+  async function renameMedia() {
+    if (!renaming || !renameValue.trim()) return;
+    setProcessing(true);
+    setError("");
+    try {
+      const updated = await adminMediaService.rename(getAdminMediaId(renaming), renameValue.trim());
+      setItems((current) => current.map((item) => getAdminMediaId(item) === getAdminMediaId(renaming) ? { ...item, ...updated, original_name: updated?.original_name ?? renameValue.trim() } : item));
+      setRenaming(null);
+    } catch (err) {
+      setError(getMediaApiError(err, "Cannot rename this image."));
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function deleteMedia() {
+    if (!deleting) return;
+    setProcessing(true);
+    setError("");
+    try {
+      await adminMediaService.remove(getAdminMediaId(deleting));
+      setItems((current) => current.filter((item) => getAdminMediaId(item) !== getAdminMediaId(deleting)));
+      setTotalItems((current) => Math.max(0, current - 1));
+      setDeleting(null);
+    } catch (err) {
+      setError(getMediaApiError(err, "Cannot delete this image. It may currently be used by a blog."));
+      setDeleting(null);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   return <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-4">
     <div className="max-h-[88vh] w-full max-w-4xl overflow-auto rounded-lg bg-white p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4"><div><h3 className="text-xl font-bold">Media Library</h3><p className="mt-1 text-sm text-slate-500">Upload an image or choose one already stored by the backend.</p></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close media library"><X size={18} /></button></div>
@@ -238,11 +276,19 @@ function MediaLibrary({
       <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {loading ? <div className="col-span-full p-10 text-center text-sm text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading media...</div>
           : items.length === 0 ? <div className="col-span-full p-10 text-center text-sm text-slate-500">No images found.</div>
-            : items.map((media) => { const imageUrl = resolveBackendAssetUrl(getAdminMediaUrl(media)); return <button key={getAdminMediaId(media)} type="button" onClick={() => onInsert(media)} disabled={!imageUrl} className="group overflow-hidden rounded-lg border border-slate-200 text-left hover:border-brand-500 hover:shadow-sm disabled:opacity-50"><span className="block h-36 bg-slate-100">{imageUrl ? <Image src={imageUrl} alt={getAdminMediaName(media)} width={320} height={144} unoptimized className="h-full w-full object-cover" /> : null}</span><span className="block truncate p-3 text-sm font-semibold">{getAdminMediaName(media)}</span></button>; })}
+            : items.map((media) => { const mediaUrl = resolveBackendAssetUrl(getAdminMediaUrl(media)); return <div key={getAdminMediaId(media)} className="group overflow-hidden rounded-lg border border-slate-200 hover:border-brand-500 hover:shadow-sm"><button type="button" onClick={() => onInsert(media)} disabled={!mediaUrl} className="block w-full text-left disabled:opacity-50"><span className="block h-36 bg-slate-100">{mediaUrl ? <Image src={mediaUrl} alt={getAdminMediaName(media)} width={320} height={144} unoptimized className="h-full w-full object-cover" /> : null}</span><span className="block truncate px-3 pt-3 text-sm font-semibold">{getAdminMediaName(media)}</span><span className="block px-3 pb-2 text-xs text-brand-600">Insert into blog</span></button><div className="flex justify-end gap-1 border-t border-slate-100 p-2"><button type="button" onClick={() => { setRenaming(media); setRenameValue(getAdminMediaName(media)); }} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-brand-600" aria-label={`Rename ${getAdminMediaName(media)}`}><Pencil size={15} /></button><button type="button" onClick={() => setDeleting(media)} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${getAdminMediaName(media)}`}><Trash2 size={15} /></button></div></div>; })}
       </div>
       <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="images" onPageChange={changePage} />
     </div>
+    {renaming ? <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-4"><form className="w-full max-w-md rounded-lg bg-white p-6 shadow-soft" onSubmit={(event) => { event.preventDefault(); void renameMedia(); }}><div className="flex items-center justify-between"><h4 className="text-lg font-bold">Rename image</h4><button type="button" onClick={() => setRenaming(null)} disabled={processing} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button></div><label className="mt-5 block text-sm font-semibold">Display name<input autoFocus value={renameValue} maxLength={255} onChange={(event) => setRenameValue(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-brand-600" /></label><div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={() => setRenaming(null)} disabled={processing}>Cancel</Button><Button type="submit" disabled={processing || !renameValue.trim()}>{processing ? <Loader2 size={16} className="animate-spin" /> : null} Save</Button></div></form></div> : null}
+    {deleting ? <ConfirmDialog title="Delete media image?" message={`Delete “${getAdminMediaName(deleting)}”? Images currently used by a blog cannot be deleted.`} onCancel={() => setDeleting(null)} onConfirm={() => void deleteMedia()} /> : null}
   </div>;
+}
+
+function getMediaApiError(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) return fallback;
+  const data = error.response?.data as { message?: string; error?: string } | undefined;
+  return data?.message ?? data?.error ?? fallback;
 }
 
 export function getRichTextPlainText(value?: string) {
