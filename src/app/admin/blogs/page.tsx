@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Newspaper, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
@@ -20,6 +20,7 @@ import {
 } from "@/services/admin-blog.service";
 import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import { adminUserService, getAdminUserId, type AdminUser } from "@/services/admin-user.service";
+import { useAuthStore } from "@/store/use-auth-store";
 
 type BlogFormValue = {
   user_id: string;
@@ -38,6 +39,11 @@ export default function AdminBlogsPage() {
   const [items, setItems] = useState<AdminBlog[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [locations, setLocations] = useState<AdminLocation[]>([]);
+  const [storedUser, setStoredUser] = useState<any | null>(null);
+  const authUser = useAuthStore((state) => state.user);
+  const currentAuthor = useMemo(() => authUser ?? storedUser, [authUser, storedUser]);
+  const currentAuthorId = getCurrentUserId(currentAuthor);
+  const currentAuthorLabel = getCurrentUserLabel(currentAuthor);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -49,10 +55,20 @@ export default function AdminBlogsPage() {
   const [deleting, setDeleting] = useState<AdminBlog | null>(null);
   const showToast = useToast();
 
-  const locationNames = useMemo(() => new Map(locations.map((location) => [getLocationId(location), location.name])), [locations]);
+  const authorNames = useMemo(() => {
+    const names = new Map(users.map((user) => [getAdminUserId(user), user.name || user.email]));
+    const currentAuthorName = getCurrentUserName(currentAuthor);
+    if (currentAuthorId && currentAuthorName) names.set(currentAuthorId, currentAuthorName);
+    return names;
+  }, [currentAuthor, currentAuthorId, users]);
+  const authorLabels = useMemo(() => {
+    const labels = new Map(users.map((user) => [getAdminUserId(user), getUserLabel(user)]));
+    if (currentAuthorId && currentAuthorLabel) labels.set(currentAuthorId, currentAuthorLabel);
+    return labels;
+  }, [currentAuthorId, currentAuthorLabel, users]);
   const visibleItems = items.filter((item) => {
     const locationText = getAdminBlogLocations(item).map((location) => location.name).join(" ");
-    return `${item.title} ${getAdminBlogAuthorName(item)} ${locationText} ${item.content ?? ""}`.toLowerCase().includes(query.toLowerCase());
+    return `${item.title} ${getDisplayAuthorName(item, authorNames)} ${locationText} ${item.content ?? ""}`.toLowerCase().includes(query.toLowerCase());
   });
   const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -80,6 +96,7 @@ export default function AdminBlogsPage() {
   }, [showToast]);
 
   useEffect(() => {
+    setStoredUser(getStoredUser());
     void loadBlogs();
   }, [loadBlogs]);
 
@@ -92,6 +109,11 @@ export default function AdminBlogsPage() {
       setEditing(detail ? {
         ...blog,
         ...detail,
+        user_id: getAdminBlogUserId(detail) || getAdminBlogUserId(blog),
+        author: detail.author ?? blog.author,
+        user: detail.user ?? blog.user,
+        author_name: detail.author_name ?? blog.author_name,
+        user_name: detail.user_name ?? blog.user_name,
         location_ids: detailLocationIds.length > 0 ? detailLocationIds : listLocationIds
       } : blog);
     } catch (err) {
@@ -159,7 +181,7 @@ export default function AdminBlogsPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => void loadBlogs()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button>
-            <Button onClick={() => setCreating(true)} disabled={loading}><Plus size={17} /> Create Blog</Button>
+            <Button onClick={() => setCreating(true)} disabled={loading || !currentAuthorId}><Plus size={17} /> Create Blog</Button>
           </div>
         </div>
 
@@ -171,19 +193,16 @@ export default function AdminBlogsPage() {
         </form>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Blog", "Author", "Locations", "Content", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Blog", "Author", "Content", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={6} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading blogs...</td></tr>
-                : paginatedItems.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-slate-500">No blogs found.</td></tr>
+              {loading ? <tr><td colSpan={5} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading blogs...</td></tr>
+                : paginatedItems.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-slate-500">No blogs found.</td></tr>
                   : paginatedItems.map((item) => {
-                    const names = getAdminBlogLocations(item).map((location) => location.name).filter(Boolean);
-                    const fallbackNames = getAdminBlogLocationIds(item).map((id) => locationNames.get(id) ?? `#${id}`);
                     return <tr key={getAdminBlogId(item)} className="border-t border-slate-100">
                       <td className="p-3 font-bold">#{getAdminBlogId(item)}</td>
                       <td className="p-3 font-semibold"><Newspaper className="mr-2 inline size-4 text-brand-600" />{item.title}</td>
-                      <td className="p-3">{getAdminBlogAuthorName(item)}</td>
-                      <td className="max-w-52 p-3 text-slate-600">{(names.length ? names : fallbackNames).join(", ") || "-"}</td>
+                      <td className="p-3">{getDisplayAuthorName(item, authorNames)}</td>
                       <td className="max-w-64 truncate p-3 text-slate-600">{getRichTextPlainText(item.content) || "-"}</td>
                       <td className="p-3"><span className="flex gap-2"><Button variant="outline" className="h-9 px-3" onClick={() => void openEdit(item)}><Pencil size={15} /> Edit</Button><button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${item.title}`}><Trash2 size={15} /></button></span></td>
                     </tr>;
@@ -194,16 +213,47 @@ export default function AdminBlogsPage() {
         <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="blogs" onPageChange={setPage} />
       </div>
 
-      {creating || editing ? <BlogForm key={editing ? getAdminBlogId(editing) : "create"} initialValue={editing ? toFormValue(editing) : emptyBlog} users={users} locations={locations} saving={saving} onClose={() => { setEditing(null); setCreating(false); }} onSave={saveBlog} /> : null}
+      {creating || editing ? <BlogForm key={editing ? getAdminBlogId(editing) : "create"} initialValue={editing ? toFormValue(editing) : { ...emptyBlog, user_id: String(currentAuthorId || "") }} authorLabel={editing ? getDisplayAuthorLabel(editing, authorLabels) : currentAuthorLabel} currentBlogId={editing ? getAdminBlogId(editing) : 0} existingBlogs={items} lastUpdated={editing ? editing.updated_at ?? editing.created_at : undefined} locations={locations} saving={saving} onClose={() => { setEditing(null); setCreating(false); }} onSave={saveBlog} /> : null}
       {deleting ? <ConfirmDialog title="Delete blog?" message={`Delete “${deleting.title}”? This action cannot be undone.`} onCancel={() => setDeleting(null)} onConfirm={() => void deleteBlog()} /> : null}
     </>
   );
 }
 
-function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: { initialValue: BlogFormValue; users: AdminUser[]; locations: AdminLocation[]; saving: boolean; onClose: () => void; onSave: (payload: BlogFormValue) => Promise<void> }) {
+function BlogForm({ initialValue, authorLabel, currentBlogId, existingBlogs, lastUpdated, locations, saving, onClose, onSave }: { initialValue: BlogFormValue; authorLabel: string; currentBlogId: number; existingBlogs: AdminBlog[]; lastUpdated?: string; locations: AdminLocation[]; saving: boolean; onClose: () => void; onSave: (payload: BlogFormValue) => Promise<void> }) {
   const [form, setForm] = useState(initialValue);
   const [fieldErrors, setFieldErrors] = useState<BlogFieldErrors>({});
+  const titleRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const locationsRef = useRef<HTMLFieldSetElement>(null);
   const isEditing = Boolean(initialValue.title);
+  const isDirty = !areBlogFormsEqual(form, initialValue);
+  const selectedLocations = locations.filter((location) => form.location_ids.includes(String(getLocationId(location))));
+
+  useEffect(() => {
+    if (!isDirty || saving) return;
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target instanceof Element ? event.target : null;
+      const anchor = target?.closest("a[href]");
+      if (!anchor || anchor.getAttribute("target") === "_blank") return;
+      if (window.confirm("You have unsaved changes. Leave without saving?")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [isDirty, saving]);
 
   function clearFieldError(field: BlogFieldName) {
     setFieldErrors((current) => {
@@ -219,21 +269,44 @@ function BlogForm({ initialValue, users, locations, saving, onClose, onSave }: {
     setForm((current) => ({ ...current, location_ids: current.location_ids.includes(id) ? current.location_ids.filter((item) => item !== id) : [...current.location_ids, id] }));
   }
 
+  function closeForm() {
+    if (isDirty && !window.confirm("You have unsaved changes. Close without saving?")) return;
+    onClose();
+  }
+
+  function scrollToFirstError(errors: BlogFieldErrors) {
+    const target =
+      errors.title ? titleRef.current :
+      errors.content ? contentRef.current :
+      errors.location_ids ? locationsRef.current :
+      null;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"><form noValidate className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg border border-slate-200 bg-white p-6 shadow-soft" onSubmit={(event) => {
     event.preventDefault();
-    const nextFieldErrors = validateBlogForm(form);
+    const nextFieldErrors = validateBlogForm(form, existingBlogs, currentBlogId);
     setFieldErrors(nextFieldErrors);
-    if (Object.keys(nextFieldErrors).length > 0) return;
+    if (Object.keys(nextFieldErrors).length > 0) {
+      scrollToFirstError(nextFieldErrors);
+      return;
+    }
     void onSave(form);
   }}>
-    <div className="flex items-center justify-between"><h2 className="text-xl font-bold">{isEditing ? "Edit Blog" : "Create Blog"}</h2><button type="button" onClick={onClose} disabled={saving} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button></div>
+    <div className="flex items-center justify-between"><h2 className="text-xl font-bold">{isEditing ? "Edit Blog" : "Create Blog"}</h2><button type="button" onClick={closeForm} disabled={saving} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close"><X size={18} /></button></div>
+    {isEditing && lastUpdated ? <p className="mt-2 text-sm font-semibold text-slate-500">Last Updated: {formatBlogUpdatedAt(lastUpdated)}</p> : null}
     <div className="mt-6 grid gap-4">
-      <Field label="Title" message={fieldErrors.title}><input value={form.title} onChange={(event) => { clearFieldError("title"); setForm({ ...form, title: event.target.value }); }} className="input" /></Field>
-      <Field label="Author" message={fieldErrors.user_id}><select value={form.user_id} onChange={(event) => { clearFieldError("user_id"); setForm({ ...form, user_id: event.target.value }); }} className="input"><option value="">Select an author</option>{users.map((user) => <option key={getAdminUserId(user)} value={getAdminUserId(user)}>{user.name} ({user.email})</option>)}</select></Field>
-      <RichTextEditor label="Content" placeholder="Write your blog content here..." value={form.content} message={fieldErrors.content} onChange={(content) => { clearFieldError("content"); setForm((current) => ({ ...current, content })); }} />
-      <fieldset><legend className="text-sm font-semibold">Locations</legend><div className={`mt-2 grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.location_ids ? "border-rose-500" : "border-slate-200"}`}>{locations.length === 0 ? <p className="text-sm text-slate-500">No locations available.</p> : locations.map((location, index) => { const id = String(getLocationId(location)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.location_ids.includes(id)} onChange={() => toggleLocation(id)} /> <span>{getBlogLocationLabel(location, index, locations)}</span></label>; })}</div>{fieldErrors.location_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.location_ids}</p> : null}</fieldset>
+      <div ref={titleRef}><Field label="Title" message={fieldErrors.title}><input value={form.title} onChange={(event) => { clearFieldError("title"); setForm({ ...form, title: event.target.value }); }} className="input" /></Field></div>
+      <Field label="Author" message={fieldErrors.user_id}><input value={authorLabel} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
+      <div ref={contentRef}><RichTextEditor label="Content" placeholder="Write your blog content here..." value={form.content} message={fieldErrors.content} onChange={(content) => { clearFieldError("content"); setForm((current) => ({ ...current, content })); }} /></div>
+      <fieldset ref={locationsRef}>
+        <legend className="text-sm font-semibold">Locations</legend>
+        <p className="mt-1 text-xs font-semibold text-brand-700">Selected: {form.location_ids.length} {form.location_ids.length === 1 ? "location" : "locations"}</p>
+        {selectedLocations.length > 0 ? <div className="mt-2 flex flex-wrap gap-2">{selectedLocations.map((location) => <span key={getLocationId(location)} className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">✓ {getBlogLocationLabel(location, locations.findIndex((item) => getLocationId(item) === getLocationId(location)), locations)}</span>)}</div> : null}
+        <div className={`mt-2 grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2 ${fieldErrors.location_ids ? "border-rose-500" : "border-slate-200"}`}>{locations.length === 0 ? <p className="text-sm text-slate-500">No locations available.</p> : locations.map((location, index) => { const id = String(getLocationId(location)); return <label key={id} className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={form.location_ids.includes(id)} onChange={() => toggleLocation(id)} /> <span>{getBlogLocationLabel(location, index, locations)}</span></label>; })}</div>{fieldErrors.location_ids ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.location_ids}</p> : null}
+      </fieldset>
     </div>
-    <div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save Blog</Button></div>
+    <div className="mt-6 flex justify-end gap-3"><Button type="button" variant="outline" onClick={closeForm} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save Blog</Button></div>
   </form></div>;
 }
 
@@ -241,13 +314,54 @@ function Field({ label, message, children }: { label: string; message?: string; 
   return <label className={`block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:px-3 [&_.input]:outline-none ${message ? "[&_.input]:border-rose-500 [&_.input]:focus:border-rose-500" : "[&_.input]:border-slate-200 [&_.input]:focus:border-brand-600"}`}>{label}{children}{message ? <span className="mt-2 block text-xs font-semibold text-rose-600">{message}</span> : null}</label>;
 }
 
-function validateBlogForm(form: BlogFormValue): BlogFieldErrors {
+function validateBlogForm(form: BlogFormValue, existingBlogs: AdminBlog[], currentBlogId: number): BlogFieldErrors {
   const errors: BlogFieldErrors = {};
-  if (!form.title.trim()) errors.title = "Blog title is required.";
+  const title = form.title.trim();
+  const contentText = getRichTextPlainText(form.content).trim();
+  if (!title) errors.title = "Title is required.";
+  else if (title.length < 5) errors.title = "Title must contain at least 5 characters.";
+  else if (title.length > 100) errors.title = "Maximum 100 characters.";
+  else if (existingBlogs.some((blog) => getAdminBlogId(blog) !== currentBlogId && normalizeBlogTitle(blog.title) === normalizeBlogTitle(title))) errors.title = "A blog with this title already exists.";
   if (!form.user_id) errors.user_id = "Author is required.";
-  if (!getRichTextPlainText(form.content)) errors.content = "Blog content is required.";
+  if (!contentText) errors.content = "Content is required.";
+  else if (contentText.length < 100) errors.content = "Content is too short.";
   if (form.location_ids.length === 0) errors.location_ids = "Select at least one location.";
   return errors;
+}
+
+function normalizeBlogTitle(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
+}
+
+function formatBlogUpdatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const datePart = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric"
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hour12: true,
+    minute: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh"
+  }).format(date);
+  return `${datePart} ${timePart}`;
+}
+
+function areBlogFormsEqual(left: BlogFormValue, right: BlogFormValue) {
+  return normalizeBlogForm(left) === normalizeBlogForm(right);
+}
+
+function normalizeBlogForm(form: BlogFormValue) {
+  return JSON.stringify({
+    user_id: form.user_id,
+    title: form.title,
+    content: form.content,
+    location_ids: [...form.location_ids].sort()
+  });
 }
 
 function getBlogLocationLabel(location: AdminLocation, index: number, locations: AdminLocation[]) {
@@ -258,6 +372,55 @@ function getBlogLocationLabel(location: AdminLocation, index: number, locations:
 
 function toFormValue(blog: AdminBlog): BlogFormValue {
   return { user_id: String(getAdminBlogUserId(blog) || ""), title: blog.title, content: blog.content ?? "", location_ids: getAdminBlogLocationIds(blog).map(String) };
+}
+
+function getDisplayAuthorName(blog: AdminBlog, authorNames: Map<number, string>) {
+  const userId = getAdminBlogUserId(blog);
+  const mappedName = authorNames.get(userId);
+  if (mappedName) return mappedName;
+
+  const apiName = getAdminBlogAuthorName(blog);
+  return apiName.startsWith("User #") ? "-" : apiName;
+}
+
+function getDisplayAuthorLabel(blog: AdminBlog, authorLabels: Map<number, string>) {
+  const userId = getAdminBlogUserId(blog);
+  const mappedLabel = authorLabels.get(userId);
+  if (mappedLabel) return mappedLabel;
+
+  const name = getAdminBlogAuthorName(blog);
+  const email = blog.author?.email ?? blog.user?.email;
+  if (name && email && !name.startsWith("User #")) return `${name} (${email})`;
+  return name.startsWith("User #") ? "-" : name;
+}
+
+function getStoredUser() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem("user") ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentUserId(user: any) {
+  return Number(user?.user_id ?? user?.id ?? 0);
+}
+
+function getCurrentUserLabel(user: any) {
+  const name = user?.name ?? user?.full_name ?? user?.fullName;
+  const email = user?.email;
+  if (name && email) return `${name} (${email})`;
+  return name ?? email ?? "Current account";
+}
+
+function getCurrentUserName(user: any) {
+  return user?.name ?? user?.full_name ?? user?.fullName ?? user?.email ?? "";
+}
+
+function getUserLabel(user: AdminUser) {
+  if (user.name && user.email) return `${user.name} (${user.email})`;
+  return user.name || user.email || `User #${getAdminUserId(user)}`;
 }
 
 function getApiError(error: unknown, fallback: string) {
