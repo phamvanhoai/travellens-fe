@@ -9,9 +9,10 @@ export type BookingPassengerPayload = {
 
 export type CreateBookingPayload = {
   tour_id: number;
+  contact_phone: string;
   travel_date: string;
-  departure_at: string;
-  coupon_code?: string;
+  departure_at?: string | null;
+  coupon_code?: string | null;
   passengers: BookingPassengerPayload[];
 };
 

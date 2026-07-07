@@ -384,9 +384,10 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
     if (!travelDate) errors.travel_date = "Travel date is required.";
     if (!customerEmail.trim()) errors.customer_email = "Customer email is required.";
     if (!userId) errors.customer_lookup = "Lookup an active customer by email before creating the booking.";
-    if (cleanContactPhone && !/^\d{10}$/.test(cleanContactPhone)) errors.contact_phone = "Contact phone must contain exactly 10 digits.";
+    if (!cleanContactPhone) errors.contact_phone = "Contact phone is required.";
+    else if (!isValidVietnamMobilePhone(cleanContactPhone)) errors.contact_phone = "Contact phone must be a valid Vietnamese mobile number.";
     if (!cleanPassengerName) errors.passenger_name = "Passenger name is required.";
-    else if (cleanPassengerName.length < 2) errors.passenger_name = "Passenger name must contain at least 2 characters.";
+    else if (!isValidPersonName(cleanPassengerName)) errors.passenger_name = "Passenger name must contain at least 2 words and only letters/spaces.";
     if (passengerTotal <= 0) errors.passengers = "Add at least one passenger.";
     if (availableSlots !== null && passengerTotal > availableSlots) errors.passengers = `Only ${availableSlots} slots are available for this tour.`;
     if (couponCode.trim() && !appliedCoupon) errors.coupon = "Please apply the coupon before submitting.";
@@ -406,7 +407,7 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
     await onCreate({
       user_id: userId,
       tour_id: Number(tourId),
-      contact_phone: cleanContactPhone || null,
+      contact_phone: cleanContactPhone,
       travel_date: travelDate,
       departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
       coupon_code: appliedCoupon ? couponCode.trim() : null,
@@ -733,6 +734,14 @@ function buildDepartureAt(date: string, schedule?: string) {
   const hour = timeMatch?.[1]?.padStart(2, "0") ?? "08";
   const minute = timeMatch?.[2] ?? "00";
   return `${date}T${hour}:${minute}:00+07:00`;
+}
+
+function isValidVietnamMobilePhone(value: string) {
+  return /^0(?:3|5|7|8|9)\d{8}$/.test(value);
+}
+
+function isValidPersonName(value: string) {
+  return /^[\p{L}]+(?:\s+[\p{L}]+)+$/u.test(value);
 }
 
 function getVietnamDateInputValue() {

@@ -123,7 +123,7 @@ export type StaffBookingCreatePassengerPayload = {
 export type StaffBookingCreatePayload = {
   user_id: number;
   tour_id: number;
-  contact_phone?: string | null;
+  contact_phone: string;
   travel_date: string;
   departure_at?: string | null;
   coupon_code?: string | null;
