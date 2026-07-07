@@ -158,7 +158,9 @@ export default function BookingPage() {
     if (!travelDate) errors.travel_date = "Travel date is required.";
     if (passengers.length === 0) errors.passengers = "Add at least one passenger.";
     if (!customerName.trim()) errors.customer_name = "Customer name is required.";
+    else if (!isValidPersonName(customerName.trim())) errors.customer_name = "Full name must contain at least 2 words and only letters/spaces.";
     if (!phone.trim()) errors.phone = "Phone number is required.";
+    else if (!isValidVietnamMobilePhone(phone.trim())) errors.phone = "Phone number must be a valid Vietnamese mobile number.";
     if (couponCode.trim() && !appliedCoupon) errors.coupon = "Please apply the coupon before submitting.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -168,9 +170,10 @@ export default function BookingPage() {
     try {
       const booking = await bookingService.create({
         tour_id: Number(tourId),
+        contact_phone: phone.trim(),
         travel_date: travelDate,
         departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
-        coupon_code: appliedCoupon ? couponCode.trim() : undefined,
+        coupon_code: appliedCoupon ? couponCode.trim() : null,
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
           age_category: passenger.age_category,
@@ -179,7 +182,6 @@ export default function BookingPage() {
             ? [
                 `Travel date: ${travelDate}`,
                 selectedTour?.schedule ? `Tour schedule: ${selectedTour.schedule}` : "",
-                `Phone: ${phone.trim()}`,
                 specialRequest.trim()
               ].filter(Boolean).join(" | ")
             : undefined
@@ -414,6 +416,14 @@ function buildDepartureAt(date: string, schedule?: string) {
   const hour = timeMatch?.[1]?.padStart(2, "0") ?? "08";
   const minute = timeMatch?.[2] ?? "00";
   return `${date}T${hour}:${minute}:00+07:00`;
+}
+
+function isValidVietnamMobilePhone(value: string) {
+  return /^0(?:3|5|7|8|9)\d{8}$/.test(value);
+}
+
+function isValidPersonName(value: string) {
+  return /^[\p{L}]+(?:\s+[\p{L}]+)+$/u.test(value);
 }
 
 function getAvailableSlots(tour?: PublicTour) {
