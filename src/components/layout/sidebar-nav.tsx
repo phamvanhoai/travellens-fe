@@ -9,13 +9,16 @@ export type SidebarLink = readonly [LucideIcon, string, string];
 
 export function SidebarNav({ title, links }: { title: string; links: readonly SidebarLink[] }) {
   const pathname = usePathname();
+  const activeHref = links
+    .filter(([, , href]) => isActivePath(pathname, href))
+    .sort((a, b) => b[2].length - a[2].length)[0]?.[2];
 
   return (
     <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="px-3 pb-3 text-lg font-bold">{title}</h2>
       <nav className="grid gap-1">
         {links.map(([Icon, label, href]) => {
-          const active = href === "/admin" || href === "/staff" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+          const active = href === activeHref;
 
           return (
             <Link
@@ -36,4 +39,9 @@ export function SidebarNav({ title, links }: { title: string; links: readonly Si
       </nav>
     </aside>
   );
+}
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/admin" || href === "/staff") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -1,9 +1,13 @@
 import { api } from "@/services/api";
 
 export type TravelFeedSort = "newest" | "oldest" | "popular";
+export type AdminTravelFeedSort = TravelFeedSort | "reported";
 export type TravelFeedReportReason = "spam" | "inappropriate_content" | "harassment" | "false_information" | "scam" | "other";
 export type TravelFeedReportStatus = "pending" | "reviewed" | "resolved" | "rejected" | "action_taken" | string;
 export type TravelFeedSharePlatform = "facebook" | "zalo" | "copy_link" | "other";
+export type TravelFeedPostStatus = "draft" | "published" | "hidden" | "deleted" | string;
+export type TravelFeedPostVisibility = "public" | "private" | string;
+export type TravelFeedCommentStatus = "published" | "hidden" | "deleted" | string;
 
 export type TravelFeedReport = {
   reason?: TravelFeedReportReason | string | null;
@@ -77,10 +81,23 @@ export type TravelFeedPost = {
   has_reported?: boolean | null;
   reported_by_me?: boolean | null;
   report_status?: TravelFeedReportStatus | null;
+  status?: TravelFeedPostStatus | null;
+  visibility?: TravelFeedPostVisibility | null;
+  share_count?: number | string | null;
+  shares_count?: number | string | null;
+  report_count?: number | string | null;
+  reports_count?: number | string | null;
   my_report?: TravelFeedReport | null;
   report?: TravelFeedReport | null;
+  report_summary?: {
+    total?: number | string | null;
+    pending?: number | string | null;
+    resolved?: number | string | null;
+    dismissed?: number | string | null;
+  } | null;
   created_at?: string | null;
   updated_at?: string | null;
+  deleted_at?: string | null;
 };
 
 export type TravelFeedListParams = {
@@ -91,6 +108,32 @@ export type TravelFeedListParams = {
   location_id?: number;
   user_id?: number;
   sort?: TravelFeedSort;
+};
+
+export type AdminTravelFeedListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "draft" | "published" | "hidden" | "deleted";
+  visibility?: "public" | "private";
+  destination_id?: number;
+  location_id?: number;
+  user_id?: number;
+  has_reports?: boolean;
+  include_deleted?: boolean;
+  sort?: AdminTravelFeedSort;
+};
+
+export type AdminTravelFeedCommentListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  post_id?: number;
+  user_id?: number;
+  status?: "published" | "hidden" | "deleted";
+  has_parent?: boolean;
+  include_deleted?: boolean;
+  sort?: "newest" | "oldest";
 };
 
 export type CreateTravelFeedPostPayload = {
@@ -116,14 +159,21 @@ export type TravelFeedComment = {
   parent_comment_id?: number | null;
   content?: string | null;
   comment?: string | null;
+  status?: TravelFeedCommentStatus | null;
   created_at?: string | null;
   updated_at?: string | null;
+  deleted_at?: string | null;
   author_name?: string | null;
   user_name?: string | null;
   customer_name?: string | null;
   author?: TravelFeedAuthor | null;
   user?: TravelFeedAuthor | null;
   User?: TravelFeedAuthor | null;
+  post?: TravelFeedPost | null;
+  travel_post?: TravelFeedPost | null;
+  TravelPost?: TravelFeedPost | null;
+  post_title?: string | null;
+  post_content?: string | null;
   replies?: TravelFeedComment[];
   Replies?: TravelFeedComment[];
 };
@@ -170,6 +220,12 @@ export type TravelFeedListResult = {
   totalPages: number;
 };
 
+export type TravelFeedCommentListResult = {
+  items: TravelFeedComment[];
+  total: number;
+  totalPages: number;
+};
+
 function unwrapList(value: unknown): TravelFeedListResult {
   const body = isRecord(value) ? value : {};
   const data = body.data ?? value;
@@ -195,14 +251,23 @@ function unwrapPost(value: unknown) {
 }
 
 function unwrapCommentList(value: unknown) {
+  return unwrapCommentListResult(value).items;
+}
+
+function unwrapCommentListResult(value: unknown): TravelFeedCommentListResult {
   const body = isRecord(value) ? value : {};
   const data = body.data ?? value;
   const dataRecord = isRecord(data) ? data : {};
   const listSource = Array.isArray(data)
     ? data
     : dataRecord.comments ?? dataRecord.items ?? dataRecord.rows ?? dataRecord.results ?? dataRecord.data;
+  const items = Array.isArray(listSource) ? listSource as TravelFeedComment[] : [];
+  const pagination = (body.pagination ?? dataRecord.pagination ?? dataRecord.meta) as Record<string, unknown> | undefined;
+  const total = Number(pagination?.total ?? pagination?.totalItems ?? dataRecord.total ?? items.length);
+  const limit = Number(pagination?.limit ?? pagination?.pageSize ?? Math.max(items.length, 1));
+  const totalPages = Number(pagination?.totalPages ?? pagination?.pageCount ?? Math.max(1, Math.ceil(total / limit)));
 
-  return Array.isArray(listSource) ? listSource as TravelFeedComment[] : [];
+  return { items, total, totalPages };
 }
 
 function unwrapComment(value: unknown) {
@@ -335,6 +400,14 @@ export function getTravelFeedCommentCount(post: TravelFeedPost) {
   return Number(post.comments_count ?? post.comment_count ?? 0);
 }
 
+export function getTravelFeedShareCount(post: TravelFeedPost) {
+  return Number(post.shares_count ?? post.share_count ?? 0);
+}
+
+export function getTravelFeedReportCount(post: TravelFeedPost) {
+  return Number(post.reports_count ?? post.report_count ?? post.report_summary?.total ?? 0);
+}
+
 export function withTravelFeedCommentCount(post: TravelFeedPost, delta: number) {
   const nextCount = Math.max(0, getTravelFeedCommentCount(post) + delta);
   return {
@@ -359,6 +432,16 @@ export function getTravelFeedCommentContent(comment: TravelFeedComment) {
 export function getTravelFeedCommentAuthor(comment: TravelFeedComment) {
   const author = comment.author ?? comment.user ?? comment.User;
   return firstString(comment.author_name, comment.user_name, comment.customer_name, author?.name, author?.email) || "Traveler";
+}
+
+export function getTravelFeedCommentPostId(comment: TravelFeedComment) {
+  const post = comment.post ?? comment.travel_post ?? comment.TravelPost;
+  return Number(comment.post_id ?? comment.travel_post_id ?? post?.post_id ?? post?.travel_post_id ?? post?.id ?? 0);
+}
+
+export function getTravelFeedCommentPostTitle(comment: TravelFeedComment) {
+  const post = comment.post ?? comment.travel_post ?? comment.TravelPost;
+  return firstString(comment.post_title, post?.title, post?.caption, comment.post_content, post?.content) || `Post #${getTravelFeedCommentPostId(comment) || "-"}`;
 }
 
 export function getTravelFeedCommentReplies(comment: TravelFeedComment) {
@@ -453,6 +536,14 @@ export const travelFeedService = {
     const response = await api.get("/travel-feed", { params });
     return unwrapList(response.data);
   },
+  async detailPost(postId: number | string) {
+    const searchResult = await this.list({ search: String(postId), limit: 100 });
+    const searchMatch = searchResult.items.find((post) => String(getTravelFeedPostId(post)) === String(postId));
+    if (searchMatch) return searchMatch;
+
+    const newestResult = await this.list({ limit: 100, sort: "newest" });
+    return newestResult.items.find((post) => String(getTravelFeedPostId(post)) === String(postId)) ?? null;
+  },
   async create(payload: CreateTravelFeedPostPayload) {
     const hasPhotos = Boolean(payload.photos?.length);
 
@@ -525,5 +616,28 @@ export const travelFeedService = {
   async getBlockStatus(userId: number | string) {
     const response = await api.get(`/travel-feed/users/${userId}/block-status`);
     return unwrapBlockStatus(response.data);
+  }
+};
+
+export const adminTravelFeedService = {
+  async listPosts(params: AdminTravelFeedListParams = {}) {
+    const response = await api.get("/admin/travel-feed", { params });
+    return unwrapList(response.data);
+  },
+  async detailPost(postId: number | string) {
+    const result = await this.listPosts({ search: String(postId), include_deleted: true, limit: 100 });
+    return result.items.find((post) => String(getTravelFeedPostId(post)) === String(postId)) ?? null;
+  },
+  async deletePost(postId: number | string) {
+    const response = await api.delete(`/admin/travel-feed/${postId}`);
+    return response.data;
+  },
+  async listComments(params: AdminTravelFeedCommentListParams = {}) {
+    const response = await api.get("/admin/travel-feed/comments", { params });
+    return unwrapCommentListResult(response.data);
+  },
+  async deleteComment(commentId: number | string) {
+    const response = await api.delete(`/admin/travel-feed/comments/${commentId}`);
+    return response.data;
   }
 };
