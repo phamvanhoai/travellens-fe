@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, CreditCard, Heart, KeyRound, MessageSquareText, Newspaper, UserRound } from "lucide-react";
+import { CalendarCheck, CreditCard, Heart, KeyRound, MessageSquareText, Newspaper, UserRound, UserX } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
@@ -11,6 +11,7 @@ const links = [
   [MessageSquareText, "Reviews", "/dashboard/reviews"],
   [Newspaper, "Travel Stories", "/dashboard/blogs"],
   [Heart, "Saved", "/dashboard/saved"],
+  [UserX, "Blocked Users", "/dashboard/blocked-users"],
   [KeyRound, "Change Password", "/dashboard/change-password"]
 ] as const;
 
