@@ -1,6 +1,15 @@
 import { api } from "@/services/api";
 
 export type TravelFeedSort = "newest" | "oldest" | "popular";
+export type TravelFeedReportReason = "spam" | "inappropriate_content" | "harassment" | "false_information" | "scam" | "other";
+export type TravelFeedReportStatus = "pending" | "reviewed" | "resolved" | "rejected" | "action_taken" | string;
+export type TravelFeedSharePlatform = "facebook" | "zalo" | "copy_link" | "other";
+
+export type TravelFeedReport = {
+  reason?: TravelFeedReportReason | string | null;
+  description?: string | null;
+  status?: TravelFeedReportStatus | null;
+};
 
 export type TravelFeedAuthor = {
   user_id?: number;
@@ -61,6 +70,15 @@ export type TravelFeedPost = {
   comment_count?: number | string | null;
   is_liked?: boolean | null;
   liked?: boolean | null;
+  has_liked?: boolean | null;
+  liked_by_me?: boolean | null;
+  is_reported?: boolean | null;
+  reported?: boolean | null;
+  has_reported?: boolean | null;
+  reported_by_me?: boolean | null;
+  report_status?: TravelFeedReportStatus | null;
+  my_report?: TravelFeedReport | null;
+  report?: TravelFeedReport | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -80,6 +98,70 @@ export type CreateTravelFeedPostPayload = {
   destination_id?: number;
   location_id?: number;
   photos?: File[];
+};
+
+export type TravelFeedReportPayload = {
+  reason: TravelFeedReportReason;
+  description?: string;
+};
+
+export type TravelFeedComment = {
+  comment_id?: number;
+  post_comment_id?: number;
+  travel_post_comment_id?: number;
+  id?: number;
+  post_id?: number;
+  travel_post_id?: number;
+  user_id?: number;
+  parent_comment_id?: number | null;
+  content?: string | null;
+  comment?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  author_name?: string | null;
+  user_name?: string | null;
+  customer_name?: string | null;
+  author?: TravelFeedAuthor | null;
+  user?: TravelFeedAuthor | null;
+  User?: TravelFeedAuthor | null;
+  replies?: TravelFeedComment[];
+  Replies?: TravelFeedComment[];
+};
+
+export type TravelFeedCommentPayload = {
+  content: string;
+  parent_comment_id?: number;
+};
+
+export type TravelFeedSharePayload = {
+  platform: TravelFeedSharePlatform;
+};
+
+export type TravelFeedBlockStatus = {
+  blocked_by_me?: boolean;
+  blockedByMe?: boolean;
+  has_blocked?: boolean;
+  blocked_me?: boolean;
+  blockedMe?: boolean;
+};
+
+export type TravelFeedBlockedUser = {
+  user_id?: number;
+  id?: number;
+  blocked_user_id?: number;
+  blockedUserId?: number;
+  name?: string | null;
+  email?: string | null;
+  user?: TravelFeedAuthor | null;
+  blocked_user?: TravelFeedAuthor | null;
+  blockedUser?: TravelFeedAuthor | null;
+};
+
+export type TravelFeedShareResult = {
+  share_url?: string;
+  shareUrl?: string;
+  url?: string;
+  platform?: TravelFeedSharePlatform | string;
 };
 
 export type TravelFeedListResult = {
@@ -110,6 +192,48 @@ function unwrapPost(value: unknown) {
   if (isRecord(data) && "post" in data) return data.post as TravelFeedPost;
   if (isRecord(data) && "travel_post" in data) return data.travel_post as TravelFeedPost;
   return data as TravelFeedPost;
+}
+
+function unwrapCommentList(value: unknown) {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  const dataRecord = isRecord(data) ? data : {};
+  const listSource = Array.isArray(data)
+    ? data
+    : dataRecord.comments ?? dataRecord.items ?? dataRecord.rows ?? dataRecord.results ?? dataRecord.data;
+
+  return Array.isArray(listSource) ? listSource as TravelFeedComment[] : [];
+}
+
+function unwrapComment(value: unknown) {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  if (isRecord(data) && "comment" in data) return data.comment as TravelFeedComment;
+  return data as TravelFeedComment;
+}
+
+function unwrapShareResult(value: unknown) {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  if (isRecord(data) && "share" in data) return data.share as TravelFeedShareResult;
+  return data as TravelFeedShareResult;
+}
+
+function unwrapBlockedUsers(value: unknown) {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  const dataRecord = isRecord(data) ? data : {};
+  const listSource = Array.isArray(data)
+    ? data
+    : dataRecord.users ?? dataRecord.blocked_users ?? dataRecord.items ?? dataRecord.rows ?? dataRecord.results ?? dataRecord.data;
+
+  return Array.isArray(listSource) ? listSource as TravelFeedBlockedUser[] : [];
+}
+
+function unwrapBlockStatus(value: unknown) {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  return data as TravelFeedBlockStatus;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -162,6 +286,11 @@ export function getTravelFeedAuthor(post: TravelFeedPost) {
   };
 }
 
+export function getTravelFeedAuthorId(post: TravelFeedPost) {
+  const author = post.author ?? post.user ?? post.User;
+  return Number(post.user_id ?? author?.user_id ?? author?.id ?? 0);
+}
+
 export function getTravelFeedLocationName(post: TravelFeedPost) {
   return firstString(post.location_name, post.location?.name, post.Location?.name, post.location?.title, post.Location?.title);
 }
@@ -206,8 +335,117 @@ export function getTravelFeedCommentCount(post: TravelFeedPost) {
   return Number(post.comments_count ?? post.comment_count ?? 0);
 }
 
+export function withTravelFeedCommentCount(post: TravelFeedPost, delta: number) {
+  const nextCount = Math.max(0, getTravelFeedCommentCount(post) + delta);
+  return {
+    ...post,
+    comment_count: nextCount,
+    comments_count: nextCount
+  };
+}
+
+export function getTravelFeedCommentId(comment: TravelFeedComment) {
+  return Number(comment.comment_id ?? comment.post_comment_id ?? comment.travel_post_comment_id ?? comment.id ?? 0);
+}
+
+export function getTravelFeedCommentUserId(comment: TravelFeedComment) {
+  return Number(comment.user_id ?? comment.user?.user_id ?? comment.user?.id ?? comment.User?.user_id ?? comment.User?.id ?? 0);
+}
+
+export function getTravelFeedCommentContent(comment: TravelFeedComment) {
+  return firstString(comment.content, comment.comment);
+}
+
+export function getTravelFeedCommentAuthor(comment: TravelFeedComment) {
+  const author = comment.author ?? comment.user ?? comment.User;
+  return firstString(comment.author_name, comment.user_name, comment.customer_name, author?.name, author?.email) || "Traveler";
+}
+
+export function getTravelFeedCommentReplies(comment: TravelFeedComment) {
+  return [...(comment.replies ?? []), ...(comment.Replies ?? [])];
+}
+
+export function getTravelFeedSharePreviewUrl(postId: number | string) {
+  return api.getUri({ url: `/travel-feed/${postId}/share-preview` });
+}
+
+export function getTravelFeedBlockedUserId(item: TravelFeedBlockedUser) {
+  const user = item.blocked_user ?? item.blockedUser ?? item.user;
+  return Number(item.blocked_user_id ?? item.blockedUserId ?? item.user_id ?? item.id ?? user?.user_id ?? user?.id ?? 0);
+}
+
+export function getTravelFeedBlockedUserName(item: TravelFeedBlockedUser) {
+  const user = item.blocked_user ?? item.blockedUser ?? item.user;
+  return firstString(item.name, user?.name, item.email, user?.email) || `User #${getTravelFeedBlockedUserId(item)}`;
+}
+
 export function isTravelFeedLiked(post: TravelFeedPost) {
-  return Boolean(post.is_liked ?? post.liked);
+  return Boolean(post.is_liked ?? post.liked ?? post.has_liked ?? post.liked_by_me);
+}
+
+export function withTravelFeedLikeState(post: TravelFeedPost, liked: boolean) {
+  const currentCount = getTravelFeedLikeCount(post);
+  const wasLiked = isTravelFeedLiked(post);
+  const nextCount = Math.max(0, currentCount + (liked === wasLiked ? 0 : liked ? 1 : -1));
+
+  return {
+    ...post,
+    is_liked: liked,
+    liked,
+    has_liked: liked,
+    liked_by_me: liked,
+    like_count: nextCount,
+    likes_count: nextCount
+  };
+}
+
+export function isTravelFeedReported(post: TravelFeedPost) {
+  return Boolean(post.is_reported ?? post.reported ?? post.has_reported ?? post.reported_by_me ?? post.my_report ?? post.report);
+}
+
+export function getTravelFeedReportStatus(post: TravelFeedPost) {
+  return post.report_status ?? post.my_report?.status ?? post.report?.status ?? null;
+}
+
+export function getTravelFeedReportPayload(post: TravelFeedPost): TravelFeedReportPayload | null {
+  const report = post.my_report ?? post.report;
+  const reason = report?.reason;
+  if (!isTravelFeedReportReason(reason)) return null;
+
+  return {
+    reason,
+    description: report?.description?.trim() || undefined
+  };
+}
+
+export function isTravelFeedReportPending(post: TravelFeedPost) {
+  const status = getTravelFeedReportStatus(post);
+  return !status || status === "pending";
+}
+
+export function withTravelFeedReportState(post: TravelFeedPost, payload: TravelFeedReportPayload, status: TravelFeedReportStatus = "pending") {
+  return {
+    ...post,
+    is_reported: true,
+    reported: true,
+    has_reported: true,
+    reported_by_me: true,
+    report_status: status,
+    my_report: {
+      ...(post.my_report ?? post.report ?? {}),
+      ...payload,
+      status
+    }
+  };
+}
+
+function isTravelFeedReportReason(value: unknown): value is TravelFeedReportReason {
+  return value === "spam" ||
+    value === "inappropriate_content" ||
+    value === "harassment" ||
+    value === "false_information" ||
+    value === "scam" ||
+    value === "other";
 }
 
 export const travelFeedService = {
@@ -235,5 +473,57 @@ export const travelFeedService = {
 
     const response = await api.post("/travel-feed", formData);
     return unwrapPost(response.data);
+  },
+  async likePost(postId: number | string) {
+    const response = await api.post(`/travel-feed/${postId}/like`);
+    return unwrapPost(response.data);
+  },
+  async unlikePost(postId: number | string) {
+    const response = await api.delete(`/travel-feed/${postId}/like`);
+    return unwrapPost(response.data);
+  },
+  async reportPost(postId: number | string, payload: TravelFeedReportPayload) {
+    const response = await api.post(`/travel-feed/${postId}/reports`, payload);
+    return response.data;
+  },
+  async updatePostReport(postId: number | string, payload: TravelFeedReportPayload) {
+    const response = await api.patch(`/travel-feed/${postId}/report`, payload);
+    return response.data;
+  },
+  async listComments(postId: number | string, params: { page?: number; limit?: number } = {}) {
+    const response = await api.get(`/travel-feed/${postId}/comments`, { params });
+    return unwrapCommentList(response.data);
+  },
+  async createComment(postId: number | string, payload: TravelFeedCommentPayload) {
+    const response = await api.post(`/travel-feed/${postId}/comments`, payload);
+    return unwrapComment(response.data);
+  },
+  async updateComment(commentId: number | string, payload: Pick<TravelFeedCommentPayload, "content">) {
+    const response = await api.patch(`/travel-feed/comments/${commentId}`, payload);
+    return unwrapComment(response.data);
+  },
+  async deleteComment(commentId: number | string) {
+    const response = await api.delete(`/travel-feed/comments/${commentId}`);
+    return response.data;
+  },
+  async sharePost(postId: number | string, payload: TravelFeedSharePayload) {
+    const response = await api.post(`/travel-feed/${postId}/share`, payload);
+    return unwrapShareResult(response.data);
+  },
+  async listBlockedUsers(params: { page?: number; limit?: number } = {}) {
+    const response = await api.get("/travel-feed/blocked-users", { params });
+    return unwrapBlockedUsers(response.data);
+  },
+  async blockUser(userId: number | string) {
+    const response = await api.post(`/travel-feed/users/${userId}/block`);
+    return response.data;
+  },
+  async unblockUser(userId: number | string) {
+    const response = await api.delete(`/travel-feed/users/${userId}/block`);
+    return response.data;
+  },
+  async getBlockStatus(userId: number | string) {
+    const response = await api.get(`/travel-feed/users/${userId}/block-status`);
+    return unwrapBlockStatus(response.data);
   }
 };
