@@ -1,12 +1,13 @@
 "use client";
 
 import axios from "axios";
-import { Eye, Loader2, MessageSquareText, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Eye, MessageSquareText, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import {
   adminTravelFeedService,
@@ -183,7 +184,7 @@ export default function AdminTravelFeedPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading posts...</td></tr>
+                <AdminTableSkeleton columns={8} rows={10} />
               ) : posts.length === 0 ? (
                 <tr><td colSpan={8} className="p-8 text-center text-slate-500">No travel feed posts found.</td></tr>
               ) : posts.map((post, index) => (
@@ -260,6 +261,8 @@ function PostRow({ post, onDelete }: { post: TravelFeedPost; onDelete: () => voi
           {postId ? (
             <a
               href={`/travel-feed/${postId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               title="Open post"
               aria-label={`View ${title}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"

@@ -5,6 +5,7 @@ import { CheckCircle2, CircleDollarSign, RefreshCw, Search, ShieldCheck, X, XCir
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import {
   getStaffRefundAmount,
   getStaffRefundBookingId,
@@ -141,7 +142,7 @@ export default function StaffRefundRequestsPage() {
               <tr>{["Request", "Customer", "Booking", "Payment", "Amount", "Status", "Reason", "Actions"].map((head) => <th key={head} className="p-3">{head}</th>)}</tr>
             </thead>
             <tbody>
-              {loading ? <TableMessage message="Loading refund requests..." /> : null}
+              {loading ? <AdminTableSkeleton columns={8} rows={10} /> : null}
               {!loading && rows.length === 0 ? <TableMessage message="No refund requests found." /> : null}
               {!loading && rows.map((item) => {
                 const status = item.status ?? "pending";

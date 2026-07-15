@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Chatbot } from "@/components/common/chatbot";
 import { ToastProvider } from "@/components/common/toast";
-import { Footer } from "@/components/layout/footer";
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 
@@ -29,10 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
         <ToastProvider>
-          <Header />
-          <main>{children}</main>
-          <Footer />
-          <Chatbot />
+          <AppShell>{children}</AppShell>
         </ToastProvider>
       </body>
     </html>

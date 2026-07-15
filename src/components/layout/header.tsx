@@ -11,6 +11,7 @@ import { destinations, tours } from "@/lib/data";
 import { useAuthStore } from "@/store/use-auth-store";
 import { getAvatarImageSrc } from "@/lib/avatar";
 import { useSavedItemsStore } from "@/store/use-saved-items-store";
+import { authService } from "@/services/auth.service";
 import { HeaderWishlistDropdown } from "./header-wishlist-dropdown";
 
 const nav = [
@@ -18,7 +19,7 @@ const nav = [
   { href: "/destinations", label: "Destinations" },
   { href: "/tours", label: "Tours" },
   { href: "/maps/travel", label: "Travel Map" },
-  { href: "/view360", label: "360 Experience" },
+  { href: "/travel-feed", label: "Travel Feed" },
   { href: "/blogs", label: "Blogs" },
   { href: "/ai", label: "AI Assistant" }
 ];
@@ -32,6 +33,7 @@ export function Header() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const languageRef = useRef<HTMLDivElement>(null);
   const wishlistRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -60,16 +62,55 @@ export function Header() {
     setTheme(nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
 
-    // Load user from localStorage
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    let active = true;
+
+    async function restoreAuthenticatedUser() {
+      const token = localStorage.getItem("travel360_token") ?? localStorage.getItem("token");
+      if (!token) {
+        localStorage.removeItem("user");
+        if (active) {
+          setUser(null);
+          setAuthChecking(false);
+        }
+        return;
+      }
+
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user", e);
+        const response = await authService.getProfile();
+        if (!active) return;
+
+        const responseData = response.data as any;
+        const candidates = [responseData?.data?.user, responseData?.data, responseData?.user, responseData];
+        const authenticatedUser = candidates.find((candidate) => (
+          candidate && typeof candidate === "object" && ("user_id" in candidate || "email" in candidate || "role" in candidate)
+        ));
+
+        if (!authenticatedUser) throw new Error("Invalid profile response");
+        localStorage.setItem("user", JSON.stringify(authenticatedUser));
+        setUser(authenticatedUser);
+      } catch {
+        if (!active) return;
+        logout();
+      } finally {
+        if (active) setAuthChecking(false);
       }
     }
-  }, []);
+
+    function handleUnauthorized() {
+      if (active) {
+        setUser(null);
+        setAuthChecking(false);
+      }
+    }
+
+    window.addEventListener("travel360:unauthorized", handleUnauthorized);
+    void restoreAuthenticatedUser();
+
+    return () => {
+      active = false;
+      window.removeEventListener("travel360:unauthorized", handleUnauthorized);
+    };
+  }, [logout, setUser]);
 
   useEffect(() => {
     function closeDropdowns(event: MouseEvent) {
@@ -193,7 +234,12 @@ export function Header() {
             {wishlistOpen ? <HeaderWishlistDropdown onClose={() => setWishlistOpen(false)} /> : null}
           </div>
           
-          {user ? (
+          {authChecking ? (
+            <div className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-2 pr-4" aria-label="Restoring signed-in session">
+              <span className="size-8 animate-pulse rounded-full bg-slate-200" />
+              <span className="hidden h-3 w-20 animate-pulse rounded bg-slate-200 sm:block" />
+            </div>
+          ) : user ? (
             <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen((open) => !open)}

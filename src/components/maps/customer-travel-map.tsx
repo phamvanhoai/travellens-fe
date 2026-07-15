@@ -250,7 +250,17 @@ export default function CustomerTravelMap() {
         <div className="mt-5 border-t border-slate-100 pt-5">
           <p className="text-sm font-bold">{loading ? "Loading..." : `${visibleMarkers.length} places found`}</p>
           <div className="mt-3 max-h-[360px] space-y-3 overflow-auto pr-1">
-            {visibleMarkers.map((marker) => (
+            {loading ? Array.from({ length: 5 }, (_, index) => (
+              <div key={index} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3" aria-hidden="true">
+                <div className="size-12 shrink-0 animate-pulse rounded-md bg-slate-200" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3.5 w-3/4 animate-pulse rounded bg-slate-200" />
+                  <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" />
+                </div>
+              </div>
+            )) : null}
+            {!loading ? visibleMarkers.map((marker) => (
               <a key={marker.id} href={marker.type === "location" ? `/locations/${marker.sourceId}` : `/destinations/${marker.sourceId}`} className="block rounded-lg border border-slate-200 p-3 hover:border-brand-500">
                 <span className="flex items-start gap-3">
                   {marker.imageUrl ? <img src={marker.imageUrl} alt="" className="size-12 rounded-md object-cover" /> : <span className="grid size-12 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={18} /></span>}
@@ -265,13 +275,13 @@ export default function CustomerTravelMap() {
                   </span>
                 </span>
               </a>
-            ))}
+            )) : null}
             {!loading && visibleMarkers.length === 0 ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No map markers found.</p> : null}
           </div>
         </div>
       </aside>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="relative z-0 isolate overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <MapContainer center={defaultCenter} zoom={12} scrollWheelZoom className="h-[720px] min-h-[520px] w-full">
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Street">
