@@ -275,6 +275,8 @@ function CommentRow({ comment, onDelete }: { comment: TravelFeedComment; onDelet
           {postId ? (
             <a
               href={`/travel-feed/${postId}?comment_id=${commentId}#comment-${commentId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               title="Open post"
               aria-label={`View comment ${commentId} in post ${postId}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"

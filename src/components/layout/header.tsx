@@ -11,6 +11,7 @@ import { destinations, tours } from "@/lib/data";
 import { useAuthStore } from "@/store/use-auth-store";
 import { getAvatarImageSrc } from "@/lib/avatar";
 import { useSavedItemsStore } from "@/store/use-saved-items-store";
+import { authService } from "@/services/auth.service";
 import { HeaderWishlistDropdown } from "./header-wishlist-dropdown";
 
 const nav = [
@@ -60,16 +61,47 @@ export function Header() {
     setTheme(nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
 
-    // Load user from localStorage
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    let active = true;
+
+    async function restoreAuthenticatedUser() {
+      const token = localStorage.getItem("travel360_token") ?? localStorage.getItem("token");
+      if (!token) {
+        localStorage.removeItem("user");
+        if (active) setUser(null);
+        return;
+      }
+
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user", e);
+        const response = await authService.getProfile();
+        if (!active) return;
+
+        const responseData = response.data as any;
+        const candidates = [responseData?.data?.user, responseData?.data, responseData?.user, responseData];
+        const authenticatedUser = candidates.find((candidate) => (
+          candidate && typeof candidate === "object" && ("user_id" in candidate || "email" in candidate || "role" in candidate)
+        ));
+
+        if (!authenticatedUser) throw new Error("Invalid profile response");
+        localStorage.setItem("user", JSON.stringify(authenticatedUser));
+        setUser(authenticatedUser);
+      } catch {
+        if (!active) return;
+        logout();
       }
     }
-  }, []);
+
+    function handleUnauthorized() {
+      if (active) setUser(null);
+    }
+
+    window.addEventListener("travel360:unauthorized", handleUnauthorized);
+    void restoreAuthenticatedUser();
+
+    return () => {
+      active = false;
+      window.removeEventListener("travel360:unauthorized", handleUnauthorized);
+    };
+  }, [logout, setUser]);
 
   useEffect(() => {
     function closeDropdowns(event: MouseEvent) {

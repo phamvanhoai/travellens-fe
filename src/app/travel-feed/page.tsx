@@ -32,6 +32,7 @@ import {
   isTravelFeedReported,
   isTravelFeedReportPending,
   isTravelFeedLiked,
+  adminTravelFeedService,
   travelFeedService,
   withTravelFeedLikeState,
   withTravelFeedReportState,
@@ -504,9 +505,7 @@ function TravelFeedContent() {
                 post={post}
                 isLikeBusy={Boolean(likingPostIds[getTravelFeedPostId(post)])}
                 onToggleLike={togglePostLike}
-                onOpenComments={() => {
-                  if (requireCustomerAction("Please sign in with a customer account to view and write comments.")) setCommentingPost(post);
-                }}
+                onOpenComments={() => setCommentingPost(post)}
                 onShare={() => {
                   if (requireCustomerAction("Please sign in with a customer account to share posts.")) setSharingPost(post);
                 }}
@@ -1154,6 +1153,7 @@ function CommentsModal({
   const [error, setError] = useState("");
   const postId = getTravelFeedPostId(post);
   const currentUserId = getCurrentUserId(user);
+  const canInteractWithComments = user?.role === "customer";
 
   useEffect(() => {
     let active = true;
@@ -1167,6 +1167,20 @@ function CommentsModal({
         if (active) setComments(buildCommentTree(items));
       } catch (err) {
         if (!active) return;
+        if (user?.role === "admin") {
+          try {
+            const result = await adminTravelFeedService.listComments({
+              post_id: postId,
+              limit: 100,
+              include_deleted: false,
+              sort: "newest"
+            });
+            if (active) setComments(buildCommentTree(result.items));
+            return;
+          } catch {
+            // Show the original public API error below when both sources fail.
+          }
+        }
         const message = getCommentApiError(err, "Cannot load comments.");
         setError(message);
         showToast({ variant: "error", title: "Load failed", description: message });
@@ -1180,7 +1194,7 @@ function CommentsModal({
     return () => {
       active = false;
     };
-  }, [postId, showToast]);
+  }, [postId, showToast, user?.role]);
 
   async function submitComment() {
     const trimmedContent = content.trim();
@@ -1303,6 +1317,7 @@ function CommentsModal({
                   depth={0}
                   parentAuthor=""
                   currentUserId={currentUserId}
+                  canInteract={canInteractWithComments}
                   busyCommentId={busyCommentId}
                   editingCommentId={editingCommentId}
                   replyingCommentId={replyingCommentId}
@@ -1334,6 +1349,7 @@ function CommentsModal({
           )}
         </div>
 
+        {canInteractWithComments ? (
         <div className="border-t border-slate-100 p-5">
           <label className="sr-only" htmlFor="travel-feed-comment">Add a comment</label>
           <textarea
@@ -1359,6 +1375,11 @@ function CommentsModal({
           </div>
           {error ? <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
         </div>
+        ) : (
+          <div className="border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500">
+            Sign in with a customer account to write or reply to comments.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1369,6 +1390,7 @@ function TravelFeedCommentCard({
   depth,
   parentAuthor,
   currentUserId,
+  canInteract,
   busyCommentId,
   editingCommentId,
   replyingCommentId,
@@ -1387,6 +1409,7 @@ function TravelFeedCommentCard({
   depth: number;
   parentAuthor: string;
   currentUserId: number;
+  canInteract: boolean;
   busyCommentId: number | null;
   editingCommentId: number | null;
   replyingCommentId: number | null;
@@ -1438,11 +1461,13 @@ function TravelFeedCommentCard({
               {repliesExpanded ? "Hide replies" : `View replies (${replies.length})`}
             </button>
           ) : null}
-          <button type="button" onClick={() => onStartReply(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
-            <Reply size={13} />
-            Reply
-          </button>
-          {isOwner ? (
+          {canInteract ? (
+            <button type="button" onClick={() => onStartReply(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
+              <Reply size={13} />
+              Reply
+            </button>
+          ) : null}
+          {canInteract && isOwner ? (
             <>
               <button type="button" onClick={() => onStartEdit(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
                 <Pencil size={13} />
@@ -1474,6 +1499,7 @@ function TravelFeedCommentCard({
                 depth={depth + 1}
                 parentAuthor={authorName}
                 currentUserId={currentUserId}
+                canInteract={canInteract}
                 busyCommentId={busyCommentId}
                 editingCommentId={editingCommentId}
                 replyingCommentId={replyingCommentId}
