@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import {
@@ -316,7 +317,7 @@ export default function AdminToursPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="p-6 text-center text-slate-500">Loading tours...</td></tr>
+                <AdminTableSkeleton columns={9} rows={10} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={9} className="p-6 text-center text-slate-500">No tours found.</td></tr>
               ) : items.map((item) => {

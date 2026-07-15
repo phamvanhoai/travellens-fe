@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import {
   adminTourCategoryService,
   getTourCategoryId,
@@ -155,7 +156,7 @@ export default function TourCategoriesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="p-6 text-center text-slate-500" colSpan={4}>Loading tour categories...</td></tr>
+                <AdminTableSkeleton columns={4} />
               ) : paginatedItems.length === 0 ? (
                 <tr><td className="p-6 text-center text-slate-500" colSpan={4}>No tour categories found.</td></tr>
               ) : paginatedItems.map((item) => (

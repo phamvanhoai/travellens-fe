@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { getRichTextPlainText, RichTextEditor } from "@/components/admin/rich-text-editor";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import {
@@ -199,7 +200,7 @@ export default function AdminBlogsPage() {
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Blog", "Status", "Category", "Author", "Locations", "Content", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading blogs...</td></tr>
+              {loading ? <AdminTableSkeleton columns={8} rows={8} />
                 : paginatedItems.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-slate-500">No blogs found.</td></tr>
                   : paginatedItems.map((item) => {
                     const names = getAdminBlogLocations(item).map((location) => location.name).filter(Boolean);

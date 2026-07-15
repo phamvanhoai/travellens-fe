@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Filter, Loader2, Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { DestinationCard } from "@/components/cards/destination-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
@@ -160,9 +160,7 @@ export default function DestinationsPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
-          </div>
+          <DestinationsSkeleton count={pageSize} />
         ) : items.length === 0 ? (
           <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300">
             <p className="text-slate-500">No destinations found.</p>
@@ -183,5 +181,35 @@ export default function DestinationsPage() {
         )}
       </section>
     </>
+  );
+}
+
+function DestinationsSkeleton({ count }: { count: number }) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading destinations" aria-busy="true">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="relative h-52 animate-pulse bg-slate-200">
+            <span className="absolute right-3 top-3 size-9 rounded-full bg-white/90" />
+          </div>
+          <div className="space-y-4 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-4/5 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-3/5 animate-pulse rounded bg-slate-100" />
+              </div>
+              <div className="w-14 space-y-2">
+                <div className="ml-auto h-2.5 w-7 animate-pulse rounded bg-slate-100" />
+                <div className="h-3.5 w-full animate-pulse rounded bg-slate-200" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="size-4 animate-pulse rounded-full bg-amber-200" />
+              <div className="h-3.5 w-20 animate-pulse rounded bg-slate-200" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

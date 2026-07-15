@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import {
   adminView360Service,
@@ -279,7 +280,7 @@ export default function AdminView360Page() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-500">Loading View360 scenes...</td></tr>
+                <AdminTableSkeleton columns={8} rows={10} />
               ) : paginatedItems.length === 0 ? (
                 <tr><td colSpan={8} className="p-6 text-center text-slate-500">No View360 scenes found.</td></tr>
               ) : paginatedItems.map((item) => (
@@ -705,7 +706,7 @@ function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; imag
       </div>
 
       <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
-        {loading ? <p className="p-4 text-sm text-slate-500">Loading hotspots...</p> : null}
+        {loading ? <div className="grid gap-3 p-4" aria-label="Loading hotspots" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex items-center justify-between gap-4"><div className="min-w-0 flex-1 space-y-2"><div className="h-3.5 w-2/5 animate-pulse rounded bg-slate-200" /><div className="h-3 w-3/4 animate-pulse rounded bg-slate-100" /></div><div className="size-8 animate-pulse rounded-md bg-slate-100" /></div>)}</div> : null}
         {!loading && hotspots.length === 0 ? <p className="p-4 text-sm text-slate-500">No hotspots yet.</p> : null}
         {hotspots.map((hotspot) => (
           <div key={getView360HotspotId(hotspot)} className="flex items-center gap-3 p-3">

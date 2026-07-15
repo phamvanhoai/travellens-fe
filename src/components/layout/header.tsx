@@ -33,6 +33,7 @@ export function Header() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const languageRef = useRef<HTMLDivElement>(null);
   const wishlistRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -67,7 +68,10 @@ export function Header() {
       const token = localStorage.getItem("travel360_token") ?? localStorage.getItem("token");
       if (!token) {
         localStorage.removeItem("user");
-        if (active) setUser(null);
+        if (active) {
+          setUser(null);
+          setAuthChecking(false);
+        }
         return;
       }
 
@@ -87,11 +91,16 @@ export function Header() {
       } catch {
         if (!active) return;
         logout();
+      } finally {
+        if (active) setAuthChecking(false);
       }
     }
 
     function handleUnauthorized() {
-      if (active) setUser(null);
+      if (active) {
+        setUser(null);
+        setAuthChecking(false);
+      }
     }
 
     window.addEventListener("travel360:unauthorized", handleUnauthorized);
@@ -225,7 +234,12 @@ export function Header() {
             {wishlistOpen ? <HeaderWishlistDropdown onClose={() => setWishlistOpen(false)} /> : null}
           </div>
           
-          {user ? (
+          {authChecking ? (
+            <div className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-2 pr-4" aria-label="Restoring signed-in session">
+              <span className="size-8 animate-pulse rounded-full bg-slate-200" />
+              <span className="hidden h-3 w-20 animate-pulse rounded bg-slate-200 sm:block" />
+            </div>
+          ) : user ? (
             <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen((open) => !open)}

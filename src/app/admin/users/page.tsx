@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { getAvatarImageSrc } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import {
@@ -340,7 +341,7 @@ export default function AdminUsersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="p-6 text-center text-slate-500">Loading users...</td></tr>
+                <AdminTableSkeleton columns={7} rows={10} />
               ) : users.length === 0 ? (
                 <tr><td colSpan={7} className="p-6 text-center text-slate-500">No users found.</td></tr>
               ) : users.map((user) => {
