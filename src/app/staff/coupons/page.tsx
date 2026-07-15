@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import {
   getStaffCouponId,
   staffCouponService,
@@ -249,7 +250,7 @@ export default function StaffCouponsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading coupons...</td></tr>
+                <AdminTableSkeleton columns={6} rows={10} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={6} className="p-6 text-center text-slate-500">No coupons found.</td></tr>
               ) : items.map((item) => (

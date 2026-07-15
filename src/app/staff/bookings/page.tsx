@@ -6,6 +6,7 @@ import { CalendarCheck, CheckCircle2, Loader2, Minus, Pencil, Plus, RefreshCw, S
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { couponService, type CouponValidationResult } from "@/services/coupon.service";
 import {
   getStaffBookingAmount,
@@ -187,7 +188,7 @@ export default function StaffBookingsPage() {
               <tr>{["Code", "Customer", "Tour", "Date", "Passengers", "Amount", "Status", "Actions"].map((head) => <th key={head} className="p-3">{head}</th>)}</tr>
             </thead>
             <tbody>
-              {loading ? <TableMessage colSpan={8} message={<><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading staff bookings...</>} /> : null}
+              {loading ? <AdminTableSkeleton columns={8} rows={10} /> : null}
               {!loading && rows.length === 0 ? <TableMessage colSpan={8} message="No staff bookings found." /> : null}
               {!loading && rows.map((item) => {
                 const formValue = toFormValue(item);
