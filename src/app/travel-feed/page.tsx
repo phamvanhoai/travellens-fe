@@ -32,6 +32,7 @@ import {
   isTravelFeedReported,
   isTravelFeedReportPending,
   isTravelFeedLiked,
+  adminTravelFeedService,
   travelFeedService,
   withTravelFeedLikeState,
   withTravelFeedReportState,
@@ -483,12 +484,7 @@ function TravelFeedContent() {
         ) : null}
 
         {isLoading ? (
-          <div className="grid h-72 place-items-center rounded-lg border border-slate-100 bg-white">
-            <div className="inline-flex items-center gap-3 text-sm font-semibold text-slate-600">
-              <Loader2 className="size-5 animate-spin text-brand-600" />
-              Loading travel feed
-            </div>
-          </div>
+          <TravelFeedSkeleton count={3} />
         ) : posts.length === 0 ? (
           <div className="grid h-72 place-items-center rounded-lg border border-dashed border-slate-300 bg-white px-4 text-center">
             <div>
@@ -504,9 +500,7 @@ function TravelFeedContent() {
                 post={post}
                 isLikeBusy={Boolean(likingPostIds[getTravelFeedPostId(post)])}
                 onToggleLike={togglePostLike}
-                onOpenComments={() => {
-                  if (requireCustomerAction("Please sign in with a customer account to view and write comments.")) setCommentingPost(post);
-                }}
+                onOpenComments={() => setCommentingPost(post)}
                 onShare={() => {
                   if (requireCustomerAction("Please sign in with a customer account to share posts.")) setSharingPost(post);
                 }}
@@ -899,6 +893,39 @@ function TravelFeedCard({
   );
 }
 
+function TravelFeedSkeleton({ count }: { count: number }) {
+  return (
+    <div className="space-y-5" aria-label="Loading travel feed" aria-busy="true">
+      {Array.from({ length: count }, (_, index) => (
+        <article key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-hidden="true">
+          <div className="flex items-center gap-3 p-4">
+            <div className="size-11 shrink-0 animate-pulse rounded-full bg-slate-200" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-3.5 w-32 animate-pulse rounded bg-slate-200" />
+              <div className="h-3 w-52 max-w-full animate-pulse rounded bg-slate-100" />
+            </div>
+            <div className="h-9 w-20 animate-pulse rounded-lg bg-slate-100" />
+          </div>
+          <div className="aspect-[16/9] w-full animate-pulse bg-slate-200" />
+          <div className="p-4">
+            <div className="h-5 w-3/5 animate-pulse rounded bg-slate-200" />
+            <div className="mt-3 space-y-2">
+              <div className="h-3.5 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-3.5 w-5/6 animate-pulse rounded bg-slate-100" />
+            </div>
+            <div className="mt-4 flex items-center gap-5 border-t border-slate-100 pt-4">
+              <div className="h-4 w-16 animate-pulse rounded bg-slate-200" />
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
+              <div className="h-4 w-14 animate-pulse rounded bg-slate-100" />
+              <div className="ml-auto h-4 w-16 animate-pulse rounded bg-slate-100" />
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function ReportPostModal({
   post,
   initialValue,
@@ -1154,6 +1181,7 @@ function CommentsModal({
   const [error, setError] = useState("");
   const postId = getTravelFeedPostId(post);
   const currentUserId = getCurrentUserId(user);
+  const canInteractWithComments = user?.role === "customer";
 
   useEffect(() => {
     let active = true;
@@ -1167,6 +1195,20 @@ function CommentsModal({
         if (active) setComments(buildCommentTree(items));
       } catch (err) {
         if (!active) return;
+        if (user?.role === "admin") {
+          try {
+            const result = await adminTravelFeedService.listComments({
+              post_id: postId,
+              limit: 100,
+              include_deleted: false,
+              sort: "newest"
+            });
+            if (active) setComments(buildCommentTree(result.items));
+            return;
+          } catch {
+            // Show the original public API error below when both sources fail.
+          }
+        }
         const message = getCommentApiError(err, "Cannot load comments.");
         setError(message);
         showToast({ variant: "error", title: "Load failed", description: message });
@@ -1180,7 +1222,7 @@ function CommentsModal({
     return () => {
       active = false;
     };
-  }, [postId, showToast]);
+  }, [postId, showToast, user?.role]);
 
   async function submitComment() {
     const trimmedContent = content.trim();
@@ -1303,6 +1345,7 @@ function CommentsModal({
                   depth={0}
                   parentAuthor=""
                   currentUserId={currentUserId}
+                  canInteract={canInteractWithComments}
                   busyCommentId={busyCommentId}
                   editingCommentId={editingCommentId}
                   replyingCommentId={replyingCommentId}
@@ -1334,6 +1377,7 @@ function CommentsModal({
           )}
         </div>
 
+        {canInteractWithComments ? (
         <div className="border-t border-slate-100 p-5">
           <label className="sr-only" htmlFor="travel-feed-comment">Add a comment</label>
           <textarea
@@ -1359,6 +1403,11 @@ function CommentsModal({
           </div>
           {error ? <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
         </div>
+        ) : (
+          <div className="border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500">
+            Sign in with a customer account to write or reply to comments.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1369,6 +1418,7 @@ function TravelFeedCommentCard({
   depth,
   parentAuthor,
   currentUserId,
+  canInteract,
   busyCommentId,
   editingCommentId,
   replyingCommentId,
@@ -1387,6 +1437,7 @@ function TravelFeedCommentCard({
   depth: number;
   parentAuthor: string;
   currentUserId: number;
+  canInteract: boolean;
   busyCommentId: number | null;
   editingCommentId: number | null;
   replyingCommentId: number | null;
@@ -1438,11 +1489,13 @@ function TravelFeedCommentCard({
               {repliesExpanded ? "Hide replies" : `View replies (${replies.length})`}
             </button>
           ) : null}
-          <button type="button" onClick={() => onStartReply(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
-            <Reply size={13} />
-            Reply
-          </button>
-          {isOwner ? (
+          {canInteract ? (
+            <button type="button" onClick={() => onStartReply(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
+              <Reply size={13} />
+              Reply
+            </button>
+          ) : null}
+          {canInteract && isOwner ? (
             <>
               <button type="button" onClick={() => onStartEdit(comment)} className="inline-flex items-center gap-1 hover:text-brand-700">
                 <Pencil size={13} />
@@ -1474,6 +1527,7 @@ function TravelFeedCommentCard({
                 depth={depth + 1}
                 parentAuthor={authorName}
                 currentUserId={currentUserId}
+                canInteract={canInteract}
                 busyCommentId={busyCommentId}
                 editingCommentId={editingCommentId}
                 replyingCommentId={replyingCommentId}

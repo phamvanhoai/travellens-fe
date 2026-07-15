@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import {
   adminLocationService,
   getLocationDestinationId,
@@ -241,7 +242,7 @@ export default function AdminMapsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="p-6 text-center text-slate-500">Loading maps...</td></tr>
+                <AdminTableSkeleton columns={5} rows={10} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={5} className="p-6 text-center text-slate-500">No maps found.</td></tr>
               ) : items.map((item) => (

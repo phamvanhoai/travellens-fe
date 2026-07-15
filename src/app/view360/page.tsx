@@ -210,14 +210,7 @@ export default function View360Page() {
   }
 
   if (loading) {
-    return (
-      <section className="grid min-h-[calc(100vh-80px)] place-items-center bg-black text-white">
-        <div className="text-center">
-          <Loader2 className="mx-auto size-9 animate-spin" />
-          <p className="mt-4 text-sm text-white/65">Loading 360 experiences...</p>
-        </div>
-      </section>
-    );
+    return <View360Skeleton />;
   }
 
   if (!activeScene || !activeImage) {
@@ -249,8 +242,8 @@ export default function View360Page() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.48),transparent_28%,transparent_55%,rgba(0,0,0,0.82))]" />
 
       {panoramaLoading ? (
-        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/45">
-          <Loader2 className="size-10 animate-spin" />
+        <div className="pointer-events-none absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_45%,#26364a_0%,#111827_38%,#030712_100%)]">
+          <div className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 ring-[18px] ring-white/5" />
         </div>
       ) : null}
 
@@ -389,6 +382,44 @@ export default function View360Page() {
         onEnded={() => setAudioPlaying(false)}
         onError={() => { setAudioPlaying(false); setError("Audio narration could not be loaded."); }}
       />
+    </section>
+  );
+}
+
+function View360Skeleton() {
+  return (
+    <section className="relative h-[calc(100vh-80px)] min-h-[620px] overflow-hidden bg-[radial-gradient(circle_at_45%_40%,#334155_0%,#111827_38%,#020617_100%)] text-white" aria-label="Loading 360 experiences" aria-busy="true">
+      <div className="absolute inset-0 animate-pulse bg-[linear-gradient(to_bottom,rgba(255,255,255,.05),transparent_35%,rgba(0,0,0,.45))]" />
+      <div className="absolute left-4 top-4 h-10 w-24 animate-pulse rounded-lg border border-white/10 bg-white/10 sm:left-6 sm:top-6 sm:h-11" />
+      <div className="absolute right-4 top-4 flex gap-2 sm:right-6 sm:top-6">
+        {Array.from({ length: 4 }, (_, index) => <div key={index} className="size-10 animate-pulse rounded-lg border border-white/10 bg-white/10 sm:size-11" />)}
+      </div>
+
+      <div className="absolute bottom-6 left-4 right-4 sm:left-6 lg:right-[390px]">
+        <div className="flex gap-2">
+          <div className="h-7 w-20 animate-pulse rounded-md bg-white/10" />
+          <div className="h-7 w-24 animate-pulse rounded-md bg-white/10" />
+          <div className="h-7 w-28 animate-pulse rounded-md bg-white/10" />
+        </div>
+        <div className="mt-4 h-9 w-3/5 max-w-xl animate-pulse rounded bg-white/20" />
+        <div className="mt-3 h-3.5 w-4/5 max-w-2xl animate-pulse rounded bg-white/10" />
+        <div className="mt-2 h-3.5 w-2/3 max-w-xl animate-pulse rounded bg-white/10" />
+      </div>
+
+      <aside className="absolute bottom-5 right-5 top-20 hidden w-[340px] rounded-lg border border-white/10 bg-black/30 p-4 backdrop-blur-xl lg:block">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2"><div className="h-2.5 w-20 animate-pulse rounded bg-white/10" /><div className="h-4 w-32 animate-pulse rounded bg-white/20" /></div>
+          <div className="size-9 animate-pulse rounded-lg bg-white/10" />
+        </div>
+        <div className="mt-5 space-y-3">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="grid grid-cols-[96px_1fr] overflow-hidden rounded-lg border border-white/10 bg-white/5">
+              <div className="h-20 animate-pulse bg-white/10" />
+              <div className="space-y-2 p-3"><div className="h-2.5 w-14 animate-pulse rounded bg-white/10" /><div className="h-3.5 w-full animate-pulse rounded bg-white/20" /><div className="h-3 w-1/2 animate-pulse rounded bg-white/10" /></div>
+            </div>
+          ))}
+        </div>
+      </aside>
     </section>
   );
 }

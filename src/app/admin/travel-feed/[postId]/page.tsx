@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { ArrowLeft, Loader2, MessageSquareText, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, MessageSquareText, RefreshCw, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -111,7 +111,22 @@ export default function AdminTravelFeedPostDetailPage() {
         {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
         {loading ? (
-          <div className="grid min-h-[360px] place-items-center text-slate-500"><span><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading post...</span></div>
+          <div className="mt-6 grid animate-pulse gap-6 lg:grid-cols-[minmax(0,1fr)_280px]" aria-label="Loading post" aria-busy="true">
+            <div>
+              <div className="h-64 rounded-lg bg-slate-200" />
+              <div className="mt-6 h-5 w-24 rounded bg-slate-200" />
+              <div className="mt-3 space-y-2 rounded-lg bg-slate-50 p-4">
+                <div className="h-3.5 w-full rounded bg-slate-200" />
+                <div className="h-3.5 w-5/6 rounded bg-slate-200" />
+                <div className="h-3.5 w-2/3 rounded bg-slate-200" />
+              </div>
+            </div>
+            <div className="h-80 rounded-lg border border-slate-200 p-4">
+              <div className="space-y-5">
+                {Array.from({ length: 6 }, (_, index) => <div key={index}><div className="h-2.5 w-16 rounded bg-slate-100" /><div className="mt-2 h-3.5 w-28 rounded bg-slate-200" /></div>)}
+              </div>
+            </div>
+          </div>
         ) : post ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
             <div className="min-w-0">

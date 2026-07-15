@@ -201,7 +201,7 @@ export default function AdminDestinationsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading travel destinations...</td></tr>
+                <TravelDestinationTableSkeleton count={pageSize} />
               ) : items.length === 0 ? (
                 <tr><td colSpan={6} className="p-6 text-center text-slate-500">No travel destinations found.</td></tr>
               ) : items.map((item) => (
@@ -246,6 +246,38 @@ export default function AdminDestinationsPage() {
       {deleting ? (
         <ConfirmDialog title="Delete Travel Destination" message={`Are you sure you want to delete "${deleting.name}"?`} onCancel={() => setDeleting(null)} onConfirm={deleteDestination} />
       ) : null}
+    </>
+  );
+}
+
+function TravelDestinationTableSkeleton({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, index) => (
+        <tr key={index} className="border-t border-slate-100" aria-hidden="true">
+          <td className="p-3"><div className="h-4 w-10 animate-pulse rounded bg-slate-200" /></td>
+          <td className="p-3">
+            <div className="flex items-center gap-3">
+              <div className="size-11 shrink-0 animate-pulse rounded-md bg-slate-200" />
+              <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+            </div>
+          </td>
+          <td className="p-3"><div className="h-4 w-24 animate-pulse rounded bg-slate-200" /></td>
+          <td className="p-3"><div className="h-4 w-36 animate-pulse rounded bg-slate-200" /></td>
+          <td className="p-3">
+            <div className="space-y-2">
+              <div className="h-3.5 w-56 animate-pulse rounded bg-slate-200" />
+              <div className="h-3.5 w-36 animate-pulse rounded bg-slate-100" />
+            </div>
+          </td>
+          <td className="p-3">
+            <div className="flex gap-2">
+              <div className="h-9 w-20 animate-pulse rounded-lg bg-slate-200" />
+              <div className="size-9 animate-pulse rounded-lg bg-slate-100" />
+            </div>
+          </td>
+        </tr>
+      ))}
     </>
   );
 }

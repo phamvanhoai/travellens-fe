@@ -153,11 +153,7 @@ export default function BlogDetailPage() {
   }
 
   if (loading) {
-    return (
-      <section className="mx-auto grid min-h-[520px] max-w-4xl place-items-center px-4 py-10 sm:px-6 lg:px-8">
-        <div className="text-sm font-semibold text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin text-brand-600" />Loading story...</div>
-      </section>
-    );
+    return <BlogDetailSkeleton />;
   }
 
   if (error || !blog) {
@@ -174,7 +170,7 @@ export default function BlogDetailPage() {
   const content = blog.content?.trim();
 
   return (
-    <article className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <article className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <nav className="mb-5 text-sm font-semibold text-slate-500">
         <Link href="/" className="hover:text-brand-600">Home</Link>
         <span className="mx-2">/</span>
@@ -183,9 +179,9 @@ export default function BlogDetailPage() {
         <span className="text-slate-700">Story Detail</span>
       </nav>
       <img src={getCustomerBlogImage(blog, images.balloons)} alt={blog.title} className="h-[460px] w-full rounded-lg object-cover" />
-      <p className="mt-8 text-sm font-bold uppercase tracking-wide text-brand-600">Travel story</p>
-      <h1 className="mt-3 text-4xl font-bold">{blog.title}</h1>
-      <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-slate-500">
+      <p className="mx-auto mt-8 max-w-4xl text-sm font-bold uppercase tracking-wide text-brand-600">Travel story</p>
+      <h1 className="mx-auto mt-3 max-w-4xl text-4xl font-bold">{blog.title}</h1>
+      <div className="mx-auto mt-4 flex max-w-4xl flex-wrap gap-4 text-sm font-semibold text-slate-500">
         <span className="inline-flex items-center gap-2"><UserRound size={16} /> {getCustomerBlogAuthor(blog)}</span>
         {blog.created_at ? <span className="inline-flex items-center gap-2"><CalendarDays size={16} /> {formatDate(blog.created_at)}</span> : null}
         {locations.map((location, index) => (
@@ -196,12 +192,12 @@ export default function BlogDetailPage() {
       </div>
 
       {content ? (
-        <div className="prose prose-slate mt-8 max-w-none leading-8" dangerouslySetInnerHTML={{ __html: content }} />
+        <div className="prose prose-slate mx-auto mt-8 max-w-4xl leading-8" dangerouslySetInnerHTML={{ __html: content }} />
       ) : (
-        <p className="mt-8 text-lg leading-8 text-slate-600">{getCustomerBlogExcerpt(blog, 1200) || "No content has been added for this story yet."}</p>
+        <p className="mx-auto mt-8 max-w-4xl text-lg leading-8 text-slate-600">{getCustomerBlogExcerpt(blog, 1200) || "No content has been added for this story yet."}</p>
       )}
 
-      <section className="mt-10 border-t border-slate-200 pt-8">
+      <section className="mx-auto mt-10 max-w-4xl border-t border-slate-200 pt-8">
         <div className="flex items-center gap-3">
           <MessageSquareText className="size-6 text-brand-600" />
           <h2 className="text-2xl font-bold">Comments</h2>
@@ -230,9 +226,7 @@ export default function BlogDetailPage() {
 
         <div className="mt-6 space-y-4">
           {commentsLoading ? (
-            <div className="rounded-lg bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">
-              <Loader2 className="mr-2 inline size-5 animate-spin text-brand-600" />Loading comments...
-            </div>
+            <BlogCommentsSkeleton />
           ) : comments.length === 0 ? (
             <div className="rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500">No comments yet.</div>
           ) : comments.map((comment) => (
@@ -278,6 +272,43 @@ export default function BlogDetailPage() {
         <Button href="/blogs" variant="outline">Back to Blogs</Button>
       </div>
     </article>
+  );
+}
+
+function BlogDetailSkeleton() {
+  return (
+    <article className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" aria-label="Loading story" aria-busy="true">
+      <div className="flex gap-2"><div className="h-3.5 w-12 animate-pulse rounded bg-slate-100" /><div className="h-3.5 w-3 animate-pulse rounded bg-slate-100" /><div className="h-3.5 w-14 animate-pulse rounded bg-slate-100" /><div className="h-3.5 w-3 animate-pulse rounded bg-slate-100" /><div className="h-3.5 w-20 animate-pulse rounded bg-slate-200" /></div>
+      <div className="mt-5 h-[460px] w-full animate-pulse rounded-lg bg-slate-200" />
+      <div className="mt-8 h-3 w-24 animate-pulse rounded bg-brand-100" />
+      <div className="mt-4 h-9 w-4/5 animate-pulse rounded bg-slate-200" />
+      <div className="mt-3 h-9 w-3/5 animate-pulse rounded bg-slate-200" />
+      <div className="mt-5 flex flex-wrap gap-5">
+        {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-4 w-28 animate-pulse rounded bg-slate-100" />)}
+      </div>
+      <div className="mt-10 space-y-3">
+        {Array.from({ length: 7 }, (_, index) => <div key={index} className={`h-4 animate-pulse rounded bg-slate-100 ${index === 6 ? "w-2/3" : index % 3 === 1 ? "w-11/12" : "w-full"}`} />)}
+      </div>
+      <div className="mt-10 border-t border-slate-200 pt-8">
+        <div className="h-7 w-40 animate-pulse rounded bg-slate-200" />
+        <div className="mt-5 h-44 animate-pulse rounded-lg border border-slate-200 bg-white p-5"><div className="h-3.5 w-28 rounded bg-slate-200" /><div className="mt-3 h-24 rounded-lg bg-slate-100" /></div>
+        <div className="mt-6"><BlogCommentsSkeleton /></div>
+      </div>
+    </article>
+  );
+}
+
+function BlogCommentsSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading comments" aria-busy="true">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="rounded-lg border border-slate-200 bg-white p-4" aria-hidden="true">
+          <div className="flex items-center gap-3"><div className="size-9 animate-pulse rounded-full bg-slate-200" /><div className="space-y-2"><div className="h-3.5 w-28 animate-pulse rounded bg-slate-200" /><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /></div></div>
+          <div className="mt-4 h-3.5 w-full animate-pulse rounded bg-slate-100" />
+          <div className="mt-2 h-3.5 w-3/4 animate-pulse rounded bg-slate-100" />
+        </div>
+      ))}
+    </div>
   );
 }
 

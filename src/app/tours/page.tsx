@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves, Loader2 } from "lucide-react";
+import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves } from "lucide-react";
 import { TourCard } from "@/components/cards/tour-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
@@ -70,9 +70,7 @@ export default function ToursPage() {
           <p className="mb-4 text-sm text-slate-500">Showing available tours</p>
           
           {isLoading ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
-            </div>
+            <ToursSkeleton count={pageSize} />
           ) : items.length === 0 ? (
             <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50">
               <p className="text-slate-500">No tours found.</p>
@@ -106,5 +104,40 @@ export default function ToursPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function ToursSkeleton({ count }: { count: number }) {
+  return (
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading tours" aria-busy="true">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-hidden="true">
+          <div className="relative h-52 animate-pulse bg-slate-200">
+            <span className="absolute right-3 top-3 size-9 rounded-full bg-white/90" />
+          </div>
+          <div className="p-4">
+            <div className="h-4 w-4/5 animate-pulse rounded bg-slate-200" />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="size-3 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+            </div>
+            <div className="mt-4 flex gap-5">
+              <div className="h-3 w-20 animate-pulse rounded bg-slate-100" />
+              <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
+            </div>
+            <div className="mt-5 flex items-end justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="size-4 animate-pulse rounded-full bg-amber-200" />
+                <div className="h-3.5 w-16 animate-pulse rounded bg-slate-200" />
+              </div>
+              <div className="space-y-2">
+                <div className="ml-auto h-2.5 w-8 animate-pulse rounded bg-slate-100" />
+                <div className="h-4 w-20 animate-pulse rounded bg-slate-200" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

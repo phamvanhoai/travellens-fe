@@ -37,3 +37,17 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined" && error.response?.status === 401) {
+      localStorage.removeItem("user");
+      localStorage.removeItem("travel360_token");
+      localStorage.removeItem("token");
+      window.dispatchEvent(new Event("travel360:unauthorized"));
+    }
+
+    return Promise.reject(error);
+  }
+);

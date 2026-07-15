@@ -17,9 +17,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   return (
     <AuthGuard allowedRoles={["admin", "staff"]}>
       <section className="bg-mist">
-        <div className="mx-auto grid min-h-[760px] max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
+        <div className="mx-auto grid min-h-[760px] w-full max-w-[1600px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-8">
           <SidebarNav title="Staff Workspace" links={links} />
-          <div>{children}</div>
+          <div className="min-w-0">{children}</div>
         </div>
       </section>
     </AuthGuard>
