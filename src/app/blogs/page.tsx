@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
 import { Button } from "@/components/ui/button";
@@ -99,9 +99,7 @@ export default function BlogsPage() {
             <Button href="/" className="mt-5">Back Home</Button>
           </div>
         ) : loading ? (
-          <div className="grid min-h-80 place-items-center rounded-lg bg-white text-sm font-semibold text-slate-500">
-            <span><Loader2 className="mr-2 inline size-5 animate-spin text-brand-600" />Loading blogs...</span>
-          </div>
+          <BlogsSkeleton count={pageSize} />
         ) : paginatedBlogs.length === 0 ? (
           <div className="rounded-lg bg-slate-50 p-10 text-center text-sm text-slate-500">No travel stories found.</div>
         ) : (
@@ -129,5 +127,28 @@ export default function BlogsPage() {
         )}
       </section>
     </>
+  );
+}
+
+function BlogsSkeleton({ count }: { count: number }) {
+  return (
+    <div className="grid gap-6 md:grid-cols-3" aria-label="Loading blogs" aria-busy="true">
+      {Array.from({ length: count }, (_, index) => (
+        <article key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-hidden="true">
+          <div className="h-56 animate-pulse bg-slate-200" />
+          <div className="p-5">
+            <div className="h-3 w-2/5 animate-pulse rounded bg-brand-100" />
+            <div className="mt-3 h-5 w-5/6 animate-pulse rounded bg-slate-200" />
+            <div className="mt-2 h-5 w-3/5 animate-pulse rounded bg-slate-200" />
+            <div className="mt-4 space-y-2">
+              <div className="h-3.5 w-full animate-pulse rounded bg-slate-100" />
+              <div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-100" />
+            </div>
+            <div className="mt-5 h-3 w-28 animate-pulse rounded bg-slate-200" />
+            <div className="mt-2 h-3 w-20 animate-pulse rounded bg-slate-100" />
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
