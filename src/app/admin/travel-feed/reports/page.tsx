@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { Eye, Flag, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Eye, Flag, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -24,7 +24,6 @@ import {
 import { formatDate } from "@/utils/format";
 
 const pageSize = 20;
-type ReviewStatus = Exclude<AdminTravelFeedReportStatus, "pending">;
 
 export default function AdminTravelFeedReportsPage() {
   const [reports, setReports] = useState<AdminTravelFeedReport[]>([]);
@@ -72,13 +71,13 @@ export default function AdminTravelFeedReportsPage() {
 
   useEffect(() => { void loadReports(); }, [loadReports]);
 
-  async function reviewReport(report: AdminTravelFeedReport, nextStatus: ReviewStatus) {
+  async function dismissReport(report: AdminTravelFeedReport) {
     const reportId = getAdminTravelFeedReportId(report);
     if (!reportId) return;
     setSavingId(reportId);
     try {
-      await adminTravelFeedService.reviewReport(reportId, nextStatus);
-      showToast({ variant: "success", title: "Report updated", description: `Report #${reportId} is now ${nextStatus}.` });
+      await adminTravelFeedService.dismissReport(reportId);
+      showToast({ variant: "success", title: "Report dismissed", description: `Report #${reportId} was marked as invalid.` });
       await loadReports();
     } catch (err) {
       const message = getApiError(err, "Cannot review this report.");
@@ -108,6 +107,25 @@ export default function AdminTravelFeedReportsPage() {
     }
   }
 
+  async function restorePost(report: AdminTravelFeedReport) {
+    const reportId = getAdminTravelFeedReportId(report);
+    const postId = getAdminTravelFeedReportPostId(report);
+    if (!reportId || !postId) return;
+    setSavingId(reportId);
+    setError("");
+    try {
+      await adminTravelFeedService.restorePost(postId);
+      showToast({ variant: "success", title: "Post restored", description: `Post #${postId} was restored to its previous status.` });
+      await loadReports();
+    } catch (err) {
+      const message = getApiError(err, "Cannot restore this post.");
+      setError(message);
+      showToast({ variant: "error", title: "Restore failed", description: message });
+    } finally {
+      setSavingId(0);
+    }
+  }
+
   return (
     <>
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -124,7 +142,7 @@ export default function AdminTravelFeedReportsPage() {
         </form>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[180px_220px_160px_auto]">
-          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="">All statuses</option><option value="pending">Pending</option><option value="reviewed">Reviewed</option><option value="dismissed">Dismissed</option><option value="resolved">Resolved</option></select>
+          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="">All statuses</option><option value="pending">Pending</option><option value="dismissed">Dismissed</option><option value="resolved">Resolved</option></select>
           <select value={reason} onChange={(event) => { setReason(event.target.value); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="">All reasons</option><option value="spam">Spam</option><option value="inappropriate_content">Inappropriate content</option><option value="harassment">Harassment</option><option value="false_information">False information</option><option value="scam">Scam</option><option value="other">Other</option></select>
           <select value={sort} onChange={(event) => { setSort(event.target.value as "newest" | "oldest"); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="newest">Newest</option><option value="oldest">Oldest</option></select>
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" checked={includeDeletedPosts} onChange={(event) => { setIncludeDeletedPosts(event.target.checked); setPage(1); }} /> Include deleted posts</label>
@@ -133,7 +151,7 @@ export default function AdminTravelFeedReportsPage() {
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[1100px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Reported post", "Reporter", "Reason", "Status", "Created", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead>
-            <tbody>{loading ? <AdminTableSkeleton columns={7} rows={10} /> : reports.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reports found.</td></tr> : reports.map((report, index) => <ReportRow key={getAdminTravelFeedReportId(report) || index} report={report} saving={savingId === getAdminTravelFeedReportId(report)} onReview={reviewReport} onDelete={() => setDeleting(report)} />)}</tbody>
+            <tbody>{loading ? <AdminTableSkeleton columns={7} rows={10} /> : reports.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reports found.</td></tr> : reports.map((report, index) => <ReportRow key={getAdminTravelFeedReportId(report) || index} report={report} saving={savingId === getAdminTravelFeedReportId(report)} onDismiss={() => void dismissReport(report)} onDelete={() => setDeleting(report)} onRestore={() => void restorePost(report)} />)}</tbody>
           </table>
         </div>
         <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="reports" onPageChange={setPage} />
@@ -144,7 +162,7 @@ export default function AdminTravelFeedReportsPage() {
   );
 }
 
-function ReportRow({ report, saving, onReview, onDelete }: { report: AdminTravelFeedReport; saving: boolean; onReview: (report: AdminTravelFeedReport, status: ReviewStatus) => void; onDelete: () => void }) {
+function ReportRow({ report, saving, onDismiss, onDelete, onRestore }: { report: AdminTravelFeedReport; saving: boolean; onDismiss: () => void; onDelete: () => void; onRestore: () => void }) {
   const id = getAdminTravelFeedReportId(report);
   const post = getAdminTravelFeedReportPost(report);
   const postId = getAdminTravelFeedReportPostId(report);
@@ -156,7 +174,7 @@ function ReportRow({ report, saving, onReview, onDelete }: { report: AdminTravel
     <td className="max-w-xs p-3"><p className="font-semibold capitalize text-slate-700">{String(report.reason ?? "-").replaceAll("_", " ")}</p>{report.description ? <p className="mt-1 line-clamp-2 text-slate-500">{report.description}</p> : null}</td>
     <td className="p-3"><StatusBadge value={report.status ?? "pending"} /></td>
     <td className="p-3 text-slate-600">{report.created_at ? formatDate(report.created_at) : "-"}</td>
-    <td className="p-3"><div className="flex items-center gap-2">{postId ? <a href={`/admin/travel-feed/${postId}`} title="View report post" className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:text-brand-600"><Eye size={16} /></a> : null}<select aria-label={`Review report ${id}`} disabled={saving} value={report.status === "pending" ? "" : report.status ?? ""} onChange={(event) => onReview(report, event.target.value as ReviewStatus)} className="h-9 rounded-lg border border-slate-200 px-2 text-xs font-semibold"><option value="" disabled>Review...</option><option value="reviewed">Reviewed</option><option value="dismissed">Dismissed</option><option value="resolved">Resolved</option></select><button type="button" onClick={onDelete} disabled={saving || deleted} title="Delete violated post" className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16} /></button></div></td>
+    <td className="p-3"><div className="flex items-center gap-2">{postId ? <a href={`/admin/travel-feed/${postId}`} title="View report post" className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:text-brand-600"><Eye size={16} /></a> : null}{report.status === "pending" ? <button type="button" onClick={onDismiss} disabled={saving} title="Dismiss invalid report" className="h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40">Dismiss</button> : <span className="text-xs font-semibold text-slate-400">Processed</span>}{deleted ? <button type="button" onClick={onRestore} disabled={saving || !postId} title="Restore post" className="grid size-9 place-items-center rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"><RotateCcw size={16} /></button> : report.status === "pending" ? <button type="button" onClick={onDelete} disabled={saving} title="Delete violated post" className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16} /></button> : null}</div></td>
   </tr>;
 }
 

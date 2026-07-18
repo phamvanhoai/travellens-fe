@@ -3,7 +3,7 @@ import { api } from "@/services/api";
 export type TravelFeedSort = "newest" | "oldest" | "popular";
 export type AdminTravelFeedSort = TravelFeedSort | "reported";
 export type TravelFeedReportReason = "spam" | "inappropriate_content" | "harassment" | "false_information" | "scam" | "other";
-export type TravelFeedReportStatus = "pending" | "reviewed" | "resolved" | "rejected" | "action_taken" | string;
+export type TravelFeedReportStatus = "pending" | "dismissed" | "resolved" | string;
 export type TravelFeedSharePlatform = "facebook" | "zalo" | "copy_link" | "other";
 export type TravelFeedPostStatus = "draft" | "published" | "hidden" | "deleted" | string;
 export type TravelFeedPostVisibility = "public" | "private" | string;
@@ -136,7 +136,7 @@ export type AdminTravelFeedCommentListParams = {
   sort?: "newest" | "oldest";
 };
 
-export type AdminTravelFeedReportStatus = "pending" | "reviewed" | "dismissed" | "resolved";
+export type AdminTravelFeedReportStatus = "pending" | "dismissed" | "resolved";
 
 export type AdminTravelFeedReportListParams = {
   page?: number;
@@ -702,8 +702,16 @@ export const adminTravelFeedService = {
     return unwrapList(response.data);
   },
   async detailPost(postId: number | string) {
-    const result = await this.listPosts({ search: String(postId), include_deleted: true, limit: 100 });
-    return result.items.find((post) => String(getTravelFeedPostId(post)) === String(postId)) ?? null;
+    const targetId = String(postId);
+    let page = 1;
+
+    do {
+      const result = await this.listPosts({ page, include_deleted: true, limit: 100, sort: "newest" });
+      const match = result.items.find((post) => String(getTravelFeedPostId(post)) === targetId);
+      if (match) return match;
+      if (page >= result.totalPages || result.items.length === 0) return null;
+      page += 1;
+    } while (true);
   },
   async deletePost(postId: number | string) {
     const response = await api.delete(`/admin/travel-feed/${postId}`);
@@ -721,12 +729,16 @@ export const adminTravelFeedService = {
     const response = await api.get("/admin/travel-feed/reports", { params });
     return unwrapReportListResult(response.data);
   },
-  async reviewReport(reportId: number | string, status: Exclude<AdminTravelFeedReportStatus, "pending">) {
-    const response = await api.patch(`/admin/travel-feed/reports/${reportId}/review`, { status });
+  async dismissReport(reportId: number | string) {
+    const response = await api.patch(`/admin/travel-feed/reports/${reportId}`, { status: "dismissed" });
     return response.data;
   },
   async deleteViolatedPost(reportId: number | string) {
     const response = await api.delete(`/admin/travel-feed/reports/${reportId}/violated-post`);
+    return response.data;
+  },
+  async restorePost(postId: number | string) {
+    const response = await api.patch(`/admin/travel-feed/posts/${postId}/restore`);
     return response.data;
   }
 };
