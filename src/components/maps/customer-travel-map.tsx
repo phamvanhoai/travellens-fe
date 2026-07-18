@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import L, { type LatLngExpression } from "leaflet";
 import { Circle, LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { VietnamIslandsOverlay } from "@/components/maps/vietnam-islands-overlay";
 import { LocateFixed, MapPin, RefreshCw, Search, Star, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { destinationService, type PublicDestinationCategory } from "@/services/destination.service";
@@ -324,6 +325,7 @@ export default function CustomerTravelMap() {
               </Popup>
             </Marker>
           ))}
+          <VietnamIslandsOverlay />
         </MapContainer>
       </div>
     </div>

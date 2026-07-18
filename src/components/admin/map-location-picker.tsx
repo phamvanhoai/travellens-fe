@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Crosshair, LoaderCircle, Search } from "lucide-react";
 import type { LatLngExpression } from "leaflet";
 import { Button } from "@/components/ui/button";
+import { getPublicLocationId, locationService } from "@/services/location.service";
 
 const InteractiveMap = dynamic(() => import("./map-location-picker-map"), {
   ssr: false,
@@ -21,13 +22,18 @@ type MapLocationPickerProps = {
   latitude: string;
   longitude: string;
   onChange: (latitude: string, longitude: string) => void;
+  showSavedLocations?: boolean;
+  onPlaceSelect?: (name: string) => void;
 };
 
-export function MapLocationPicker({ latitude, longitude, onChange }: MapLocationPickerProps) {
+type SavedPlace = { id: number; name: string; address?: string; latitude: number; longitude: number };
+
+export function MapLocationPicker({ latitude, longitude, onChange, showSavedLocations = false, onPlaceSelect }: MapLocationPickerProps) {
   const [locationError, setLocationError] = useState("");
   const [locating, setLocating] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
 
   const position = useMemo<LatLngExpression>(() => {
     const parsedLatitude = Number(latitude);
@@ -50,6 +56,24 @@ export function MapLocationPicker({ latitude, longitude, onChange }: MapLocation
   useEffect(() => {
     setLocationError("");
   }, [latitude, longitude]);
+
+  useEffect(() => {
+    if (!showSavedLocations) return;
+    let active = true;
+    locationService.list({ page: 1, limit: 100, sortBy: "name", sortOrder: "ASC" })
+      .then((locations) => {
+        if (!active) return;
+        setSavedPlaces(locations.flatMap((location) => {
+          const nextLatitude = Number(location.latitude);
+          const nextLongitude = Number(location.longitude);
+          const id = getPublicLocationId(location);
+          if (!id || !Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude)) return [];
+          return [{ id, name: location.name ?? location.title ?? `Location #${id}`, address: location.address ?? undefined, latitude: nextLatitude, longitude: nextLongitude }];
+        }));
+      })
+      .catch(() => setSavedPlaces([]));
+    return () => { active = false; };
+  }, [showSavedLocations]);
 
   function useCurrentLocation() {
     if (!navigator.geolocation) {
@@ -156,6 +180,11 @@ export function MapLocationPicker({ latitude, longitude, onChange }: MapLocation
       <div className="overflow-hidden rounded-lg border border-slate-200">
         <InteractiveMap
           position={position}
+          places={savedPlaces}
+          onPlaceSelect={(place) => {
+            onChange(place.latitude.toFixed(6), place.longitude.toFixed(6));
+            onPlaceSelect?.(place.name);
+          }}
           onChange={(nextLatitude, nextLongitude) => onChange(nextLatitude.toFixed(6), nextLongitude.toFixed(6))}
         />
       </div>

@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo } from "react";
 import L, { type LatLngExpression } from "leaflet";
-import { LayersControl, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { VietnamIslandsOverlay } from "@/components/maps/vietnam-islands-overlay";
 
 type InteractiveMapProps = {
   position: LatLngExpression;
   onChange: (latitude: number, longitude: number) => void;
+  places?: Array<{ id: number; name: string; address?: string; latitude: number; longitude: number }>;
+  onPlaceSelect?: (place: { id: number; name: string; address?: string; latitude: number; longitude: number }) => void;
 };
 
 const markerIcon = L.icon({
@@ -17,6 +20,14 @@ const markerIcon = L.icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
+});
+
+const selectedPositionIcon = L.divIcon({
+  className: "custom-selected-map-marker",
+  html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#f97316;border:3px solid #fff;box-shadow:0 2px 8px rgba(15,23,42,.4);transform:rotate(-45deg)"><div style="width:8px;height:8px;border-radius:50%;background:#fff;margin:7px"></div></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -28]
 });
 
 function MapController({ position, onChange }: InteractiveMapProps) {
@@ -35,7 +46,7 @@ function MapController({ position, onChange }: InteractiveMapProps) {
   return null;
 }
 
-export default function InteractiveMap({ position, onChange }: InteractiveMapProps) {
+export default function InteractiveMap({ position, onChange, places = [], onPlaceSelect }: InteractiveMapProps) {
   const markerPosition = useMemo(() => L.latLng(position), [position]);
 
   return (
@@ -55,9 +66,10 @@ export default function InteractiveMap({ position, onChange }: InteractiveMapPro
         </LayersControl.BaseLayer>
       </LayersControl>
       <MapController position={position} onChange={onChange} />
+      <VietnamIslandsOverlay />
       <Marker
         draggable
-        icon={markerIcon}
+        icon={selectedPositionIcon}
         position={markerPosition}
         eventHandlers={{
           dragend(event) {
@@ -66,6 +78,16 @@ export default function InteractiveMap({ position, onChange }: InteractiveMapPro
           }
         }}
       />
+      {places.map((place) => (
+        <Marker
+          key={place.id}
+          icon={markerIcon}
+          position={[place.latitude, place.longitude]}
+          eventHandlers={{ click: () => onPlaceSelect?.(place) }}
+        >
+          <Popup><strong>{place.name}</strong>{place.address ? <><br />{place.address}</> : null}</Popup>
+        </Marker>
+      ))}
     </MapContainer>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import L, { type LatLngExpression } from "leaflet";
 import { LayersControl, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
+import { VietnamIslandsOverlay } from "@/components/maps/vietnam-islands-overlay";
 import { AlertCircle, Clock3, MapPinned, Navigation, RefreshCw, Route } from "lucide-react";
 import { navigationService, type TourNavigationRoute } from "@/services/navigation.service";
 
@@ -186,6 +187,7 @@ export function CustomerRouteNavigation({ tourId }: { tourId: string }) {
                 </Popup>
               </Marker>
             ))}
+            <VietnamIslandsOverlay />
           </MapContainer>
 
           {loading ? (

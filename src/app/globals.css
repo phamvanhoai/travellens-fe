@@ -90,3 +90,77 @@ a {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.leaflet-tooltip.vietnam-islands-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.96), rgba(239, 68, 68, 0.94));
+  color: #fff;
+  padding: 5px 10px 5px 6px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(127, 29, 29, 0.34);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+}
+
+.leaflet-tooltip.vietnam-islands-label::before {
+  display: none;
+}
+
+.vietnam-islands-flag {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: #facc15;
+  color: #dc2626;
+  font-size: 11px;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.vietnam-islands-popup {
+  display: grid;
+  gap: 3px;
+  min-width: 170px;
+  color: #0f172a;
+}
+
+.vietnam-islands-popup strong {
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.vietnam-islands-popup small {
+  color: #64748b;
+}
+
+.group-trip-route-marker div {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: linear-gradient(135deg, #1769ff, #0b55e8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 4px 12px rgba(11, 85, 232, 0.38);
+  transform: rotate(-45deg);
+}
+
+.group-trip-route-marker div {
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.group-trip-route-marker span {
+  transform: rotate(45deg);
+}
