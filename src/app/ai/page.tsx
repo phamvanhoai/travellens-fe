@@ -141,7 +141,7 @@ export default function AIAssistantPage() {
                         className="p-4 border-b hover:bg-blue-50 cursor-pointer transition-colors relative group"
                       >
                         <p className="text-sm font-medium text-gray-800 line-clamp-2 pr-6">
-                          "{item.travel_request}"
+                          &ldquo;{item.travel_request}&rdquo;
                         </p>
                         <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
                           <span>{new Date(item.created_at).toLocaleDateString('vi-VN')}</span>
