@@ -4,91 +4,13 @@
 
    ▲ Next.js 15.5.18
    - Local:        http://localhost:3000
-   - Network:      http://192.168.1.16:3000
+   - Network:      http://192.168.1.30:3000
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 2s
+ ✓ Ready in 1977ms
  ○ Compiling /dashboard/group-trips ...
- ✓ Compiled /dashboard/group-trips in 4.3s (1015 modules)
- GET /dashboard/group-trips 200 in 4689ms
- ✓ Compiled in 773ms (381 modules)
- ○ Compiling /dashboard/group-trips/[id] ...
- ✓ Compiled /dashboard/group-trips/[id] in 2.6s (1111 modules)
- ✓ Compiled in 727ms (451 modules)
- GET /dashboard/group-trips/1 200 in 4499ms
- ✓ Compiled in 114ms (437 modules)
- ✓ Compiled in 246ms (451 modules)
- GET /dashboard/group-trips/1 200 in 97ms
- ✓ Compiled in 1112ms (1113 modules)
- GET /dashboard/group-trips/1 200 in 118ms
- ✓ Compiled in 199ms (452 modules)
- GET /dashboard/group-trips/1 200 in 40ms
- ✓ Compiled in 203ms (452 modules)
- GET /dashboard/group-trips/1 200 in 41ms
- ✓ Compiled in 477ms (1113 modules)
- GET /dashboard/group-trips/1 200 in 115ms
- ✓ Compiled in 640ms (1113 modules)
- GET /dashboard/group-trips/1 200 in 69ms
- ✓ Compiled in 259ms (1113 modules)
- GET /dashboard/group-trips/1 200 in 99ms
- ○ Compiling /admin/locations ...
- ✓ Compiled /admin/locations in 2.1s (1150 modules)
- GET /admin/locations 200 in 2371ms
- GET /admin/locations 200 in 112ms
- GET /admin/locations 200 in 93ms
- GET /admin/locations 200 in 100ms
- GET /admin/locations 200 in 101ms
- GET /admin/locations 200 in 72ms
- GET /admin/locations 200 in 84ms
- GET /admin/locations 200 in 66ms
- GET /admin/locations 200 in 87ms
- GET /admin/locations 200 in 91ms
- GET /admin/locations 200 in 100ms
- GET /admin/locations 200 in 99ms
- ○ Compiling /admin/maps ...
- ✓ Compiled /admin/maps in 1319ms (1175 modules)
- GET /admin/maps 200 in 1645ms
- GET /dashboard/group-trips/1 200 in 392ms
- ○ Compiling /admin/travel-destinations ...
- ✓ Compiled /admin/travel-destinations in 1487ms (1232 modules)
- GET /admin/travel-destinations 200 in 1866ms
- GET /admin/travel-destinations 200 in 155ms
- GET /admin/locations 200 in 127ms
- ✓ Compiled in 2s (1172 modules)
- GET /dashboard/group-trips/1 200 in 458ms
- GET /dashboard/group-trips/1 200 in 546ms
- ○ Compiling /dashboard/group-trips ...
- ✓ Compiled /dashboard/group-trips in 1629ms (671 modules)
- GET /dashboard/group-trips 200 in 1928ms
- GET /dashboard/group-trips 200 in 107ms
- GET /dashboard/group-trips 200 in 107ms
- GET /dashboard/group-trips/1 200 in 490ms
- ✓ Compiled in 1560ms (1186 modules)
- GET /dashboard/group-trips/1 200 in 367ms
- GET /dashboard/group-trips/1 200 in 550ms
- ✓ Compiled in 2.4s (1186 modules)
- GET /dashboard/group-trips/1 200 in 347ms
- ✓ Compiled in 991ms (1186 modules)
- GET /dashboard/group-trips/1 200 in 249ms
- GET /dashboard/group-trips/1 200 in 579ms
- ✓ Compiled in 734ms (513 modules)
- GET /dashboard/group-trips/1 200 in 141ms
- ✓ Compiled in 528ms (513 modules)
- GET /dashboard/group-trips/1 200 in 83ms
- ✓ Compiled in 3.5s (1193 modules)
- GET /dashboard/group-trips/1 200 in 292ms
- ✓ Compiled in 304ms (1193 modules)
- GET /dashboard/group-trips/1 200 in 104ms
- ✓ Compiled in 745ms (1193 modules)
- GET /dashboard/group-trips/1 200 in 71ms
- ✓ Compiled in 1416ms (1193 modules)
- GET /dashboard/group-trips/1 200 in 333ms
- GET /dashboard/group-trips 200 in 105ms
- ○ Compiling /dashboard/group-trips/new ...
- ✓ Compiled /dashboard/group-trips/new in 1625ms (1188 modules)
- GET /dashboard/group-trips/new 200 in 1862ms
- GET /dashboard/group-trips 200 in 89ms
- GET /dashboard/group-trips/1 200 in 518ms
- GET /dashboard/group-trips 200 in 82ms
- GET /dashboard/group-trips/1 200 in 187ms
+ ✓ Compiled /dashboard/group-trips in 13.6s (1024 modules)
+ GET /dashboard/group-trips 200 in 13650ms
+ GET /dashboard/group-trips 200 in 860ms
+[?25h
