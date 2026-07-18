@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { GroupTripForm, toGroupTripPayload, type TripFormState } from "@/components/group-trips/group-trip-form";
 import { ItineraryManager } from "@/components/group-trips/itinerary-manager";
 import { GroupTripRoutePreview } from "@/components/group-trips/group-trip-route-preview";
+import { GroupTripDetailSkeleton } from "@/components/group-trips/group-trip-skeleton";
 import { Button } from "@/components/ui/button";
 import { groupTripService, type GroupTrip } from "@/services/group-trip.service";
 
@@ -46,7 +47,7 @@ export default function GroupTripDetailPage() {
     finally { setSaving(false); }
   }
 
-  if (loading) return <div className="h-80 animate-pulse rounded-lg bg-slate-100" />;
+  if (loading) return <GroupTripDetailSkeleton />;
 
   return <>
     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
