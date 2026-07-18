@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Check, Clock, Globe2, Languages, Loader2, MapPin, Play, Share2, Star } from "lucide-react";
+import { Check, Clock, Globe2, Languages, MapPin, Play, Share2, Star } from "lucide-react";
 import { DestinationDetailSaveButton } from "@/components/common/destination-detail-save-button";
 import { DestinationTabs } from "@/components/destinations/destination-tabs";
 import { Button } from "@/components/ui/button";
@@ -44,11 +44,7 @@ export default function DestinationDetailPage() {
   }, [params.id]);
 
   if (isLoading) {
-    return (
-      <section className="mx-auto flex min-h-[520px] max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <Loader2 className="size-9 animate-spin text-brand-600" />
-      </section>
-    );
+    return <DestinationDetailSkeleton />;
   }
 
   if (error || !destination || !destinationDetail) {
@@ -171,6 +167,48 @@ export default function DestinationDetailPage() {
               </div>
             </dl>
           </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function DestinationDetailSkeleton() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" aria-label="Loading destination" aria-busy="true">
+      <div className="flex gap-2">
+        {Array.from({ length: 5 }, (_, index) => <div key={index} className={`h-3.5 animate-pulse rounded bg-slate-100 ${index % 2 ? "w-3" : "w-20"}`} />)}
+      </div>
+      <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div>
+          <div className="relative min-h-[430px] overflow-hidden rounded-lg bg-slate-200">
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-t from-slate-400/60 via-slate-300/20 to-transparent" />
+            <div className="absolute right-4 top-4 flex gap-2"><div className="h-10 w-24 animate-pulse rounded-lg bg-white/50" /><div className="size-10 animate-pulse rounded-lg bg-white/50" /></div>
+            <div className="absolute bottom-6 left-6 right-6 max-w-2xl">
+              <div className="h-6 w-28 animate-pulse rounded bg-brand-300/70" />
+              <div className="mt-4 h-9 w-3/5 animate-pulse rounded bg-white/60" />
+              <div className="mt-3 h-4 w-2/5 animate-pulse rounded bg-white/40" />
+              <div className="mt-4 space-y-2"><div className="h-3.5 w-full animate-pulse rounded bg-white/35" /><div className="h-3.5 w-4/5 animate-pulse rounded bg-white/35" /></div>
+            </div>
+          </div>
+          <div className="mt-6 flex gap-3 border-b border-slate-200 pb-3">
+            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />)}
+          </div>
+          <div className="mt-6 space-y-3 rounded-lg border border-slate-200 bg-white p-6">
+            <div className="h-6 w-40 animate-pulse rounded bg-slate-200" />
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className={`h-3.5 animate-pulse rounded bg-slate-100 ${index === 4 ? "w-2/3" : "w-full"}`} />)}
+          </div>
+        </div>
+
+        <aside className="space-y-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex justify-between gap-4"><div className="h-7 w-3/5 animate-pulse rounded bg-slate-200" /><div className="h-6 w-12 animate-pulse rounded bg-brand-100" /></div>
+            <div className="mt-4 space-y-2">{Array.from({ length: 4 }, (_, index) => <div key={index} className={`h-3.5 animate-pulse rounded bg-slate-100 ${index === 3 ? "w-3/4" : "w-full"}`} />)}</div>
+            <div className="mt-6 grid grid-cols-2 gap-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-4 w-24 animate-pulse rounded bg-slate-200" />)}</div>
+            <div className="mt-6 h-11 w-full animate-pulse rounded-lg bg-brand-100" />
+          </div>
+          <div className="h-52 animate-pulse rounded-lg bg-slate-200" />
+          <div className="rounded-lg border border-slate-200 p-6"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-5 h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="mt-2 h-4 w-32 animate-pulse rounded bg-slate-200" /><div className="mt-5 h-3 w-24 animate-pulse rounded bg-slate-100" /><div className="mt-2 h-4 w-40 animate-pulse rounded bg-slate-200" /></div>
         </aside>
       </div>
     </section>

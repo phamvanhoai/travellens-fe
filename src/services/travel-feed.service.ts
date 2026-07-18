@@ -136,6 +136,49 @@ export type AdminTravelFeedCommentListParams = {
   sort?: "newest" | "oldest";
 };
 
+export type AdminTravelFeedReportStatus = "pending" | "reviewed" | "dismissed" | "resolved";
+
+export type AdminTravelFeedReportListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  post_id?: number;
+  user_id?: number;
+  reviewed_by?: number;
+  status?: AdminTravelFeedReportStatus;
+  reason?: TravelFeedReportReason;
+  include_deleted_posts?: boolean;
+  sort?: "newest" | "oldest";
+};
+
+export type AdminTravelFeedReport = {
+  report_id?: number;
+  travel_post_report_id?: number;
+  id?: number;
+  post_id?: number;
+  travel_post_id?: number;
+  user_id?: number;
+  reporter_id?: number;
+  reviewed_by?: number | null;
+  reason?: TravelFeedReportReason | string | null;
+  description?: string | null;
+  status?: AdminTravelFeedReportStatus | string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  reviewed_at?: string | null;
+  reporter?: TravelFeedAuthor | null;
+  user?: TravelFeedAuthor | null;
+  reviewer?: TravelFeedAuthor | null;
+  post?: TravelFeedPost | null;
+  travel_post?: TravelFeedPost | null;
+};
+
+export type AdminTravelFeedReportListResult = {
+  items: AdminTravelFeedReport[];
+  total: number;
+  totalPages: number;
+};
+
 export type CreateTravelFeedPostPayload = {
   content: string;
   destination_id?: number;
@@ -270,6 +313,22 @@ function unwrapCommentListResult(value: unknown): TravelFeedCommentListResult {
   return { items, total, totalPages };
 }
 
+function unwrapReportListResult(value: unknown): AdminTravelFeedReportListResult {
+  const body = isRecord(value) ? value : {};
+  const data = body.data ?? value;
+  const dataRecord = isRecord(data) ? data : {};
+  const listSource = Array.isArray(data)
+    ? data
+    : dataRecord.reports ?? dataRecord.items ?? dataRecord.rows ?? dataRecord.results ?? dataRecord.data;
+  const items = Array.isArray(listSource) ? listSource as AdminTravelFeedReport[] : [];
+  const pagination = (body.pagination ?? dataRecord.pagination ?? dataRecord.meta) as Record<string, unknown> | undefined;
+  const total = Number(pagination?.total ?? pagination?.totalItems ?? dataRecord.total ?? items.length);
+  const limit = Number(pagination?.limit ?? pagination?.pageSize ?? Math.max(items.length, 1));
+  const totalPages = Number(pagination?.totalPages ?? pagination?.pageCount ?? Math.max(1, Math.ceil(total / limit)));
+
+  return { items, total, totalPages };
+}
+
 function unwrapComment(value: unknown) {
   const body = isRecord(value) ? value : {};
   const data = body.data ?? value;
@@ -317,6 +376,24 @@ function readPhotoUrl(value: unknown) {
 
 export function getTravelFeedPostId(post: TravelFeedPost) {
   return post.post_id ?? post.travel_post_id ?? post.feed_id ?? post.id ?? 0;
+}
+
+export function getAdminTravelFeedReportId(report: AdminTravelFeedReport) {
+  return report.report_id ?? report.travel_post_report_id ?? report.id ?? 0;
+}
+
+export function getAdminTravelFeedReportPost(report: AdminTravelFeedReport) {
+  return report.post ?? report.travel_post ?? null;
+}
+
+export function getAdminTravelFeedReportPostId(report: AdminTravelFeedReport) {
+  const post = getAdminTravelFeedReportPost(report);
+  return report.post_id ?? report.travel_post_id ?? (post ? getTravelFeedPostId(post) : 0);
+}
+
+export function getAdminTravelFeedReporter(report: AdminTravelFeedReport) {
+  const reporter = report.reporter ?? report.user;
+  return firstString(reporter?.name, reporter?.email) || `User #${report.reporter_id ?? report.user_id ?? "-"}`;
 }
 
 export function getTravelFeedTitle(post: TravelFeedPost) {
@@ -638,6 +715,18 @@ export const adminTravelFeedService = {
   },
   async deleteComment(commentId: number | string) {
     const response = await api.delete(`/admin/travel-feed/comments/${commentId}`);
+    return response.data;
+  },
+  async listReports(params: AdminTravelFeedReportListParams = {}) {
+    const response = await api.get("/admin/travel-feed/reports", { params });
+    return unwrapReportListResult(response.data);
+  },
+  async reviewReport(reportId: number | string, status: Exclude<AdminTravelFeedReportStatus, "pending">) {
+    const response = await api.patch(`/admin/travel-feed/reports/${reportId}/review`, { status });
+    return response.data;
+  },
+  async deleteViolatedPost(reportId: number | string) {
+    const response = await api.delete(`/admin/travel-feed/reports/${reportId}/violated-post`);
     return response.data;
   }
 };
