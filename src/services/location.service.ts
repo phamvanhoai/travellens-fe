@@ -69,8 +69,8 @@ export function getPublicLocationId(location: PublicLocation) {
 }
 
 export const locationService = {
-  async list() {
-    const response = await api.get("/locations");
+  async list(params: { page?: number; limit?: number; search?: string; destination_id?: number; sortBy?: "location_id" | "name" | "created_at" | "updated_at"; sortOrder?: "ASC" | "DESC" } = {}) {
+    const response = await api.get("/locations", { params });
     return unwrapList(response.data);
   },
   async detail(id: string) {

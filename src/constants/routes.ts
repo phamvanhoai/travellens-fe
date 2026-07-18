@@ -3,6 +3,7 @@ export const publicRoutes = ["/", "/destinations", "/tours", "/view360", "/blogs
 export const dashboardRoutes = [
   "/dashboard/profile",
   "/dashboard/bookings",
+  "/dashboard/group-trips",
   "/dashboard/payments",
   "/dashboard/reviews",
   "/dashboard/saved",

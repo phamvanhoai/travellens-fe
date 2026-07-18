@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarCheck, CreditCard, Heart, KeyRound, MessageSquareText, Newspaper, UserRound, UserX } from "lucide-react";
+import { CalendarCheck, CreditCard, Heart, KeyRound, MapPinned, MessageSquareText, Newspaper, UserRound, UserX } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
   [UserRound, "Profile", "/dashboard/profile"],
   [CalendarCheck, "Bookings", "/dashboard/bookings"],
+  [MapPinned, "Group Trips", "/dashboard/group-trips"],
   [CreditCard, "Payments", "/dashboard/payments"],
   [MessageSquareText, "Reviews", "/dashboard/reviews"],
   [Newspaper, "Travel Stories", "/dashboard/blogs"],
