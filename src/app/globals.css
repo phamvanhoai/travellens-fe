@@ -74,6 +74,13 @@ a {
   text-decoration: none;
 }
 
+/* Keep Leaflet panes and controls inside the map's own stacking context so
+   they never cover sticky headers, menus, dialogs, or dashboard navigation. */
+.leaflet-container {
+  z-index: 0;
+  isolation: isolate;
+}
+
 .hero-overlay {
   background:
     linear-gradient(90deg, rgba(3, 17, 33, 0.86) 0%, rgba(3, 17, 33, 0.55) 48%, rgba(3, 17, 33, 0.16) 100%),
