@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authService } from "@/services/auth.service";
@@ -87,11 +86,50 @@ export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
   }, [allowedRoles, pathname, router, setUser]);
 
   if (checking) {
+    const isStandaloneInvitation = pathname.startsWith("/group-trip-invites") || pathname.startsWith("/group-trips/invites");
+
+    if (isStandaloneInvitation) {
+      return (
+        <section className="grid min-h-[560px] place-items-center bg-mist px-4 py-12" aria-label="Loading invitation" aria-busy="true">
+          <div className="w-full max-w-lg animate-pulse rounded-xl border border-slate-200 bg-white p-8 text-center shadow-soft">
+            <div className="mx-auto size-16 rounded-full bg-slate-200" />
+            <div className="mx-auto mt-5 h-8 w-64 max-w-full rounded bg-slate-200" />
+            <div className="mx-auto mt-3 h-4 w-80 max-w-full rounded bg-slate-100" />
+            <div className="mt-5 rounded-lg bg-slate-50 p-4 text-left">
+              <div className="h-5 w-48 rounded bg-slate-200" />
+              <div className="mt-3 h-4 w-full rounded bg-slate-100" />
+              <div className="mt-2 h-4 w-3/4 rounded bg-slate-100" />
+              <div className="mt-5 grid gap-2">
+                <div className="h-4 w-44 rounded bg-slate-200" />
+                <div className="h-4 w-56 rounded bg-slate-200" />
+              </div>
+            </div>
+            <div className="mx-auto mt-7 flex max-w-xs gap-3">
+              <div className="h-11 flex-1 rounded-lg bg-slate-200" />
+              <div className="h-11 flex-1 rounded-lg bg-slate-100" />
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     return (
-      <section className="grid min-h-[520px] place-items-center bg-mist px-4">
-        <div className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-sm">
-          <Loader2 className="size-5 animate-spin text-brand-600" />
-          Checking account access
+      <section className="min-h-[520px] bg-mist px-4 py-8 sm:px-6 lg:px-8" aria-label="Loading account" aria-busy="true">
+        <div className="mx-auto grid max-w-7xl animate-pulse gap-8 lg:grid-cols-[260px_1fr]">
+          <aside className="hidden h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:block">
+            <div className="h-6 w-32 rounded bg-slate-200" />
+            <div className="mt-5 grid gap-3">
+              {Array.from({ length: 7 }, (_, index) => <div key={index} className="h-10 rounded-lg bg-slate-100" />)}
+            </div>
+          </aside>
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="h-8 w-56 max-w-full rounded bg-slate-200" />
+            <div className="mt-3 h-4 w-80 max-w-full rounded bg-slate-100" />
+            <div className="mt-7 h-12 rounded-lg bg-slate-100" />
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-36 rounded-lg border border-slate-100 bg-slate-50" />)}
+            </div>
+          </div>
         </div>
       </section>
     );
