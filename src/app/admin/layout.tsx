@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, CalendarCheck, CreditCard, Images, Map, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video } from "lucide-react";
+import { BarChart3, CalendarCheck, CreditCard, Flag, Images, Map, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
@@ -18,6 +18,7 @@ const links = [
   [Newspaper, "Blogs", "/admin/blogs"],
   [Tags, "Blog Categories", "/admin/blog-categories"],
   [Rss, "Travel Feed", "/admin/travel-feed"],
+  [Flag, "Feed Reports", "/admin/travel-feed/reports"],
   [MessageSquareText, "Feed Comments", "/admin/travel-feed/comments"],
   [MessageSquareText, "Reviews", "/admin/reviews"],
   [Users, "Users", "/admin/users"],

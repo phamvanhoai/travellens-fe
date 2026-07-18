@@ -4,60 +4,114 @@
 
    ▲ Next.js 15.5.18
    - Local:        http://localhost:3000
-   - Network:      http://192.168.1.10:3000
+   - Network:      http://192.168.1.16:3000
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 1966ms
- ○ Compiling /admin/blogs ...
- ✓ Compiled /admin/blogs in 14.4s (1082 modules)
- GET /admin/blogs 200 in 15753ms
- ○ Compiling / ...
- ✓ Compiled / in 1220ms (1079 modules)
- GET / 200 in 2274ms
- ○ Compiling /login ...
- ✓ Compiled /login in 685ms (1084 modules)
- GET /login 200 in 866ms
+ ✓ Ready in 2.2s
+ ○ Compiling /admin/travel-feed/reports ...
+ ✓ Compiled /travel-feed in 15.5s (1037 modules)
+ GET /admin/travel-feed/reports 200 in 16078ms
+ GET /travel-feed 200 in 11332ms
  ○ Compiling /admin ...
- ✓ Compiled /admin in 4.6s (2131 modules)
- GET /admin 200 in 4995ms
- GET /admin/blogs 200 in 131ms
- ✓ Compiled in 1616ms (2145 modules)
- GET /admin/blogs 200 in 342ms
- GET /admin/blogs 200 in 471ms
- ✓ Compiled in 1663ms (2145 modules)
- GET /admin/blogs 200 in 393ms
- GET /admin/blogs 200 in 500ms
- GET /admin/blogs 200 in 248ms
- ✓ Compiled in 2s (2145 modules)
- GET /admin/blogs 200 in 231ms
- ✓ Compiled in 1320ms (2145 modules)
- GET /admin/blogs 200 in 260ms
- GET /admin/blogs 200 in 489ms
- ○ Compiling /blogs/[id] ...
- ✓ Compiled /blogs/[id] in 924ms (2150 modules)
- GET /blogs/9 200 in 1730ms
- ✓ Compiled in 954ms (2164 modules)
- GET /blogs/9 200 in 124ms
- GET /admin/blogs 200 in 505ms
- GET /blogs/9 200 in 203ms
- ✓ Compiled in 1318ms (2164 modules)
- GET /blogs/9 200 in 178ms
- GET /admin/blogs 200 in 185ms
- ✓ Compiled in 232ms (945 modules)
- GET /blogs/9 200 in 82ms
- GET /admin/blogs 200 in 88ms
- ✓ Compiled in 432ms (2164 modules)
- GET /blogs/9 200 in 124ms
- GET /admin/blogs 200 in 133ms
- ✓ Compiled in 212ms (945 modules)
- GET /blogs/9 200 in 169ms
- GET /admin/blogs 200 in 168ms
- ✓ Compiled in 583ms (2164 modules)
- GET /blogs/9 200 in 123ms
- GET /admin/blogs 200 in 130ms
- ✓ Compiled in 422ms (2164 modules)
- GET /blogs/9 200 in 100ms
- GET /admin/blogs 200 in 105ms
- GET /blogs/9 200 in 580ms
- GET /blogs/b-n-ninh-ki-u-9 200 in 201ms
+ ✓ Compiled /admin in 5.4s (2075 modules)
+ GET /admin/travel-feed/reports 200 in 4931ms
+ GET /admin 200 in 6247ms
+ GET /admin/travel-feed/reports 200 in 86ms
+ GET /admin/travel-feed/reports 200 in 153ms
+ ○ Compiling /admin/travel-feed/[postId] ...
+ ✓ Compiled /admin/travel-feed/[postId] in 1043ms (2086 modules)
+ GET /admin/travel-feed/8 200 in 2040ms
+ ○ Compiling /admin/travel-feed ...
+ ✓ Compiled /admin/travel-feed in 1228ms (2095 modules)
+ GET /admin/travel-feed 200 in 1429ms
+ GET /admin/travel-feed/reports 200 in 109ms
+ GET /admin/travel-feed/8 200 in 325ms
+ GET /admin/travel-feed 200 in 61ms
+ GET /admin/travel-feed/reports 200 in 145ms
+ GET /admin/travel-feed/9 200 in 192ms
+ GET /admin/travel-feed 200 in 80ms
+ GET /admin/travel-feed/reports 200 in 90ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.1s (2131 modules)
+ GET / 200 in 3359ms
+ GET /travel-feed 200 in 108ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1198ms (2146 modules)
+ GET /login 200 in 1534ms
+ ○ Compiling /admin/users ...
+ ✓ Compiled /admin/users in 2.2s (2144 modules)
+ GET /admin/users 200 in 3076ms
+ GET /login 200 in 1084ms
+ ✓ Compiled in 1120ms (951 modules)
+ GET /admin/users 200 in 478ms
+ GET /login 200 in 192ms
+ GET /admin/users 200 in 88ms
+ ○ Compiling /dashboard/profile ...
+ ✓ Compiled /dashboard/profile in 1049ms (1596 modules)
+ GET /dashboard/profile 200 in 1330ms
+ ○ Compiling /travel-feed ...
+ ✓ Compiled /travel-feed in 529ms (672 modules)
+ GET /travel-feed 200 in 759ms
+ GET /admin/travel-feed/reports 200 in 130ms
+ GET /admin/travel-feed/9 200 in 562ms
+ GET /admin/travel-feed/9 200 in 192ms
+ ✓ Compiled in 2.8s (1612 modules)
+ GET /travel-feed 200 in 439ms
+ GET /admin/travel-feed/9 200 in 413ms
+ ✓ Compiled /admin/travel-feed in 440ms (660 modules)
+ GET /admin/travel-feed 200 in 664ms
+ GET /admin/travel-feed/reports 200 in 169ms
+ GET /admin/travel-feed/8 200 in 609ms
+ GET /admin/travel-feed 200 in 82ms
+ GET /admin/travel-feed 200 in 74ms
+ GET /admin/travel-feed 200 in 74ms
+ GET /admin/travel-feed/reports 200 in 202ms
+ GET /admin/travel-feed/1 200 in 146ms
+ ○ Compiling /admin/travel-feed/comments ...
+ ✓ Compiled /admin/travel-feed/comments in 1920ms (1604 modules)
+ GET /admin/travel-feed/comments?post_id=1 200 in 2225ms
+ GET /admin/travel-feed/comments?post_id=1 200 in 87ms
+ GET /admin/travel-feed/reports 200 in 112ms
+ GET /admin/travel-feed/reports 200 in 448ms
+ GET /travel-feed 200 in 281ms
+ ○ Compiling /staff ...
+ ✓ Compiled /staff in 2.4s (1635 modules)
+ GET /staff 200 in 2897ms
+ GET /travel-feed 200 in 530ms
+ GET /staff 200 in 178ms
+ ○ Compiling /staff/coupons ...
+ ✓ Compiled /staff/coupons in 2s (1649 modules)
+ GET /staff/coupons 200 in 2329ms
+ GET /travel-feed 200 in 364ms
+ GET /staff/coupons 200 in 179ms
+ GET /staff/coupons 200 in 69ms
+ GET /staff/coupons 200 in 85ms
+ ✓ Compiled in 6.5s (1649 modules)
+ GET /travel-feed 200 in 287ms
+ GET /staff/coupons 200 in 296ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 1610ms (1202 modules)
+ GET /admin 200 in 2008ms
+ ✓ Compiled in 629ms (2169 modules)
+ GET /travel-feed 200 in 123ms
+ GET /admin 200 in 133ms
+ ✓ Compiled in 421ms (2169 modules)
+ GET /travel-feed 200 in 98ms
+ GET /admin 200 in 101ms
+ GET /admin/travel-feed/reports 200 in 121ms
+ GET /admin/travel-feed/reports 200 in 474ms
+ GET /travel-feed 200 in 272ms
+ GET /admin 200 in 114ms
+ GET /admin/travel-feed/reports 200 in 88ms
+ GET /travel-feed 200 in 216ms
+ GET /travel-feed 200 in 273ms
+ GET /admin/travel-feed/reports 200 in 196ms
+ GET /travel-feed 200 in 274ms
+ ✓ Compiled in 2.9s (2163 modules)
+ GET /travel-feed 200 in 422ms
+ GET /admin/travel-feed/reports 200 in 429ms
+ GET /admin/travel-feed/reports 200 in 517ms
+ GET /travel-feed 200 in 267ms
+ GET /admin/travel-feed/reports 200 in 716ms
+ GET /admin/travel-feed/reports 200 in 186ms

@@ -22,6 +22,7 @@ export const adminRoutes = [
   "/admin/payments",
   "/admin/blogs",
   "/admin/travel-feed",
+  "/admin/travel-feed/reports",
   "/admin/travel-feed/comments",
   "/admin/reviews",
   "/admin/users",

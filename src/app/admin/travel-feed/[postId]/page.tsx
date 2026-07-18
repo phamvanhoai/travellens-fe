@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { ArrowLeft, MessageSquareText, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, MessageSquareText, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -84,6 +84,25 @@ export default function AdminTravelFeedPostDetailPage() {
     }
   }
 
+  async function restorePost() {
+    if (!post) return;
+    const id = getTravelFeedPostId(post);
+    if (!id) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await adminTravelFeedService.restorePost(id);
+      showToast({ variant: "success", title: "Post restored", description: getTravelFeedTitle(post) });
+      await loadPost();
+    } catch (err) {
+      const message = getApiError(err, "Cannot restore this travel feed post.");
+      setError(message);
+      showToast({ variant: "error", title: "Restore failed", description: message });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const title = post ? getTravelFeedTitle(post) : `Post #${postId}`;
   const author = post ? getTravelFeedAuthor(post) : null;
   const photos = post ? getTravelFeedPhotos(post) : [];
@@ -104,7 +123,8 @@ export default function AdminTravelFeedPostDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Button href={`/admin/travel-feed/comments?post_id=${postId}`} variant="outline"><MessageSquareText size={17} /> Comments</Button>
             <Button variant="outline" onClick={() => void loadPost()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button>
-            {post ? <Button variant="outline" onClick={() => setConfirmingDelete(true)} disabled={isDeleted || deleting} className="border-rose-200 text-rose-600 hover:border-rose-300 hover:text-rose-700"><Trash2 size={17} /> Delete</Button> : null}
+            {post && isDeleted ? <Button variant="outline" onClick={() => void restorePost()} disabled={deleting} className="border-emerald-200 text-emerald-600 hover:border-emerald-300 hover:text-emerald-700"><RotateCcw size={17} /> Restore</Button> : null}
+            {post && !isDeleted ? <Button variant="outline" onClick={() => setConfirmingDelete(true)} disabled={deleting} className="border-rose-200 text-rose-600 hover:border-rose-300 hover:text-rose-700"><Trash2 size={17} /> Delete</Button> : null}
           </div>
         </div>
 
