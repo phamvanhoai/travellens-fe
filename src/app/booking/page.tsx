@@ -6,6 +6,7 @@ import { CalendarClock, CheckCircle2, Loader2, Minus, Plus, Tag, Trash2, UserRou
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
+import { resolveBackendAssetUrl } from "@/lib/avatar";
 import { bookingService, type BookingPassengerPayload } from "@/services/booking.service";
 import { authService } from "@/services/auth.service";
 import { couponService, type CouponValidationResult } from "@/services/coupon.service";
@@ -31,8 +32,8 @@ export default function BookingPage() {
   const [passengers, setPassengers] = useState<PassengerDraft[]>([emptyPassenger()]);
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [seatNumber, setSeatNumber] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
@@ -43,13 +44,20 @@ export default function BookingPage() {
   useEffect(() => {
     async function loadTours() {
       try {
-        const result = await tourService.list();
-        setTours(result);
         const requestedTourId = new URLSearchParams(window.location.search).get("tourId");
-        const initialTour = result.find((tour) => String(getPublicTourId(tour)) === requestedTourId) ?? result[0];
-        if (initialTour) setTourId(String(getPublicTourId(initialTour)));
+        if (!requestedTourId) {
+          setError("Please choose a tour from the tour detail page before booking.");
+          return;
+        }
+        const tour = await tourService.detail(requestedTourId);
+        if (!tour || !getPublicTourId(tour)) {
+          setError("The selected tour could not be found.");
+          return;
+        }
+        setTours([tour]);
+        setTourId(String(getPublicTourId(tour)));
       } catch (err) {
-        setError(getApiError(err, "Cannot load available tours."));
+        setError(getApiError(err, "Cannot load the selected tour."));
       } finally {
         setLoading(false);
       }
@@ -80,10 +88,13 @@ export default function BookingPage() {
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
   const unitPrice = Number(selectedTour?.price ?? 0);
   const childPrice = Number(selectedTour?.child_price ?? unitPrice * 0.65);
+  const infantPrice = Number(selectedTour?.infant_price ?? 0);
   const availableSlots = getAvailableSlots(selectedTour);
+  const minimumBooking = Math.max(1, Number(selectedTour?.minimum_booking ?? 1));
+  const maximumBooking = getMaximumBooking(selectedTour, availableSlots);
   const subtotal = useMemo(
-    () => passengers.reduce((sum, passenger) => sum + passengerPrice(unitPrice, childPrice, passenger.age_category), 0),
-    [passengers, unitPrice, childPrice]
+    () => passengers.reduce((sum, passenger) => sum + passengerPrice(unitPrice, childPrice, infantPrice, passenger.age_category), 0),
+    [passengers, unitPrice, childPrice, infantPrice]
   );
   const discountAmount = getCouponDiscountAmount(appliedCoupon, subtotal);
   const finalTotal = getCouponFinalAmount(appliedCoupon, subtotal);
@@ -98,8 +109,8 @@ export default function BookingPage() {
   }, [appliedCoupon, subtotal]);
 
   function changePassengerCount(category: PassengerDraft["age_category"], delta: number) {
-    if (delta > 0 && availableSlots !== null && passengers.length >= availableSlots) {
-      setFieldErrors((current) => ({ ...current, passengers: `Only ${availableSlots} slot${availableSlots === 1 ? " is" : "s are"} available for this tour.` }));
+    if (delta > 0 && maximumBooking !== null && passengers.length >= maximumBooking) {
+      setFieldErrors((current) => ({ ...current, passengers: `You can book at most ${maximumBooking} passenger${maximumBooking === 1 ? "" : "s"} for this tour.` }));
       return;
     }
 
@@ -156,12 +167,15 @@ export default function BookingPage() {
     const errors: Record<string, string> = {};
     if (!tourId) errors.tour_id = "Tour is required.";
     if (!travelDate) errors.travel_date = "Travel date is required.";
-    if (passengers.length === 0) errors.passengers = "Add at least one passenger.";
-    if (!customerName.trim()) errors.customer_name = "Customer name is required.";
-    else if (!isValidPersonName(customerName.trim())) errors.customer_name = "Full name must contain at least 2 words and only letters/spaces.";
+    if (passengers.length < minimumBooking) errors.passengers = `This tour requires at least ${minimumBooking} passenger${minimumBooking === 1 ? "" : "s"} per booking.`;
+    else if (maximumBooking !== null && passengers.length > maximumBooking) errors.passengers = `This tour allows at most ${maximumBooking} passengers per booking.`;
+    if (String(selectedTour?.currency ?? "VND").toUpperCase() !== "VND") errors.tour_id = "Online booking currently supports VND tours only.";
+    if (!customerName.trim()) errors.customer_name = "Contact name is required.";
+    else if (!isValidPersonName(customerName.trim())) errors.customer_name = "Enter at least 2 words using letters and spaces only.";
     if (!phone.trim()) errors.phone = "Phone number is required.";
     else if (!isValidVietnamMobilePhone(phone.trim())) errors.phone = "Phone number must be a valid Vietnamese mobile number.";
     if (couponCode.trim() && !appliedCoupon) errors.coupon = "Please apply the coupon before submitting.";
+    if (!acceptedPolicies) errors.policies = "Please confirm the booking and cancellation policies.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -172,19 +186,11 @@ export default function BookingPage() {
         tour_id: Number(tourId),
         contact_phone: phone.trim(),
         travel_date: travelDate,
-        departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
         coupon_code: appliedCoupon ? couponCode.trim() : null,
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
           age_category: passenger.age_category,
-          seat_number: index === 0 ? seatNumber.trim() || undefined : undefined,
-          special_request: index === 0
-            ? [
-                `Travel date: ${travelDate}`,
-                selectedTour?.schedule ? `Tour schedule: ${selectedTour.schedule}` : "",
-                specialRequest.trim()
-              ].filter(Boolean).join(" | ")
-            : undefined
+          special_request: index === 0 ? specialRequest.trim() || undefined : undefined
         }))
       });
       const bookingId = booking.booking_id ?? booking.id;
@@ -222,38 +228,25 @@ export default function BookingPage() {
     }
   }
 
+  if (loading) return <BookingPageSkeleton />;
+
   return (
-    <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <form noValidate onSubmit={submitBooking} className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <div>
+    <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <form noValidate onSubmit={submitBooking} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Create Booking</h1>
-          <p className="mt-2 text-slate-500">Choose a tour and enter the passenger information.</p>
+          <p className="mt-2 text-slate-500">Review the selected tour and enter the passenger information.</p>
           {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
 
-          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
-            <label className="block text-sm font-semibold">
-              Tour
-              <select
-                value={tourId}
-                onChange={(event) => {
-                  setTourId(event.target.value);
-                  setPassengers([emptyPassenger()]);
-                  setAppliedCoupon(null);
-                  setFieldErrors((current) => ({ ...current, tour_id: "", passengers: "", coupon: "" }));
-                }}
-                disabled={loading}
-                className={`mt-2 h-12 w-full rounded-lg border px-4 outline-none ${fieldErrors.tour_id ? "border-rose-500" : "border-slate-200 focus:border-brand-600"}`}
-              >
-                <option value="">Select a tour</option>
-                {tours.map((tour) => (
-                  <option key={getPublicTourId(tour)} value={getPublicTourId(tour)}>
-                    {getPublicTourName(tour)} - {formatVnd(Number(tour.price ?? 0))}
-                  </option>
-                ))}
-              </select>
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+            <div className="block text-sm font-semibold">
+              Selected Tour
+              <div className={`mt-2 rounded-lg border p-4 ${fieldErrors.tour_id ? "border-rose-500 bg-rose-50" : "border-brand-100 bg-brand-50/50"}`}>
+                {selectedTour ? <div className="grid gap-4 sm:grid-cols-[140px_1fr]"><div className="h-28 overflow-hidden rounded-lg bg-slate-100">{selectedTour.thumbnail_url || selectedTour.thumbnail ? <img src={resolveBackendAssetUrl(selectedTour.thumbnail_url ?? selectedTour.thumbnail ?? "")} alt={getPublicTourName(selectedTour)} className="h-full w-full object-cover" /> : null}</div><div><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-base font-bold text-slate-900">{getPublicTourName(selectedTour)}</p><p className="mt-1 text-xs font-normal text-slate-500">{selectedTour.short_description || "Your selected tour is locked for this booking."}</p></div><p className="font-bold text-brand-700">{formatVnd(Number(selectedTour.price ?? 0))}</p></div><div className="mt-3 grid gap-2 text-xs font-normal text-slate-600 sm:grid-cols-2"><p>Schedule: {selectedTour.schedule || selectedTour.start_time || "Updating"}</p><p>Duration: {selectedTour.duration_days ?? 1} day(s), {selectedTour.duration_nights ?? 0} night(s)</p><p>Meeting point: {selectedTour.meeting_point || "See tour instructions"}</p><p>Pickup: {selectedTour.pickup_available ? selectedTour.pickup_description || "Available" : "Not included"}</p></div></div></div> : <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-rose-700">No valid tour selected.</p><Button href="/tours" variant="outline" className="h-9">Choose a Tour</Button></div>}
+              </div>
               {fieldErrors.tour_id ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.tour_id}</span> : null}
               {availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots: {availableSlots}</span> : null}
-            </label>
+            </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
@@ -303,17 +296,17 @@ export default function BookingPage() {
             </div>
           </div>
 
-          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
             <h2 className="text-xl font-bold">Passenger Quantity</h2>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               {(["adult", "child", "infant"] as const).map((category) => {
                 const count = passengers.filter((passenger) => passenger.age_category === category).length;
-                const atCapacity = availableSlots !== null && passengers.length >= availableSlots;
+                const atCapacity = maximumBooking !== null && passengers.length >= maximumBooking;
                 return (
                   <div key={category} className="flex items-center justify-between rounded-lg bg-slate-50 p-4">
                     <div>
                       <p className="font-bold capitalize">{category}</p>
-                      <p className="text-xs text-slate-500">{formatVnd(passengerPrice(unitPrice, childPrice, category))} each</p>
+                      <p className="text-xs text-slate-500">{formatVnd(passengerPrice(unitPrice, childPrice, infantPrice, category))} each</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => changePassengerCount(category, -1)} disabled={count === 0} className="grid size-8 place-items-center rounded-full border border-slate-200 bg-white disabled:opacity-40" aria-label={`Remove ${category}`}>
@@ -329,36 +322,17 @@ export default function BookingPage() {
               })}
             </div>
             {fieldErrors.passengers ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.passengers}</p> : null}
+            <p className="mt-2 text-xs text-slate-500">Booking limit: {minimumBooking}{maximumBooking !== null ? `–${maximumBooking}` : "+"} passengers.</p>
 
-            <h2 className="mt-7 text-xl font-bold">Customer Information</h2>
-            <p className="mt-1 text-sm text-slate-500">Enter the information of the customer representing this booking.</p>
-            <div className="mt-5 rounded-lg bg-slate-50 p-4">
-              <p className="mb-4 font-bold"><UserRound className="mr-2 inline size-4 text-brand-600" />Booking Contact</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="text-sm font-semibold">
-                  Full Name
-                  <input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, customer_name: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.customer_name ? "border-rose-500" : "border-slate-200"}`} />
-                  {fieldErrors.customer_name ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer_name}</span> : null}
-                </label>
-                <label className="text-sm font-semibold">
-                  Phone Number
-                  <input type="tel" value={phone} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.phone ? "border-rose-500" : "border-slate-200"}`} placeholder="0901234567" />
-                  {fieldErrors.phone ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}
-                </label>
-                <label className="text-sm font-semibold">
-                  Preferred Seat <span className="font-normal text-slate-400">(optional)</span>
-                  <textarea value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2" />
-                </label>
-                <label className="text-sm font-semibold">
-                  Special Request <span className="font-normal text-slate-400">(optional)</span>
-                  <textarea value={specialRequest} onChange={(event) => setSpecialRequest(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2" />
-                </label>
-              </div>
-            </div>
+            <h2 className="mt-7 text-xl font-bold">Booking Contact</h2>
+            <p className="mt-1 text-sm text-slate-500">Only the representative making this booking needs to provide contact information.</p>
+            <div className="mt-4 grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"><label className="text-sm font-semibold"><UserRound className="mr-2 inline size-4 text-brand-600" />Contact Name<input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, customer_name: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.customer_name ? "border-rose-500" : "border-slate-200"}`} placeholder="Nguyen Van A" />{fieldErrors.customer_name ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer_name}</span> : null}</label><label className="text-sm font-semibold">Contact Phone<input type="tel" value={phone} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`mt-2 h-11 w-full rounded-lg border bg-white px-3 outline-none ${fieldErrors.phone ? "border-rose-500" : "border-slate-200"}`} placeholder="0901234567" />{fieldErrors.phone ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}</label><label className="text-sm font-semibold sm:col-span-2">General Request <span className="font-normal text-slate-400">(optional)</span><textarea value={specialRequest} onChange={(event) => setSpecialRequest(event.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-slate-200 bg-white px-3 py-2" placeholder="Pickup, accessibility, dietary or other requests" /></label></div>
+
+            <div className="mt-6 rounded-lg border border-slate-200 p-4"><h2 className="text-lg font-bold">Booking Policies</h2><div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-2"><div><p className="font-semibold text-slate-800">Booking policy</p><p className="mt-1 line-clamp-4 whitespace-pre-line">{plainText(selectedTour?.booking_policy) || "The booking is subject to availability and payment confirmation."}</p></div><div><p className="font-semibold text-slate-800">Cancellation policy</p><p className="mt-1 line-clamp-4 whitespace-pre-line">{plainText(selectedTour?.cancellation_policy) || "Cancellation must follow the tour cancellation terms."}</p></div></div><label className="mt-4 flex items-start gap-3 rounded-lg bg-brand-50 p-3 text-sm font-semibold text-brand-900"><input type="checkbox" checked={acceptedPolicies} onChange={(event) => { setAcceptedPolicies(event.target.checked); setFieldErrors((current) => ({ ...current, policies: "" })); }} className="mt-0.5" />I have reviewed and agree to the booking and cancellation policies.</label>{fieldErrors.policies ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.policies}</p> : null}</div>
           </div>
         </div>
 
-        <aside className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="h-fit min-w-0 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24 sm:p-6">
           <h2 className="text-xl font-bold">Booking Summary</h2>
           {loading ? (
             <p className="mt-5 text-sm text-slate-500"><Loader2 className="mr-2 inline size-4 animate-spin" />Loading tours...</p>
@@ -370,15 +344,16 @@ export default function BookingPage() {
               <div className="mt-5 space-y-3 text-sm">
                 {(["adult", "child", "infant"] as const).map((category) => {
                   const count = passengers.filter((passenger) => passenger.age_category === category).length;
-                  return count ? <p key={category} className="flex justify-between capitalize"><span>{category} x {count}</span><span>{formatVnd(passengerPrice(unitPrice, childPrice, category) * count)}</span></p> : null;
+                  return count ? <p key={category} className="flex justify-between capitalize"><span>{category} x {count}</span><span>{formatVnd(passengerPrice(unitPrice, childPrice, infantPrice, category) * count)}</span></p> : null;
                 })}
                 <p className="flex justify-between border-t border-slate-200 pt-3"><span>Subtotal</span><span>{formatVnd(subtotal)}</span></p>
                 {appliedCoupon ? <p className="flex justify-between text-emerald-700"><span>Coupon {appliedCoupon.code ?? couponCode}</span><span>-{formatVnd(discountAmount)}</span></p> : null}
                 <p className="flex justify-between border-t border-slate-200 pt-3 text-lg font-bold"><span>Total</span><span>{formatVnd(finalTotal)}</span></p>
               </div>
+              {customerName.trim() ? <div className="mt-5 border-t border-slate-200 pt-4"><p className="text-sm font-bold">Booking contact</p><p className="mt-2 text-xs text-slate-600">{customerName.trim()} · {phone || "No phone entered"}</p></div> : null}
             </>
           )}
-          <Button type="submit" className="mt-6 w-full" disabled={loading || saving || validatingCoupon}>
+          <Button type="submit" className="mt-6 w-full" disabled={loading || saving || validatingCoupon || !selectedTour}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : null}
             Submit Booking
           </Button>
@@ -388,8 +363,43 @@ export default function BookingPage() {
   );
 }
 
-function passengerPrice(adultPrice: number, childPrice: number, category: PassengerDraft["age_category"]) {
-  return category === "child" ? childPrice : category === "infant" ? 0 : adultPrice;
+function BookingPageSkeleton() {
+  return <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8" aria-label="Loading booking form" aria-busy="true">
+    <div className="grid min-w-0 animate-pulse gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="min-w-0">
+        <div className="h-9 w-56 rounded-lg bg-slate-200" />
+        <div className="mt-3 h-4 w-full max-w-md rounded bg-slate-100" />
+        <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="mt-3 grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-[140px_1fr]">
+            <div className="h-28 rounded-lg bg-slate-200" />
+            <div><div className="h-5 w-2/3 rounded bg-slate-200" /><div className="mt-3 h-3 w-full rounded bg-slate-200" /><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="h-3 rounded bg-slate-200" /><div className="h-3 rounded bg-slate-200" /><div className="h-3 rounded bg-slate-200" /><div className="h-3 rounded bg-slate-200" /></div></div>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2"><SkeletonField /><SkeletonField /></div>
+        </div>
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+          <div className="h-6 w-48 rounded bg-slate-200" />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="h-20 rounded-lg bg-slate-100" />)}</div>
+          <div className="mt-8 h-6 w-44 rounded bg-slate-200" />
+          <div className="mt-4 grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2"><SkeletonField /><SkeletonField /><div className="h-20 rounded-lg bg-slate-200 sm:col-span-2" /></div>
+          <div className="mt-6 h-40 rounded-lg bg-slate-100" />
+        </div>
+      </div>
+      <aside className="h-fit rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="h-6 w-44 rounded bg-slate-200" /><div className="mt-6 h-5 w-3/4 rounded bg-slate-200" /><div className="mt-6 space-y-4">{[1, 2, 3, 4].map((item) => <div key={item} className="flex justify-between gap-4"><div className="h-4 w-24 rounded bg-slate-100" /><div className="h-4 w-20 rounded bg-slate-200" /></div>)}</div><div className="mt-7 h-11 rounded-lg bg-slate-200" /></aside>
+    </div>
+  </section>;
+}
+
+function SkeletonField() {
+  return <div><div className="h-4 w-24 rounded bg-slate-200" /><div className="mt-2 h-12 rounded-lg bg-slate-100" /></div>;
+}
+
+function passengerPrice(adultPrice: number, childPrice: number, infantPrice: number, category: PassengerDraft["age_category"]) {
+  return category === "child" ? childPrice : category === "infant" ? infantPrice : adultPrice;
+}
+
+function plainText(value?: string | null) {
+  return String(value ?? "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/[ \t]+/g, " ").trim();
 }
 
 function formatVnd(value: number) {
@@ -411,13 +421,6 @@ function getVietnamDateInputValue() {
   return `${value.year}-${value.month}-${value.day}`;
 }
 
-function buildDepartureAt(date: string, schedule?: string) {
-  const timeMatch = schedule?.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
-  const hour = timeMatch?.[1]?.padStart(2, "0") ?? "08";
-  const minute = timeMatch?.[2] ?? "00";
-  return `${date}T${hour}:${minute}:00+07:00`;
-}
-
 function isValidVietnamMobilePhone(value: string) {
   return /^0(?:3|5|7|8|9)\d{8}$/.test(value);
 }
@@ -433,6 +436,12 @@ function getAvailableSlots(tour?: PublicTour) {
   if (typeof tour.capacity === "number") return Math.max(0, tour.capacity);
   const numbers = String(tour.capacity ?? "").match(/\d+/g)?.map(Number) ?? [];
   return numbers.length ? Math.max(...numbers) : null;
+}
+
+function getMaximumBooking(tour: PublicTour | undefined, availableSlots: number | null) {
+  const configured = tour?.maximum_booking == null || tour.maximum_booking === "" ? null : Number(tour.maximum_booking);
+  const limits = [configured, availableSlots].filter((value): value is number => value !== null && Number.isFinite(value));
+  return limits.length ? Math.max(0, Math.min(...limits)) : null;
 }
 
 function getCouponDiscountAmount(coupon: CouponValidationResult | null, subtotal: number) {
