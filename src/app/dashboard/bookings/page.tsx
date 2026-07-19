@@ -18,15 +18,14 @@ import {
   getCustomerBookingTourName,
   type CustomerBooking
 } from "@/services/booking.service";
-import { paymentService } from "@/services/payment.service";
-import { getPublicTourId, getPublicTourName, tourService } from "@/services/tour.service";
-
 const pageSize = 5;
 
 export default function BookingsPage() {
   const [items, setItems] = useState<CustomerBooking[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
@@ -36,41 +35,17 @@ export default function BookingsPage() {
   const [cancelReasonError, setCancelReasonError] = useState("");
   const showToast = useToast();
 
-  const visibleItems = items.filter((item) => `${getCustomerBookingCode(item)} ${getCustomerBookingTourName(item)} ${item.status ?? ""} ${getCustomerBookingPaymentStatus(item) ?? ""}`.toLowerCase().includes(query.toLowerCase()));
-  const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const rows = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rows = items;
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [bookings, tours] = await Promise.all([
-        bookingService.listMine(),
-        tourService.list().catch(() => [])
-      ]);
-      const tourNames = new Map(tours.map((tour) => [getPublicTourId(tour), getPublicTourName(tour)]));
-      const metadata = readBookingMetadata();
-      const paymentMap = readPaymentMap();
-      const detailedBookings = await Promise.all(bookings.map(async (booking) => {
-        const bookingId = getCustomerBookingId(booking);
-        const detail = bookingId ? await bookingService.detail(bookingId).catch(() => null) : null;
-        const storedPaymentId = paymentMap[String(bookingId)];
-        const payment = storedPaymentId ? await paymentService.detail(storedPaymentId).catch(() => null) : null;
-        const merged = detail ? { ...booking, ...detail } : booking;
-        const tourId = merged.tour_id ?? merged.tour?.tour_id ?? merged.tour?.id ?? merged.Tour?.tour_id ?? merged.Tour?.id;
-        const local = metadata[String(bookingId)];
-        return {
-          ...merged,
-          ...(payment ? { payment } : {}),
-          tour_name: merged.tour_name ?? (tourId ? tourNames.get(Number(tourId)) : undefined),
-          booked_at: merged.booked_at ?? merged.booking_date ?? merged.created_at ?? local?.booked_at,
-          preferred_arrival_time: merged.preferred_arrival_time ?? merged.departure_at ?? merged.arrival_time ?? merged.travel_date ?? local?.arrival_time,
-          amount: merged.amount ?? merged.total_amount ?? merged.final_amount ?? merged.total_price ?? payment?.amount ?? local?.amount,
-          passengers: getCustomerBookingPassengers(merged).length ? getCustomerBookingPassengers(merged) : Array.isArray(local?.passengers) ? local.passengers.map((age_category) => ({ age_category, passenger_name: "", price: 0 })) : []
-        };
-      }));
-      setItems(detailedBookings);
+      const result = await bookingService.listMinePage({ page, limit: pageSize, search: query.trim() || undefined });
+      setItems(result.data);
+      setTotalItems(result.meta?.total ?? result.data.length);
+      setPageCount(result.meta?.total_pages ?? 1);
     } catch (err) {
       const message = getApiError(err, "Cannot load your bookings.");
       setError(message);
@@ -78,24 +53,21 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [page, query, showToast]);
 
   useEffect(() => {
-    void loadBookings();
+    const timer = window.setTimeout(() => void loadBookings(), 300);
+    return () => window.clearTimeout(timer);
   }, [loadBookings]);
 
   async function cancelBooking() {
     if (!selected || cancelling) return;
     const reason = cancelReason.trim();
-    if (!reason) {
-      setCancelReasonError("Please enter a cancellation reason.");
-      return;
-    }
 
     setCancelling(true);
     setError("");
     try {
-      await bookingService.cancel(getCustomerBookingId(selected), reason);
+      await bookingService.cancel(getCustomerBookingId(selected), reason || undefined);
       showToast({ variant: "success", title: "Booking cancelled", description: getCustomerBookingCode(selected) });
       setSelected(null);
       setCancelReason("");
@@ -149,12 +121,12 @@ export default function BookingsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h1 className="text-2xl font-bold">My Bookings</h1><p className="mt-1 text-sm text-slate-500">Bookings created by your current customer account.</p></div><Button variant="outline" onClick={() => void loadBookings()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button></div>
       {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
       <div className="relative mt-6 max-w-md"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search my bookings..." /></div>
-      <div className="mt-6 overflow-x-auto"><table className="w-full min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Booking", "Tour", "Desired Arrival Date", "Passengers", "Payment Status", "Amount", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
+      <div className="mt-6 overflow-x-auto"><table className="w-full min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Booking", "Tour", "Departure", "Passengers", "Payment Status", "Amount", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading your bookings...</td></tr>
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">This account has no bookings yet.</td></tr>
             : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "unpaid"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const needsPayment = canPayBooking(booking); const canReview = canReviewBooking(booking); const review = getCustomerBookingReview(booking); const bookingId = getCustomerBookingId(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={bookingId} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3"><div className="flex flex-wrap gap-2">{cancelActionStatus ? <Status value={cancelActionStatus} /> : needsPayment ? <Button href={`/payment/checkout?bookingId=${bookingId}`} className="h-9 px-3"><CreditCard size={15} /> Pay Now</Button> : canCancel ? <button type="button" onClick={() => openCancelDialog(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50"><XCircle size={15} /> Cancel</button> : null}{canReview ? review ? <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 font-semibold text-slate-700 hover:bg-slate-50"><Pencil size={15} /> Review</button> : <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-amber-200 px-3 font-semibold text-amber-700 hover:bg-amber-50"><Star size={15} /> Review Tour</button> : null}</div></td></tr>; })}
       </tbody></table></div>
-      <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} />
+      <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} />
     </div>
     {selected ? (
       <CancelBookingDialog
@@ -279,7 +251,7 @@ function CancelBookingDialog({
           Cancel {getCustomerBookingCode(booking)}. Paid bookings will create a manual refund request for staff to process.
         </p>
         <label className="mt-5 block text-sm font-semibold">
-          Cancellation Reason
+          Cancellation Reason <span className="font-normal text-slate-400">(optional)</span>
           <textarea
             value={reason}
             onChange={(event) => onReasonChange(event.target.value)}
