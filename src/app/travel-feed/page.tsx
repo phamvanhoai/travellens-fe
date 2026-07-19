@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
 import { useToast } from "@/components/common/toast";
+import { TravelStoriesBar } from "@/components/travel-stories/travel-stories-bar";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
 import { images } from "@/lib/data";
 import {
@@ -458,6 +459,7 @@ function TravelFeedContent() {
       />
 
       <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <TravelStoriesBar />
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
