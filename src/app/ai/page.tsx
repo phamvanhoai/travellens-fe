@@ -41,6 +41,10 @@ export default function AIAssistantPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setError("Vui lòng đăng nhập để sử dụng tính năng này.");
+      return;
+    }
     if (!travelRequest.trim()) return;
 
     setLoading(true);
@@ -184,21 +188,33 @@ export default function AIAssistantPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || !travelRequest.trim()}
-            className="w-full bg-gray-900 text-white font-bold text-lg py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 disabled:cursor-not-allowed transform hover:-translate-y-1 flex justify-center items-center gap-2"
-          >
-            {loading ? (
-              <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            )}
-            {loading ? "Đang phân tích AI..." : "Khám Phá Điểm Đến"}
-          </button>
+          {!user ? (
+            <div className="mt-4 text-center">
+              <p className="text-red-500 mb-4 font-medium">Bạn cần đăng nhập để sử dụng tính năng này.</p>
+              <Link
+                href="/login"
+                className="inline-block bg-blue-600 text-white font-bold text-lg py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-700 transition-all transform hover:-translate-y-1"
+              >
+                Đăng Nhập Ngay
+              </Link>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading || !travelRequest.trim()}
+              className="w-full bg-gray-900 text-white font-bold text-lg py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 disabled:cursor-not-allowed transform hover:-translate-y-1 flex justify-center items-center gap-2"
+            >
+              {loading ? (
+                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              )}
+              {loading ? "Đang phân tích AI..." : "Khám Phá Điểm Đến"}
+            </button>
+          )}
         </form>
       </div>
 
