@@ -1,0 +1,63 @@
+ ⨯ ./src/app/tours/page.tsx
+Error:   [31mx[0m Nullish coalescing operator(??) requires parens when mixing with logical operators
+    ,-[[36;1;4mD:\GITHUB\travellens-fe\src\app\tours\page.tsx[0m:33:1]
+ [2m30[0m |         const pagination = data?.pagination ?? data?.data?.pagination;
+ [2m31[0m |         setItems(Array.isArray(nextItems) ? nextItems : []);
+ [2m32[0m |         setTotalItems(Number(pagination?.total ?? (Array.isArray(nextItems) ? nextItems.length : 0)));
+ [2m33[0m |         setPageCount(Number(pagination?.totalPages ?? Math.ceil(Number(pagination?.total ?? nextItems.length) / pageSize) || 1));
+    : [35;1m                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+ [2m34[0m |       } catch {
+ [2m35[0m |         setItems([]);
+ [2m36[0m |         setTotalItems(0);
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/tours/page.tsx
+ ⨯ ./src/app/tours/page.tsx
+Error:   [31mx[0m Nullish coalescing operator(??) requires parens when mixing with logical operators
+    ,-[[36;1;4mD:\GITHUB\travellens-fe\src\app\tours\page.tsx[0m:33:1]
+ [2m30[0m |         const pagination = data?.pagination ?? data?.data?.pagination;
+ [2m31[0m |         setItems(Array.isArray(nextItems) ? nextItems : []);
+ [2m32[0m |         setTotalItems(Number(pagination?.total ?? (Array.isArray(nextItems) ? nextItems.length : 0)));
+ [2m33[0m |         setPageCount(Number(pagination?.totalPages ?? Math.ceil(Number(pagination?.total ?? nextItems.length) / pageSize) || 1));
+    : [35;1m                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+ [2m34[0m |       } catch {
+ [2m35[0m |         setItems([]);
+ [2m36[0m |         setTotalItems(0);
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/tours/page.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./src/services/admin-tour-content-template.service.ts
+Error: 
+
+Caused by:
+    0: Failed to read source code from D:\GITHUB\travellens-fe\src\services\admin-tour-content-template.service.ts
+    1: The system cannot find the file specified. (os error 2)
+
+Import trace for requested module:
+./src/services/admin-tour-content-template.service.ts
+./src/app/admin/tours/page.tsx
+ ⨯ ./src/services/admin-tour-content-template.service.ts
+Error: 
+
+Caused by:
+    0: Failed to read source code from D:\GITHUB\travellens-fe\src\services\admin-tour-content-template.service.ts
+    1: The system cannot find the file specified. (os error 2)
+
+Import trace for requested module:
+./src/services/admin-tour-content-template.service.ts
+./src/app/admin/tours/page.tsx
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload

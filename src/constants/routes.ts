@@ -16,6 +16,7 @@ export const adminRoutes = [
   "/admin/travel-destinations",
   "/admin/tour-categories",
   "/admin/tours",
+  "/admin/tour-content-items",
   "/admin/locations",
   "/admin/view360",
   "/admin/maps",

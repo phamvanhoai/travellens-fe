@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bold, Heading2, Images, Italic, Link2, List, ListOrdered, Loader2, Pencil, Quote, Redo2, RemoveFormatting, Search, Trash2, Underline, Undo2, Upload, X } from "lucide-react";
+import { Bold, Check, Heading2, Images, Italic, Link2, List, ListOrdered, Loader2, Pencil, Quote, Redo2, RemoveFormatting, Search, Trash2, Underline, Undo2, Upload, X } from "lucide-react";
 import axios from "axios";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
@@ -121,18 +121,22 @@ export function RichTextEditor({
       />
     </div>
     {message ? <p className="mt-2 text-xs font-semibold text-rose-600">{message}</p> : null}
-    {mediaOpen ? <MediaLibrary onClose={() => setMediaOpen(false)} onInsert={insertMedia} onInsertUrl={insertImageUrl} /> : null}
+    {mediaOpen ? <MediaLibrary onClose={() => setMediaOpen(false)} onInsert={insertMedia} onInsertUrl={insertImageUrl} actionLabel="Insert into description" /> : null}
   </div>;
 }
 
-function MediaLibrary({
+export function MediaLibrary({
   onClose,
   onInsert,
-  onInsertUrl
+  onInsertUrl,
+  actionLabel = "Select image",
+  selectedUrls = []
 }: {
   onClose: () => void;
   onInsert: (media: AdminMedia) => void;
   onInsertUrl: (url: string) => void;
+  actionLabel?: string;
+  selectedUrls?: string[];
 }) {
   const [items, setItems] = useState<AdminMedia[]>([]);
   const [search, setSearch] = useState("");
@@ -276,7 +280,11 @@ function MediaLibrary({
       <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {loading ? Array.from({ length: 8 }, (_, index) => <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-hidden="true"><div className="h-36 animate-pulse bg-slate-200" /><div className="space-y-2 p-3"><div className="h-3.5 w-4/5 animate-pulse rounded bg-slate-200" /><div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" /></div><div className="flex justify-end gap-2 border-t border-slate-100 p-2"><div className="size-8 animate-pulse rounded-md bg-slate-100" /><div className="size-8 animate-pulse rounded-md bg-slate-100" /></div></div>)
           : items.length === 0 ? <div className="col-span-full p-10 text-center text-sm text-slate-500">No images found.</div>
-            : items.map((media) => { const mediaUrl = resolveBackendAssetUrl(getAdminMediaUrl(media)); return <div key={getAdminMediaId(media)} className="group overflow-hidden rounded-lg border border-slate-200 hover:border-brand-500 hover:shadow-sm"><button type="button" onClick={() => onInsert(media)} disabled={!mediaUrl} className="block w-full text-left disabled:opacity-50"><span className="block h-36 bg-slate-100">{mediaUrl ? <Image src={mediaUrl} alt={getAdminMediaName(media)} width={320} height={144} unoptimized className="h-full w-full object-cover" /> : null}</span><span className="block truncate px-3 pt-3 text-sm font-semibold">{getAdminMediaName(media)}</span><span className="block px-3 pb-2 text-xs text-brand-600">Insert into blog</span></button><div className="flex justify-end gap-1 border-t border-slate-100 p-2"><button type="button" onClick={() => { setRenaming(media); setRenameValue(getAdminMediaName(media)); }} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-brand-600" aria-label={`Rename ${getAdminMediaName(media)}`}><Pencil size={15} /></button><button type="button" onClick={() => setDeleting(media)} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${getAdminMediaName(media)}`}><Trash2 size={15} /></button></div></div>; })}
+            : items.map((media) => {
+              const mediaUrl = resolveBackendAssetUrl(getAdminMediaUrl(media));
+              const selected = Boolean(mediaUrl && selectedUrls.some((url) => resolveBackendAssetUrl(url) === mediaUrl));
+              return <div key={getAdminMediaId(media)} className={`group overflow-hidden rounded-lg border transition ${selected ? "border-brand-600 ring-2 ring-brand-200" : "border-slate-200 hover:border-brand-500 hover:shadow-sm"}`}><button type="button" onClick={() => onInsert(media)} disabled={!mediaUrl} aria-pressed={selected} className="relative block w-full text-left disabled:opacity-50"><span className="block h-36 bg-slate-100">{mediaUrl ? <Image src={mediaUrl} alt={getAdminMediaName(media)} width={320} height={144} unoptimized className="h-full w-full object-cover" /> : null}</span>{selected ? <span className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-brand-600 text-white shadow"><Check size={17} strokeWidth={3} /></span> : null}<span className="block truncate px-3 pt-3 text-sm font-semibold">{getAdminMediaName(media)}</span><span className={`block px-3 pb-2 text-xs font-semibold ${selected ? "text-rose-600" : "text-brand-600"}`}>{selected ? "Click to remove" : actionLabel}</span></button><div className="flex justify-end gap-1 border-t border-slate-100 p-2"><button type="button" onClick={() => { setRenaming(media); setRenameValue(getAdminMediaName(media)); }} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-brand-600" aria-label={`Rename ${getAdminMediaName(media)}`}><Pencil size={15} /></button><button type="button" onClick={() => setDeleting(media)} className="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${getAdminMediaName(media)}`}><Trash2 size={15} /></button></div></div>;
+            })}
       </div>
       <Pagination page={page} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="images" onPageChange={changePage} />
     </div>
