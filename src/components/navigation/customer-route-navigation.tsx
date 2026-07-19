@@ -32,7 +32,10 @@ function RouteBounds({ path }: { path: LatLngExpression[] }) {
     if (path.length === 0) return;
 
     const bounds = L.latLngBounds(path);
-    map.fitBounds(bounds.pad(0.2), { animate: true, maxZoom: 15 });
+    // This map can be mounted and unmounted when the Tour Detail tab changes.
+    // Avoid leaving a pending Leaflet zoom transition that fires after its map
+    // pane has already been removed.
+    map.fitBounds(bounds.pad(0.2), { animate: false, maxZoom: 15 });
   }, [map, path]);
 
   return null;
@@ -160,7 +163,15 @@ export function CustomerRouteNavigation({ tourId }: { tourId: string }) {
         </div>
 
         <div className="relative">
-          <MapContainer center={defaultCenter} zoom={12} scrollWheelZoom className="h-[420px] w-full">
+          <MapContainer
+            center={defaultCenter}
+            zoom={12}
+            scrollWheelZoom
+            zoomAnimation={false}
+            fadeAnimation={false}
+            markerZoomAnimation={false}
+            className="h-[420px] w-full"
+          >
             <LayersControl position="topright">
               <LayersControl.BaseLayer checked name="Street">
                 <TileLayer

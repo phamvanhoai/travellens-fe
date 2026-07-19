@@ -1,0 +1,216 @@
+
+> travellens-fe@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.24:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling / ...
+ ✓ Compiled /tours/[id] in 18s (1112 modules)
+ GET / 200 in 19707ms
+ GET /tours/6 200 in 11096ms
+ GET / 200 in 518ms
+ ○ Compiling /tours ...
+ ✓ Compiled /tours in 1166ms (1070 modules)
+ GET /tours 200 in 1673ms
+ ✓ Compiled /tours/[id] in 296ms (711 modules)
+ GET /tours/6 200 in 1123ms
+ GET /tours/6 200 in 862ms
+ ✓ Compiled in 1221ms (1163 modules)
+ GET /tours/6 200 in 243ms
+ GET /tours/6 200 in 1995ms
+ GET /tours/6 200 in 1929ms
+ ✓ Compiled in 2.7s (1167 modules)
+ GET /tours/6 200 in 409ms
+ ✓ Compiled in 1069ms (1167 modules)
+ GET /tours/6 200 in 407ms
+ GET /tours/6 200 in 3070ms
+ GET /tours/6 200 in 2654ms
+ GET /tours 200 in 115ms
+ GET /tours 200 in 287ms
+ ○ Compiling /_error ...
+ GET /tours 500 in 8253ms
+ GET /tours 500 in 430ms
+ GET /tours 500 in 90ms
+ GET /tours 500 in 77ms
+ GET /tours 500 in 55ms
+ GET /tours 200 in 84ms
+ ✓ Compiled /_error in 2.4s (1500 modules)
+ GET /tours 200 in 1297ms
+ GET /tours 200 in 734ms
+ GET /tours 200 in 289ms
+ GET /tours 200 in 215ms
+ GET /tours 200 in 208ms
+ GET /tours 200 in 297ms
+ GET /tours/6 200 in 550ms
+ ✓ Compiled in 965ms (607 modules)
+ GET /tours/6 200 in 165ms
+ ✓ Compiled in 674ms (607 modules)
+ GET /tours/6 200 in 205ms
+ ✓ Compiled in 605ms (607 modules)
+ GET /tours/6 200 in 147ms
+ ✓ Compiled in 831ms (607 modules)
+ ✓ Compiled in 658ms (607 modules)
+ GET /tours/6 200 in 876ms
+ GET /tours/6 200 in 161ms
+ ✓ Compiled in 646ms (607 modules)
+ GET /tours/6 200 in 192ms
+ ✓ Compiled in 589ms (607 modules)
+ GET /tours/6 200 in 156ms
+ ✓ Compiled in 214ms (607 modules)
+ GET /tours/6 200 in 57ms
+ ✓ Compiled in 191ms (607 modules)
+ GET /tours/6 200 in 56ms
+ ✓ Compiled in 254ms (607 modules)
+ GET /tours/6 200 in 58ms
+ ○ Compiling /admin/tours ...
+ ✓ Compiled /admin/tours in 1071ms (1631 modules)
+ GET /admin/tours 200 in 1361ms
+ ✓ Compiled in 2.2s (1645 modules)
+ GET /tours/6 200 in 374ms
+ ✓ Compiled in 1194ms (1645 modules)
+ GET /tours/6 200 in 289ms
+ ✓ Compiled in 1274ms (1645 modules)
+ GET /tours/6 200 in 296ms
+ GET /admin/tours 200 in 481ms
+ GET / 200 in 351ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1851ms (1580 modules)
+ GET /login 200 in 2273ms
+ GET /login 200 in 170ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 6.3s (2646 modules)
+ GET /admin 200 in 7148ms
+ ○ Compiling /admin/tours ...
+ ✓ Compiled /admin/tours in 977ms (1513 modules)
+ GET /admin/tours 200 in 1409ms
+ ✓ Compiled in 1261ms (2688 modules)
+ GET /admin/tours 200 in 110ms
+ GET /admin/tours 200 in 174ms
+ GET /admin/tours 200 in 163ms
+ ✓ Compiled in 740ms (2688 modules)
+ GET /admin/tours 200 in 69ms
+ ✓ Compiled in 521ms (2688 modules)
+ GET /admin/tours 200 in 60ms
+ GET /admin/tours 200 in 156ms
+ ✓ Compiled in 3.7s (2688 modules)
+ GET /admin/tours 200 in 286ms
+ GET /admin/tours 200 in 155ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1441ms (1513 modules)
+ GET / 200 in 2464ms
+ GET /tours 200 in 111ms
+ GET /tours/6 200 in 458ms
+ ✓ Compiled in 2s (2709 modules)
+ GET /admin/tours 200 in 457ms
+ GET /tours/6 200 in 450ms
+ GET /admin/tours 200 in 329ms
+ GET /tours/6 200 in 2063ms
+ GET /admin/tours 200 in 209ms
+ GET /tours/6 200 in 602ms
+ ✓ Compiled in 2.9s (2689 modules)
+ GET /admin/tours 200 in 519ms
+ GET /tours/6 200 in 609ms
+ GET /tours/6 200 in 919ms
+ ✓ Compiled in 2.7s (2689 modules)
+ GET /admin/tours 200 in 535ms
+ GET /tours/6 200 in 532ms
+ GET /tours/6 200 in 832ms
+ GET /admin/tours 200 in 270ms
+ ✓ Compiled in 3.2s (2689 modules)
+ GET /admin/tours 200 in 228ms
+ GET /tours/6 200 in 232ms
+ ✓ Compiled in 706ms (2691 modules)
+ GET /admin/tours 200 in 163ms
+ GET /tours/6 200 in 163ms
+ ✓ Compiled in 466ms (2691 modules)
+ GET /admin/tours 200 in 144ms
+ GET /tours/6 200 in 142ms
+ ✓ Compiled in 640ms (2691 modules)
+ GET /admin/tours 200 in 132ms
+ GET /tours/6 200 in 131ms
+ ✓ Compiled in 657ms (2691 modules)
+ GET /admin/tours 200 in 133ms
+ GET /tours/6 200 in 129ms
+ GET /admin/tours 200 in 156ms
+ GET /tours/6 200 in 1525ms
+ GET /admin/tours 200 in 197ms
+ GET /admin/tours 200 in 194ms
+ GET /tours/6 200 in 707ms
+ GET /tours/6 200 in 673ms
+ ✓ Compiled in 3.6s (2693 modules)
+ GET /admin/tours 200 in 689ms
+ GET /tours/6 200 in 679ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1943ms (2698 modules)
+ GET /admin/tour-content-templates 404 in 2217ms
+ GET /admin/tour-content-templates 404 in 398ms
+ GET /tours/6 200 in 424ms
+ GET /admin/tour-content-templates 404 in 48ms
+ GET /admin/tour-content-templates 404 in 403ms
+ GET /admin/tour-content-templates 404 in 157ms
+ GET /admin/tour-content-templates 404 in 154ms
+ ✓ Compiled in 724ms (1202 modules)
+ ○ Compiling /admin/tour-content-templates ...
+ GET /tours/6 200 in 1485ms
+ ✓ Compiled /admin/tour-content-templates in 3s (2693 modules)
+ GET /admin/tour-content-templates 200 in 3438ms
+ GET /tours/6 200 in 2965ms
+ GET /admin/tour-content-templates 200 in 1103ms
+ GET /tours/6 200 in 1106ms
+ GET /admin/tour-content-templates 200 in 180ms
+ GET /admin/tour-content-templates 200 in 389ms
+ GET /admin/tours 200 in 190ms
+ GET /admin/tour-content-templates 200 in 416ms
+ ○ Compiling /_not-found ...
+ GET /admin/tour-content-templates 500 in 3729ms
+ GET /tours/6 500 in 3778ms
+ GET /admin/tour-content-templates 500 in 42ms
+ GET /admin/tour-content-templates 500 in 66ms
+ GET /tours/6 500 in 127ms
+ GET /admin/tour-content-templates 500 in 60ms
+ GET /tours/6 500 in 119ms
+ GET /tours/6 500 in 78ms
+ ✓ Compiled /_not-found in 8.2s (2673 modules)
+ GET /admin/tour-content-templates 404 in 2172ms
+ GET /tours/6 200 in 3179ms
+ ✓ Compiled in 1696ms (2687 modules)
+ GET /admin/tour-content-templates 404 in 430ms
+ GET /admin/tour-content-templates 404 in 299ms
+ GET /tours/6 200 in 736ms
+ ✓ Compiled in 1093ms (2687 modules)
+ GET /admin/tour-content-templates 404 in 199ms
+ GET /admin/tour-content-templates 404 in 142ms
+ GET /tours/6 200 in 350ms
+ ✓ Compiled in 521ms (2687 modules)
+ GET /admin/tour-content-templates 404 in 263ms
+ GET /admin/tour-content-templates 404 in 411ms
+ GET /tours/6 200 in 511ms
+ ✓ Compiled in 537ms (2687 modules)
+ GET /admin/tour-content-templates 404 in 131ms
+ GET /admin/tour-content-templates 404 in 95ms
+ GET /tours/6 200 in 228ms
+ ○ Compiling /admin/tour-content-items ...
+ ✓ Compiled /admin/tour-content-items in 1288ms (2682 modules)
+ GET /admin/tour-content-items 200 in 1485ms
+ GET /admin/tours 200 in 114ms
+ ✓ Compiled in 898ms (2691 modules)
+ GET /tours/6 200 in 337ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 505ms (2682 modules)
+ GET /admin/tour-content-templates 404 in 582ms
+ GET /admin/tour-content-templates 404 in 113ms
+ ✓ Compiled in 1610ms (2696 modules)
+ GET /admin/tour-content-templates 404 in 788ms
+ GET /admin/tour-content-templates 404 in 610ms
+ GET /tours/6 200 in 825ms
+ GET /admin/tour-content-items 200 in 210ms
+ GET /admin/tours 200 in 198ms
+ ✓ Compiled in 1876ms (2696 modules)
+ GET /admin/tour-content-templates 404 in 660ms
+ GET /admin/tour-content-templates 404 in 487ms
+ GET /tours/6 200 in 717ms
