@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Images, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { MediaLibrary, RichTextEditor } from "@/components/admin/rich-text-editor";
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
+import { adminMediaService, getAdminMediaName, getAdminMediaUrl } from "@/services/admin-media.service";
 import {
   adminTourService,
   getAdminTourCategoryId,
@@ -20,9 +21,12 @@ import {
   getAdminTourName,
   getAdminTourThumbnail,
   type AdminTour,
+  type AdminTourFaq,
+  type AdminTourGalleryItem,
   type AdminTourPayload
 } from "@/services/admin-tour.service";
 import { adminTourCategoryService, getTourCategoryId, type AdminTourCategory } from "@/services/admin-tour-category.service";
+import { adminTourContentItemService, getTourContentItemId, type AdminTourContentItem, type TourContentItemType } from "@/services/admin-tour-content-item.service";
 import {
   adminTravelDestinationService,
   getTravelDestinationId,
@@ -35,6 +39,7 @@ type TourFormValue = AdminTourPayload & {
 
 type TourFieldName =
   | "name"
+  | "content_item_ids"
   | "description"
   | "tour_category_id"
   | "status"
@@ -42,20 +47,50 @@ type TourFieldName =
   | "capacity"
   | "price"
   | "child_price"
+  | "infant_price"
+  | "languages"
   | "destinations"
   | "thumbnail_file";
 
 type TourFieldErrors = Partial<Record<TourFieldName, string>>;
 
 const emptyTour: TourFormValue = {
+  content_item_ids: [],
   tour_category_id: "",
   name: "",
+  slug: "",
+  short_description: "",
+  duration_days: "1",
+  duration_nights: "0",
+  start_time: "08:00",
+  end_time: "17:00",
+  tour_type: "group",
+  languages: ["vi"],
+  difficulty: "easy",
+  minimum_participants: "1",
+  minimum_booking: "1",
+  maximum_booking: "",
+  meeting_point: "",
+  pickup_available: false,
+  pickup_description: "",
   description: "",
   price: "",
   child_price: "",
+  infant_price: "0",
+  currency: "VND",
   schedule: "",
   capacity: "",
   status: "draft",
+  video_url: "",
+  highlights: [],
+  inclusions: [],
+  exclusions: [],
+  requirements: [],
+  cancellation_policy: "",
+  booking_policy: "",
+  additional_information: "",
+  faqs: [],
+  gallery: [],
   destinations: [],
   thumbnail_file: null,
   preview: ""
@@ -74,6 +109,7 @@ export default function AdminToursPage() {
   const [items, setItems] = useState<AdminTour[]>([]);
   const [categories, setCategories] = useState<AdminTourCategory[]>([]);
   const [destinations, setDestinations] = useState<AdminTravelDestination[]>([]);
+  const [contentItems, setContentItems] = useState<AdminTourContentItem[]>([]);
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -101,7 +137,7 @@ export default function AdminToursPage() {
     setLoading(true);
     setError("");
     try {
-      const [tourResult, categoryResult, destinationResult] = await Promise.all([
+      const [tourResult, categoryResult, destinationResult, contentItemResult] = await Promise.all([
         adminTourService.list({
           page: nextPage,
           limit: pageSize,
@@ -113,12 +149,14 @@ export default function AdminToursPage() {
           sortOrder: "DESC"
         }),
         adminTourCategoryService.list(),
-        adminTravelDestinationService.list({ page: 1, limit: 100 })
+        adminTravelDestinationService.list({ page: 1, limit: 100 }),
+        adminTourContentItemService.list({ status: "active" })
       ]);
       const total = tourResult.pagination?.total ?? tourResult.data?.length ?? 0;
       setItems(tourResult.data ?? []);
       setCategories(Array.isArray(categoryResult) ? categoryResult : []);
       setDestinations(destinationResult.data ?? []);
+      setContentItems(contentItemResult);
       setTotalItems(total);
       setPageCount(tourResult.pagination?.totalPages ?? Math.max(1, Math.ceil(total / pageSize)));
     } catch (err) {
@@ -136,14 +174,42 @@ export default function AdminToursPage() {
   const editingInitialValue = useMemo<TourFormValue>(() => {
     if (!editingTour) return emptyTour;
     return {
+      content_item_ids: [],
       tour_category_id: String(getAdminTourCategoryId(editingTour) ?? ""),
       name: getAdminTourName(editingTour),
+      slug: editingTour.slug ?? "",
+      short_description: editingTour.short_description ?? "",
+      duration_days: String(editingTour.duration_days ?? parseSchedule(editingTour.schedule ?? "").days ?? 1),
+      duration_nights: String(editingTour.duration_nights ?? 0),
+      start_time: editingTour.start_time ?? parseSchedule(editingTour.schedule ?? "").startTime,
+      end_time: editingTour.end_time ?? parseSchedule(editingTour.schedule ?? "").endTime,
+      tour_type: editingTour.tour_type ?? "group",
+      languages: Array.isArray(editingTour.languages) ? editingTour.languages : ["vi"],
+      difficulty: editingTour.difficulty ?? "easy",
+      minimum_participants: String(editingTour.minimum_participants ?? 1),
+      minimum_booking: String(editingTour.minimum_booking ?? 1),
+      maximum_booking: editingTour.maximum_booking == null ? "" : String(editingTour.maximum_booking),
+      meeting_point: editingTour.meeting_point ?? "",
+      pickup_available: Boolean(editingTour.pickup_available),
+      pickup_description: editingTour.pickup_description ?? "",
       description: editingTour.description ?? "",
       price: editingTour.price == null ? "" : String(editingTour.price),
       child_price: editingTour.child_price == null ? "" : String(editingTour.child_price),
+      infant_price: editingTour.infant_price == null ? "0" : String(editingTour.infant_price),
+      currency: editingTour.currency ?? "VND",
       schedule: editingTour.schedule ?? editingTour.duration ?? "",
       capacity: editingTour.capacity == null ? "" : String(editingTour.capacity),
       status: editingTour.status ?? "active",
+      video_url: editingTour.video_url ?? "",
+      highlights: editingTour.highlights ?? [],
+      inclusions: editingTour.inclusions ?? [],
+      exclusions: editingTour.exclusions ?? [],
+      requirements: editingTour.requirements ?? [],
+      cancellation_policy: editingTour.cancellation_policy ?? "",
+      booking_policy: editingTour.booking_policy ?? "",
+      additional_information: editingTour.additional_information ?? "",
+      faqs: editingTour.faqs ?? [],
+      gallery: editingTour.gallery ?? [],
       destinations: getAdminTourDestinations(editingTour)
         .slice()
         .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
@@ -203,14 +269,42 @@ export default function AdminToursPage() {
     setFieldErrors({});
     try {
       const requestPayload: AdminTourPayload = {
+        content_item_ids: payload.content_item_ids,
         tour_category_id: payload.tour_category_id,
         name: payload.name,
+        slug: payload.slug,
+        short_description: payload.short_description,
+        duration_days: payload.duration_days,
+        duration_nights: payload.duration_nights,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        tour_type: payload.tour_type,
+        languages: payload.languages,
+        difficulty: payload.difficulty,
+        minimum_participants: payload.minimum_participants,
+        minimum_booking: payload.minimum_booking,
+        maximum_booking: payload.maximum_booking,
+        meeting_point: payload.meeting_point,
+        pickup_available: payload.pickup_available,
+        pickup_description: payload.pickup_description,
         description: payload.description,
         price: payload.price,
         child_price: payload.child_price,
+        infant_price: payload.infant_price,
+        currency: payload.currency,
         schedule: payload.schedule,
         capacity: payload.capacity,
         status: payload.status,
+        video_url: payload.video_url,
+        highlights: payload.highlights,
+        inclusions: payload.inclusions,
+        exclusions: payload.exclusions,
+        requirements: payload.requirements,
+        cancellation_policy: payload.cancellation_policy,
+        booking_policy: payload.booking_policy,
+        additional_information: payload.additional_information,
+        faqs: payload.faqs,
+        gallery: payload.gallery,
         destinations: payload.destinations,
         thumbnail_file: payload.thumbnail_file
       };
@@ -380,6 +474,8 @@ export default function AdminToursPage() {
           title={editingTour ? "Edit Tour" : "Create Tour"}
           categories={categories}
           destinations={destinations}
+          contentItems={contentItems}
+          isEditing={Boolean(editingTour)}
           saving={saving}
           fieldErrors={fieldErrors}
           onSetFieldErrors={setFieldErrors}
@@ -414,6 +510,8 @@ function TourForm({
   initialValue,
   categories,
   destinations,
+  contentItems,
+  isEditing,
   saving,
   fieldErrors,
   onSetFieldErrors,
@@ -425,6 +523,8 @@ function TourForm({
   initialValue: TourFormValue;
   categories: AdminTourCategory[];
   destinations: AdminTravelDestination[];
+  contentItems: AdminTourContentItem[];
+  isEditing: boolean;
   saving: boolean;
   fieldErrors: TourFieldErrors;
   onSetFieldErrors: (errors: TourFieldErrors) => void;
@@ -432,7 +532,12 @@ function TourForm({
   onClose: () => void;
   onSave: (payload: TourFormValue) => void;
 }) {
-  const initialSchedule = parseSchedule(initialValue.schedule);
+  const parsedSchedule = parseSchedule(initialValue.schedule);
+  const initialSchedule = {
+    days: Number(initialValue.duration_days) || parsedSchedule.days,
+    startTime: initialValue.start_time || parsedSchedule.startTime,
+    endTime: initialValue.end_time || parsedSchedule.endTime
+  };
   const [form, setForm] = useState<TourFormValue>({
     ...initialValue,
     schedule: buildSchedule(initialSchedule.days, initialSchedule.startTime, initialSchedule.endTime)
@@ -440,7 +545,6 @@ function TourForm({
   const [scheduleDays, setScheduleDays] = useState(initialSchedule.days);
   const [startTime, setStartTime] = useState(initialSchedule.startTime);
   const [endTime, setEndTime] = useState(initialSchedule.endTime);
-
   function updateSchedule(next: Partial<ScheduleParts>) {
     const days = next.days ?? scheduleDays;
     const start = next.startTime ?? startTime;
@@ -450,7 +554,13 @@ function TourForm({
     setStartTime(start);
     setEndTime(end);
     onClearFieldError("schedule");
-    setForm((current) => ({ ...current, schedule: buildSchedule(days, start, end) }));
+    setForm((current) => ({
+      ...current,
+      duration_days: String(days),
+      start_time: start,
+      end_time: end,
+      schedule: buildSchedule(days, start, end)
+    }));
   }
 
   useEffect(() => {
@@ -482,6 +592,7 @@ function TourForm({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {!isEditing ? <div className="sm:col-span-2"><ContentItemSelector items={contentItems} selectedIds={form.content_item_ids} onChange={(content_item_ids) => { onClearFieldError("content_item_ids"); setForm({ ...form, content_item_ids }); }} /></div> : null}
           <div className="sm:col-span-2">
             <Field label="Tour Name" message={fieldErrors.name} tone={fieldErrors.name ? "invalid" : "neutral"}>
               <input required value={form.name} onChange={(event) => {
@@ -490,6 +601,12 @@ function TourForm({
               }} className="input" placeholder="Saigon One Day Tour" />
             </Field>
           </div>
+          <Field label="Slug (optional)">
+            <input value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value.toLowerCase().replace(/\s+/g, "-") })} className="input" placeholder="saigon-one-day-tour" />
+          </Field>
+          <Field label="Short Description">
+            <input value={form.short_description} onChange={(event) => setForm({ ...form, short_description: event.target.value })} className="input" maxLength={500} placeholder="Short summary displayed on tour cards" />
+          </Field>
           <div className="sm:col-span-2">
             <RichTextEditor
               label="Description"
@@ -519,6 +636,25 @@ function TourForm({
               {statuses.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}
             </select>
           </Field>
+          <Field label="Tour Type">
+            <select value={form.tour_type} onChange={(event) => setForm({ ...form, tour_type: event.target.value })} className="input">
+              <option value="group">Group</option><option value="private">Private</option><option value="self_guided">Self guided</option>
+            </select>
+          </Field>
+          <Field label="Difficulty">
+            <select value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value })} className="input">
+              {["easy", "moderate", "challenging", "difficult"].map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+            </select>
+          </Field>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-semibold">Languages</p>
+            <div className="mt-2 flex flex-wrap gap-4 rounded-lg border border-slate-200 p-3">
+              {[["vi", "Vietnamese"], ["en", "English"], ["fr", "French"], ["zh", "Chinese"], ["ja", "Japanese"], ["ko", "Korean"]].map(([code, label]) => (
+                <label key={code} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.languages.includes(code)} onChange={(event) => { onClearFieldError("languages"); setForm({ ...form, languages: event.target.checked ? [...form.languages, code] : form.languages.filter((item) => item !== code) }); }} />{label}</label>
+              ))}
+            </div>
+            {fieldErrors.languages ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.languages}</p> : null}
+          </div>
           <div className="sm:col-span-2">
             <p className="text-sm font-semibold">Schedule</p>
             <div className="mt-2 grid gap-3 sm:grid-cols-3">
@@ -558,6 +694,16 @@ function TourForm({
             {fieldErrors.schedule ? <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.schedule}</p> : null}
             <input type="hidden" value={form.schedule} readOnly />
           </div>
+          <Field label="Number of nights">
+            <input min="0" max="30" type="number" value={form.duration_nights} onChange={(event) => setForm({ ...form, duration_nights: event.target.value })} className="input" />
+          </Field>
+          <Field label="Meeting Point">
+            <input value={form.meeting_point} onChange={(event) => setForm({ ...form, meeting_point: event.target.value })} className="input" placeholder="Address or meeting instructions" />
+          </Field>
+          <div className="sm:col-span-2 rounded-lg border border-slate-200 p-4">
+            <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.pickup_available} onChange={(event) => setForm({ ...form, pickup_available: event.target.checked })} />Pickup available</label>
+            {form.pickup_available ? <textarea value={form.pickup_description} onChange={(event) => setForm({ ...form, pickup_description: event.target.value })} className="input mt-3 min-h-20 py-3" placeholder="Describe pickup areas and conditions" /> : null}
+          </div>
           <Field label="Capacity" message={fieldErrors.capacity} tone={fieldErrors.capacity ? "invalid" : "neutral"}>
             <input required min="1" type="number" value={form.capacity} onChange={(event) => {
               onClearFieldError("capacity");
@@ -576,6 +722,40 @@ function TourForm({
               setForm({ ...form, child_price: event.target.value });
             }} className="input" />
           </Field>
+          <Field label="Infant Price" message={fieldErrors.infant_price} tone={fieldErrors.infant_price ? "invalid" : "neutral"}>
+            <input min="0" type="number" step="any" value={form.infant_price} onChange={(event) => { onClearFieldError("infant_price"); setForm({ ...form, infant_price: event.target.value }); }} className="input" />
+          </Field>
+          <Field label="Currency">
+            <select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="input"><option value="VND">VND</option><option value="USD">USD</option></select>
+          </Field>
+          <Field label="Minimum Participants">
+            <input min="1" type="number" value={form.minimum_participants} onChange={(event) => setForm({ ...form, minimum_participants: event.target.value })} className="input" />
+          </Field>
+          <Field label="Minimum Booking">
+            <input min="1" type="number" value={form.minimum_booking} onChange={(event) => setForm({ ...form, minimum_booking: event.target.value })} className="input" />
+          </Field>
+          <Field label="Maximum Booking (optional)">
+            <input min="1" type="number" value={form.maximum_booking} onChange={(event) => setForm({ ...form, maximum_booking: event.target.value })} className="input" />
+          </Field>
+          <Field label="Video URL">
+            <input type="url" value={form.video_url} onChange={(event) => setForm({ ...form, video_url: event.target.value })} className="input" placeholder="https://youtube.com/..." />
+          </Field>
+
+          <div className="sm:col-span-2 grid gap-4 md:grid-cols-2">
+            <StringListEditor title="Highlights" items={form.highlights} placeholder="Add a tour highlight" onChange={(highlights) => setForm({ ...form, highlights })} />
+            <StringListEditor title="Requirements" items={form.requirements} placeholder="Add a requirement" onChange={(requirements) => setForm({ ...form, requirements })} />
+            <StringListEditor title="Inclusions" items={form.inclusions} placeholder="Add an included item" onChange={(inclusions) => setForm({ ...form, inclusions })} />
+            <StringListEditor title="Exclusions" items={form.exclusions} placeholder="Add an excluded item" onChange={(exclusions) => setForm({ ...form, exclusions })} />
+          </div>
+
+          <div className="sm:col-span-2 grid gap-4 md:grid-cols-2">
+            <Field label="Booking Policy"><textarea value={form.booking_policy} onChange={(event) => setForm({ ...form, booking_policy: event.target.value })} className="input min-h-28 py-3" /></Field>
+            <Field label="Cancellation Policy"><textarea value={form.cancellation_policy} onChange={(event) => setForm({ ...form, cancellation_policy: event.target.value })} className="input min-h-28 py-3" /></Field>
+            <div className="md:col-span-2"><Field label="Additional Information"><textarea value={form.additional_information} onChange={(event) => setForm({ ...form, additional_information: event.target.value })} className="input min-h-24 py-3" /></Field></div>
+          </div>
+
+          <div className="sm:col-span-2"><FaqEditor items={form.faqs} onChange={(faqs) => setForm({ ...form, faqs })} /></div>
+          <div className="sm:col-span-2"><GalleryEditor items={form.gallery} onChange={(gallery) => setForm({ ...form, gallery })} /></div>
 
           <div className="sm:col-span-2">
             <p className="text-sm font-semibold">Travel Destinations</p>
@@ -669,6 +849,130 @@ function TourForm({
   );
 }
 
+function ContentItemSelector({ items, selectedIds, onChange }: { items: AdminTourContentItem[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
+  const types: TourContentItemType[] = ["highlight", "requirement", "inclusion", "exclusion", "booking_policy", "cancellation_policy", "additional_information"];
+  const [filter, setFilter] = useState<TourContentItemType | "all">("all");
+  const visibleItems = filter === "all" ? items : items.filter((item) => item.type === filter);
+  function toggle(id: string) { onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
+  return <section className="rounded-lg border border-brand-100 bg-brand-50/40 p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-brand-900">Reusable Content Items</h3><p className="mt-1 text-xs text-brand-700">Select individual library items. Direct content entered below will be merged or override policies.</p></div><span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">{selectedIds.length} selected</span></div>
+    <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button type="button" onClick={() => setFilter("all")} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${filter === "all" ? "bg-brand-600 text-white" : "bg-white text-slate-600"}`}>All</button>{types.map((type) => <button key={type} type="button" onClick={() => setFilter(type)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${filter === type ? "bg-brand-600 text-white" : "bg-white text-slate-600"}`}>{formatLabel(type.replaceAll("_", " "))}</button>)}</div>
+    <div className="mt-3 grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
+      {visibleItems.map((item) => { const id = String(getTourContentItemId(item)); const selected = selectedIds.includes(id); return <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={selected} className={`rounded-lg border p-3 text-left transition ${selected ? "border-brand-500 bg-white ring-2 ring-brand-100" : "border-slate-200 bg-white/70 hover:border-brand-300"}`}><span className="text-[11px] font-bold uppercase text-brand-600">{item.type.replaceAll("_", " ")}</span><p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-slate-700">{item.content}</p></button>; })}
+      {!visibleItems.length ? <p className="col-span-full rounded-lg bg-white p-5 text-center text-sm text-slate-500">No active content items found. Create them from Tour Content Items.</p> : null}
+    </div>
+  </section>;
+}
+
+function StringListEditor({ title, items, placeholder, onChange }: { title: string; items: string[]; placeholder: string; onChange: (items: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  function addItem() {
+    const value = draft.trim();
+    if (!value) return;
+    onChange([...items, value]);
+    setDraft("");
+  }
+  return (
+    <section className="rounded-lg border border-slate-200 p-4">
+      <h3 className="text-sm font-bold">{title}</h3>
+      <div className="mt-3 flex gap-2">
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addItem(); } }} className="input" placeholder={placeholder} />
+        <button type="button" onClick={addItem} className="grid size-11 shrink-0 place-items-center rounded-lg bg-brand-600 text-white" aria-label={"Add " + title}><Plus size={16} /></button>
+      </div>
+      <div className="mt-3 space-y-2">
+        {items.map((item, index) => <div key={index} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm"><span>{item}</span><button type="button" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))} className="text-rose-600" aria-label={"Remove " + item}><X size={15} /></button></div>)}
+        {!items.length ? <p className="text-xs text-slate-400">No items added.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function FaqEditor({ items, onChange }: { items: AdminTourFaq[]; onChange: (items: AdminTourFaq[]) => void }) {
+  return (
+    <section className="rounded-lg border border-slate-200 p-4">
+      <div className="flex items-center justify-between"><div><h3 className="font-bold">Frequently Asked Questions</h3><p className="mt-1 text-xs text-slate-500">Questions are displayed in this order on Tour Detail.</p></div><button type="button" onClick={() => onChange([...items, { question: "", answer: "", order_index: items.length + 1 }])} className="inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm font-bold text-brand-700"><Plus size={15} /> Add FAQ</button></div>
+      <div className="mt-4 space-y-3">
+        {items.map((item, index) => <div key={index} className="rounded-lg bg-slate-50 p-3"><div className="flex gap-2"><input value={item.question} onChange={(event) => onChange(items.map((faq, faqIndex) => faqIndex === index ? { ...faq, question: event.target.value } : faq))} className="input" placeholder="Question" /><button type="button" onClick={() => onChange(items.filter((_, faqIndex) => faqIndex !== index))} className="grid size-11 shrink-0 place-items-center text-rose-600"><Trash2 size={16} /></button></div><textarea value={item.answer} onChange={(event) => onChange(items.map((faq, faqIndex) => faqIndex === index ? { ...faq, answer: event.target.value } : faq))} className="input mt-2 min-h-20 py-3" placeholder="Answer" /></div>)}
+        {!items.length ? <p className="text-sm text-slate-400">No FAQs added.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function GalleryEditor({ items, onChange }: { items: AdminTourGalleryItem[]; onChange: (items: AdminTourGalleryItem[]) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [mediaOpen, setMediaOpen] = useState(false);
+
+  function toggleGalleryImage(url: string, alt: string, mediaId?: number) {
+    const resolvedUrl = resolveBackendAssetUrl(url);
+    if (!resolvedUrl) return;
+    const existingIndex = items.findIndex((item) => resolveBackendAssetUrl(item.url) === resolvedUrl);
+    if (existingIndex >= 0) {
+      onChange(items.filter((_, index) => index !== existingIndex));
+      return;
+    }
+    onChange([...items, {
+      media_id: mediaId,
+      type: "image",
+      url: resolvedUrl,
+      alt,
+      order_index: items.length + 1
+    }]);
+  }
+
+  async function uploadImages(files: FileList | null) {
+    if (!files?.length || uploading) return;
+    setUploading(true);
+    setError("");
+    try {
+      const uploaded = await Promise.all(Array.from(files).map((file) => adminMediaService.upload(file)));
+      const nextItems = uploaded
+        .map((media, index) => ({
+          media_id: media.media_id ?? media.id,
+          type: "image",
+          url: resolveBackendAssetUrl(getAdminMediaUrl(media)),
+          alt: getAdminMediaName(media),
+          order_index: items.length + index + 1
+        }))
+        .filter((item) => item.url);
+      onChange([...items, ...nextItems]);
+    } catch {
+      setError("Cannot upload gallery images. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h3 className="font-bold">Gallery</h3><p className="mt-1 text-xs text-slate-500">Upload images from your computer. Files are stored in the backend media library.</p></div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setMediaOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700"><Images size={15} /> Media Library</button>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">
+            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload size={15} />}
+            {uploading ? "Uploading..." : "Upload Images"}
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={uploading} className="hidden" onChange={(event) => { void uploadImages(event.target.files); event.target.value = ""; }} />
+          </label>
+        </div>
+      </div>
+      {error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p> : null}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item, index) => <div key={`gallery-${item.media_id ?? item.id ?? "new"}-${item.url}-${index}`} className="overflow-hidden rounded-lg border border-slate-200 bg-white"><div className="relative h-36 bg-slate-100"><img src={resolveBackendAssetUrl(item.url)} alt={item.alt || "Tour gallery image"} className="h-full w-full object-cover" /><button type="button" onClick={() => onChange(items.filter((_, imageIndex) => imageIndex !== index))} className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-white/90 text-rose-600 shadow" aria-label="Remove gallery image"><Trash2 size={15} /></button></div><input value={item.alt ?? ""} onChange={(event) => onChange(items.map((image, imageIndex) => imageIndex === index ? { ...image, alt: event.target.value } : image))} className="h-10 w-full border-t border-slate-200 px-3 text-sm outline-none" placeholder="Alternative text" /></div>)}
+        {!items.length ? <div className="col-span-full rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-400"><ImagePlus className="mx-auto mb-2 size-7" />No gallery images uploaded.</div> : null}
+      </div>
+      {mediaOpen ? <MediaLibrary
+        onClose={() => setMediaOpen(false)}
+        actionLabel="Add to gallery"
+        selectedUrls={items.map((item) => item.url)}
+        onInsert={(media) => toggleGalleryImage(getAdminMediaUrl(media), getAdminMediaName(media), media.media_id ?? media.id)}
+        onInsertUrl={(url) => toggleGalleryImage(url, "Tour gallery image")}
+      /> : null}
+    </section>
+  );
+}
+
 function Field({
   label,
   children,
@@ -758,6 +1062,17 @@ function validateTourForm(form: TourFormValue, schedule: ScheduleParts): TourFie
     errors.child_price = "Child price is required.";
   } else if (!Number.isFinite(childPrice) || childPrice < 0) {
     errors.child_price = "Child price must be 0 or greater.";
+  }
+
+  const infantPrice = Number(form.infant_price);
+  if (form.infant_price === "") {
+    errors.infant_price = "Infant price is required.";
+  } else if (!Number.isFinite(infantPrice) || infantPrice < 0) {
+    errors.infant_price = "Infant price must be 0 or greater.";
+  }
+
+  if (form.languages.length === 0) {
+    errors.languages = "Select at least one tour language.";
   }
 
   if (form.destinations.length === 0) {

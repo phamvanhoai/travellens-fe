@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bike, Building2, Calendar, Mountain, Ship, SlidersHorizontal, Umbrella, Waves } from "lucide-react";
+import { AlertCircle, Bike, Building2, Calendar, Mountain, RefreshCw, Ship, SlidersHorizontal, Umbrella, Waves } from "lucide-react";
 import { TourCard } from "@/components/cards/tour-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
@@ -14,27 +14,35 @@ export default function ToursPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const pageSize = 6;
 
   useEffect(() => {
     const fetchTours = async () => {
       setIsLoading(true);
+      setError("");
       try {
         const { data } = await api.get("/tours", {
           params: { page, limit: pageSize }
         });
-        const items = data?.data?.items || data?.data || [];
-        setItems(Array.isArray(items) ? items : []);
-        setTotalItems(data?.data?.pagination?.total || (Array.isArray(items) ? items.length : 0));
-        setPageCount(data?.data?.pagination?.totalPages || Math.ceil((data?.data?.pagination?.total || items.length) / pageSize) || 1);
-      } catch (error) {
-        console.error("Failed to fetch tours:", error);
+        const nextItems = data?.data?.items ?? data?.data ?? data?.items ?? [];
+        const pagination = data?.pagination ?? data?.data?.pagination;
+        setItems(Array.isArray(nextItems) ? nextItems : []);
+        setTotalItems(Number(pagination?.total ?? (Array.isArray(nextItems) ? nextItems.length : 0)));
+        const calculatedPageCount = Math.ceil(Number(pagination?.total ?? nextItems.length) / pageSize);
+        setPageCount(Number(pagination?.totalPages ?? calculatedPageCount) || 1);
+      } catch {
+        setItems([]);
+        setTotalItems(0);
+        setPageCount(1);
+        setError("The tours API is temporarily unavailable (HTTP 500). Please try again after the backend is ready.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchTours();
-  }, [page]);
+  }, [page, reloadKey]);
 
   return (
     <>
@@ -71,6 +79,19 @@ export default function ToursPage() {
           
           {isLoading ? (
             <ToursSkeleton count={pageSize} />
+          ) : error ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-800">
+              <div className="flex gap-3">
+                <AlertCircle className="mt-0.5 size-5 shrink-0" />
+                <div>
+                  <h2 className="font-bold">Cannot load tours</h2>
+                  <p className="mt-1 text-sm leading-6">{error}</p>
+                  <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-rose-700 shadow-sm">
+                    <RefreshCw size={15} /> Retry
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : items.length === 0 ? (
             <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50">
               <p className="text-slate-500">No tours found.</p>
@@ -81,13 +102,13 @@ export default function ToursPage() {
                 const mappedTour = {
                   id: tour.tour_id || tour.id,
                   title: tour.name || tour.title,
-                  destination: tour.destination_name || "Various Locations",
-                  image: tour.thumbnail || images.swiss,
-                  rating: 4.8, // Fallback if backend doesn't provide
-                  reviews: "10",
-                  duration: `${tour.duration_days}d ${tour.duration_nights}n`,
+                  destination: getDestinationNames(tour),
+                  image: tour.thumbnail_url || tour.thumbnail || images.swiss,
+                  rating: Number(tour.average_rating ?? 0),
+                  reviews: String(tour.review_count ?? 0),
+                  duration: formatTourDuration(tour),
                   price: tour.price || 0,
-                  category: tour.tour_category || "Tour",
+                  category: typeof tour.tour_category === "object" ? tour.tour_category?.name || "Tour" : tour.tour_category || "Tour",
                   capacity: `Max ${tour.capacity || 0} people`,
                   badge: ""
                 };
@@ -105,6 +126,20 @@ export default function ToursPage() {
       </section>
     </>
   );
+}
+
+function getDestinationNames(tour: any) {
+  if (Array.isArray(tour.destinations) && tour.destinations.length) {
+    return tour.destinations.map((destination: any) => destination.name || destination.destination_name).filter(Boolean).join(" · ");
+  }
+  return tour.destination_name || "Various Locations";
+}
+
+function formatTourDuration(tour: any) {
+  const days = Number(tour.duration_days ?? 0);
+  const nights = Number(tour.duration_nights ?? 0);
+  if (days || nights) return [days ? `${days}d` : "", nights ? `${nights}n` : ""].filter(Boolean).join(" ");
+  return tour.schedule || "Schedule pending";
 }
 
 function ToursSkeleton({ count }: { count: number }) {

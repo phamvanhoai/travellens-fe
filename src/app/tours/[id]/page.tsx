@@ -1,133 +1,130 @@
-import { Bus, CalendarDays, CheckCircle2, Clock3, HelpCircle, Star, Users, XCircle } from "lucide-react";
-import { CustomerRouteNavigationLoader } from "@/components/navigation/customer-route-navigation-loader";
-import { TourSectionNav, TourVideoButton } from "@/components/tours/tour-detail-controls";
-import { Button } from "@/components/ui/button";
-import { images, tours } from "@/lib/data";
-import { currency } from "@/lib/utils";
+import { Bus, CalendarDays, Clock3, MapPin, Star, Tags, Users } from "lucide-react";
 import { TourDetailSaveButton } from "@/components/common/tour-detail-save-button";
+import { TourDetailTabs, type TourDetailContent, type TourDetailDestination, type TourDetailReview } from "@/components/tours/tour-detail-tabs";
+import { TourVideoButton } from "@/components/tours/tour-detail-controls";
+import { Button } from "@/components/ui/button";
+import { images } from "@/lib/data";
+import { getPlainTextFromHtml } from "@/utils/html";
+
+type BackendRecord = Record<string, unknown>;
 
 type TourView = {
   id: string;
   title: string;
-  destination: string;
+  description: string;
   image: string;
-  rating: number;
-  reviews: string;
-  duration: string;
   price: number;
+  childPrice: number;
+  schedule: string;
+  capacity: number;
+  bookedSlots: number;
+  availableSlots: number;
   category: string;
-  capacity: string;
-  badge?: string;
-  schedule?: string;
-  status?: string;
-  videoUrl?: string;
+  status: string;
+  videoUrl: string;
+  destinations: TourDetailDestination[];
+  reviews: TourDetailReview[];
+  rating: number;
+  reviewCount: number;
+  shortDescription: string;
+  durationDays: number;
+  durationNights: number;
+  startTime: string;
+  endTime: string;
+  tourType: string;
+  languages: string[];
+  difficulty: string;
+  meetingPoint: string;
+  pickupAvailable: boolean;
+  pickupDescription: string;
+  infantPrice: number;
+  currency: string;
+  content: TourDetailContent;
 };
-
-type BackendTour = Record<string, unknown>;
-
-const tourSections = [
-  { label: "Overview", href: "#overview" },
-  { label: "Itinerary", href: "#itinerary" },
-  { label: "Inclusions", href: "#inclusions" },
-  { label: "Exclusions", href: "#exclusions" },
-  { label: "Reviews", href: "#reviews" },
-  { label: "FAQs", href: "#faqs" }
-];
-
-export function generateStaticParams() {
-  return tours.map((tour) => ({ id: tour.id }));
-}
 
 export default async function TourDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const tour = await getTourDetail(id);
 
+  if (!tour) {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8">
+          <h1 className="text-2xl font-bold">Tour not available</h1>
+          <p className="mt-2 text-sm text-slate-500">This tour could not be loaded from the backend.</p>
+          <Button href="/tours" className="mt-6">Back to Tours</Button>
+        </div>
+      </section>
+    );
+  }
+
+  const destinationNames = tour.destinations.map((item) => item.name).join(" · ") || "Destination pending";
+  const descriptionPreview = tour.shortDescription || getPlainTextFromHtml(tour.description) || "No description has been added for this tour.";
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-5 text-sm text-slate-500">Home / Tours / {tour.destination} / {tour.title}</div>
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <div>
-          <div className="relative h-[460px] overflow-hidden rounded-lg">
-            <img src={tour.image} alt={tour.title} className="h-full w-full object-cover" />
-            <span className="absolute left-5 top-5 rounded-md bg-orange-500 px-3 py-1 text-xs font-bold text-white">{tour.badge ?? "Featured"}</span>
-            <TourVideoButton title={tour.title} image={tour.image} videoUrl={tour.videoUrl} />
-          </div>
-          <TourSectionNav sections={tourSections} />
-          <div id="overview" className="mt-7 grid scroll-mt-24 gap-8 lg:grid-cols-2">
-            <div>
-              <h1 className="text-3xl font-bold">{tour.title}</h1>
-              <p className="mt-3 text-sm leading-7 text-slate-600">Join an unforgettable experience in {tour.destination}. This curated route combines expert guidance, local experiences, scenic stops and flexible booking support.</p>
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-brand-600">
-                {["Stunning Views", "Local Guide", "Hotel Pick-up", "Wine Tasting"].map((item) => <span key={item} className="rounded-lg bg-brand-50 p-3 font-semibold">{item}</span>)}
-              </div>
-              <h2 className="mt-7 font-bold">Highlights</h2>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                {["Visit iconic viewpoints", "Explore hidden local spots", "Taste regional food and drinks", "Enjoy stress-free transport"].map((item) => (
-                  <li key={item} className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" />{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
-              <h2 className="font-bold">Route Navigation</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                The live route map below loads ordered destinations, coordinates, polyline points and itinerary data from the backend navigation API.
+      <div className="mb-5 text-sm text-slate-500">Home / Tours / {tour.category} / {tour.title}</div>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0">
+          <div className="relative min-h-[460px] overflow-hidden rounded-lg">
+            <img src={tour.image} alt={tour.title} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <span className="absolute left-5 top-5 rounded-md bg-brand-600 px-3 py-1 text-xs font-bold text-white">{tour.category}</span>
+            {tour.videoUrl ? <TourVideoButton title={tour.title} image={tour.image} videoUrl={tour.videoUrl} /> : null}
+            <div className="absolute bottom-6 left-6 right-6 text-white">
+              <h1 className="text-3xl font-bold sm:text-4xl">{tour.title}</h1>
+              <p className="mt-3 flex flex-wrap gap-4 text-sm">
+                <span><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{formatRating(tour.rating)} ({tour.reviewCount} reviews)</span>
+                <span><MapPin className="mr-1 inline size-4" />{destinationNames}</span>
               </p>
+              <p className="mt-4 max-w-2xl line-clamp-2 text-sm leading-6 text-white/85">{descriptionPreview}</p>
             </div>
           </div>
-          <div id="itinerary" className="mt-10 scroll-mt-24">
-            <CustomerRouteNavigationLoader tourId={id} />
-          </div>
-          <div id="inclusions" className="mt-10 grid scroll-mt-24 gap-5 sm:grid-cols-2">
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-5">
-              <h2 className="font-bold text-emerald-900">Included</h2>
-              <div className="mt-4 space-y-3">
-                {["Hotel pick-up", "Professional local guide", "Wine tasting", "All taxes and fees"].map((item) => (
-                  <p key={item} className="flex items-center gap-3 text-sm font-medium text-slate-700"><CheckCircle2 className="size-5 shrink-0 text-emerald-600" />{item}</p>
-                ))}
-              </div>
-            </div>
-            <div id="exclusions" className="scroll-mt-24 rounded-lg border border-rose-100 bg-rose-50/60 p-5">
-              <h2 className="font-bold text-rose-900">Not Included</h2>
-              <div className="mt-4 space-y-3">
-                {["Meals and drinks", "Personal expenses", "Tips"].map((item) => (
-                  <p key={item} className="flex items-center gap-3 text-sm font-medium text-slate-700"><XCircle className="size-5 shrink-0 text-rose-500" />{item}</p>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div id="faqs" className="mt-10 scroll-mt-24 rounded-lg border border-slate-200 bg-white p-6">
-            <div className="flex items-center gap-2">
-              <HelpCircle className="size-5 text-brand-600" />
-              <h2 className="font-bold">FAQs</h2>
-            </div>
-            <div className="mt-5 divide-y divide-slate-100">
-              <FaqItem question="How long is this tour?" answer={tour.duration} />
-              <FaqItem question="How many guests can join?" answer={tour.capacity} />
-              <FaqItem question="What is the price per person?" answer={`${currency(tour.price)} / person`} />
-              <FaqItem question="What is the tour schedule?" answer={tour.schedule || "Schedule will be confirmed by the operator."} />
-            </div>
-          </div>
+
+          <TourDetailTabs tourId={tour.id} title={tour.title} description={tour.description} destinations={tour.destinations} reviews={tour.reviews} content={tour.content} />
         </div>
+
         <aside className="space-y-5">
-          <div id="reviews" className="scroll-mt-24 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold">{tour.title}</h2>
-            <p className="mt-2 text-sm text-slate-500"><Star className="inline size-4 fill-amber-400 text-amber-400" /> {formatRating(tour.rating)} ({tour.reviews} reviews) - {tour.destination}</p>
-            <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
-              <span><Clock3 className="mr-2 inline size-4" />{tour.duration}</span>
-              <span><Users className="mr-2 inline size-4" />{tour.capacity}</span>
-              <span><Bus className="mr-2 inline size-4" />Pick-up</span>
-              <span><CheckCircle2 className="mr-2 inline size-4" />Instant</span>
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-2xl font-bold">{tour.title}</h2>
+              <span className={`rounded-md px-3 py-1 text-xs font-bold capitalize ${tour.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{tour.status || "Unknown"}</span>
             </div>
-            <p className="mt-6 text-sm text-slate-500">From</p>
-            <p className="text-3xl font-bold">{currency(tour.price)} <span className="text-sm font-normal text-slate-500">/ person</span></p>
-            <Button href="/booking" className="mt-5 w-full">Check Availability</Button>
-            <TourDetailSaveButton id={id} />
+            <p className="mt-3 text-sm text-slate-500"><MapPin className="mr-1 inline size-4" />{destinationNames}</p>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
+              <span><Clock3 className="mr-2 inline size-4" />{tour.schedule || "Not scheduled"}</span>
+              <span><Users className="mr-2 inline size-4" />{tour.availableSlots}/{tour.capacity} available</span>
+              <span><Bus className="mr-2 inline size-4" />{tour.destinations.length} stops</span>
+              <span><Tags className="mr-2 inline size-4" />{tour.category}</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+              {tour.tourType ? <span className="rounded-full bg-slate-100 px-3 py-1 capitalize">{tour.tourType.replace(/_/g, " ")}</span> : null}
+              {tour.difficulty ? <span className="rounded-full bg-slate-100 px-3 py-1 capitalize">{tour.difficulty}</span> : null}
+              {tour.languages.map((language) => <span key={language} className="rounded-full bg-slate-100 px-3 py-1 uppercase">{language}</span>)}
+            </div>
+            <div className="mt-6 border-t border-slate-100 pt-5">
+              <p className="text-sm text-slate-500">Adult price</p>
+              <p className="text-3xl font-bold text-brand-600">{formatVnd(tour.price)}</p>
+              <p className="mt-2 text-sm text-slate-500">Child: <span className="font-semibold text-slate-700">{formatVnd(tour.childPrice)}</span></p>
+              <p className="mt-1 text-sm text-slate-500">Infant: <span className="font-semibold text-slate-700">{formatVnd(tour.infantPrice)}</span></p>
+            </div>
+            <Button href={`/booking?tourId=${tour.id}`} className="mt-5 w-full">Book This Tour</Button>
+            <TourDetailSaveButton id={tour.id} />
           </div>
-          <div className="rounded-lg border border-slate-200 p-6">
-            <h3 className="font-bold">Check Availability</h3>
-            <label className="mt-4 block text-sm font-semibold">Date<input className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3" type="date" /></label>
-            <label className="mt-4 block text-sm font-semibold">Guests<select className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3"><option>2 Adults</option><option>2 Adults, 1 Child</option></select></label>
-            <Button href="/booking" className="mt-5 w-full"><CalendarDays size={16} /> Check Availability</Button>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <h3 className="font-bold">Availability</h3>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div className="flex justify-between gap-4"><dt className="text-slate-500">Capacity</dt><dd className="font-semibold">{tour.capacity} guests</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-slate-500">Booked</dt><dd className="font-semibold">{tour.bookedSlots} guests</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-slate-500">Available</dt><dd className="font-semibold text-emerald-700">{tour.availableSlots} slots</dd></div>
+              {tour.meetingPoint ? <div className="flex justify-between gap-4"><dt className="text-slate-500">Meeting point</dt><dd className="max-w-[190px] text-right font-semibold">{tour.meetingPoint}</dd></div> : null}
+              <div className="flex justify-between gap-4"><dt className="text-slate-500">Pickup</dt><dd className="text-right font-semibold">{tour.pickupAvailable ? tour.pickupDescription || "Available" : "Not available"}</dd></div>
+            </dl>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-brand-600" style={{ width: `${tour.capacity ? Math.min(100, (tour.bookedSlots / tour.capacity) * 100) : 0}%` }} />
+            </div>
+            <Button href={`/booking?tourId=${tour.id}`} variant="outline" className="mt-5 w-full"><CalendarDays size={16} /> Check Availability</Button>
           </div>
         </aside>
       </div>
@@ -135,98 +132,165 @@ export default async function TourDetailPage({ params }: { params: Promise<{ id:
   );
 }
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  return (
-    <div className="py-4 first:pt-0 last:pb-0">
-      <p className="font-semibold text-ink">{question}</p>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{answer}</p>
-    </div>
-  );
-}
-
-async function getTourDetail(id: string): Promise<TourView> {
-  const fallback = tours.find((item) => item.id === id) ?? tours[0];
-
+async function getTourDetail(id: string): Promise<TourView | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
-    const response = await fetch(`${baseUrl}/tours/${id}`, { cache: "no-store" });
-    if (!response.ok) return fallback;
+    const [tourResponse, reviewResponse] = await Promise.all([
+      fetch(`${baseUrl}/tours/${encodeURIComponent(id)}`, { cache: "no-store" }),
+      fetch(`${baseUrl}/tours/${encodeURIComponent(id)}/reviews?page=1&limit=100`, { cache: "no-store" })
+    ]);
+    if (!tourResponse.ok) return null;
 
-    const body = await response.json();
-    const record = unwrapRecord(body);
-    if (!record) return fallback;
-
-    return mapBackendTour(record, fallback);
+    const tourRecord = unwrapRecord(await tourResponse.json());
+    if (!tourRecord) return null;
+    const reviewRecords = reviewResponse.ok ? unwrapList(await reviewResponse.json()) : [];
+    return mapTour(tourRecord, reviewRecords);
   } catch {
-    return fallback;
+    return null;
   }
 }
 
-function unwrapRecord(value: unknown): BackendTour | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as BackendTour;
-  const nested = record.data ?? record.tour ?? record.item;
-  if (nested && typeof nested === "object") return unwrapRecord(nested);
-  return record;
-}
-
-function mapBackendTour(record: BackendTour, fallback: TourView): TourView {
-  const durationDays = readNumber(record, ["duration_days", "days"]);
-  const durationNights = readNumber(record, ["duration_nights", "nights"]);
-  const duration = readString(record, ["duration", "schedule"]) || formatDuration(durationDays, durationNights) || fallback.duration;
-  const capacity = readNumber(record, ["capacity", "max_people", "max_guests"]);
-  const destination = readString(record, ["destination_name", "destination", "location_name"]) || fallback.destination;
+function mapTour(record: BackendRecord, reviewRecords: BackendRecord[]): TourView {
+  const destinations = readArray(record, ["destinations", "travel_destinations", "tour_destinations"])
+    .map<TourDetailDestination>((item, index) => ({
+      id: readNumber(item, ["destination_id", "travel_destination_id", "id"]) ?? 0,
+      name: readString(item, ["name", "destination_name", "travel_destination_name"]) || `Destination ${index + 1}`,
+      orderIndex: readNumber(item, ["order_index", "order"]) ?? index + 1,
+      estimatedTime: readString(item, ["estimated_time", "duration"]),
+      note: readString(item, ["note", "description"]),
+      locationsCount: readNumber(item, ["locations_count"])
+    }))
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+  const reviews = reviewRecords.map<TourDetailReview>((item, index) => ({
+    id: readNumber(item, ["review_id", "id"]) ?? index,
+    userName: readString(item, ["user_name", "name"]) || "Traveler",
+    avatarUrl: readString(item, ["user_avatar_url", "avatar_url"]),
+    rating: Math.max(0, Math.min(5, readNumber(item, ["rating"]) ?? 0)),
+    comment: readString(item, ["comment", "content"]),
+    createdAt: readString(item, ["date_created", "created_at"])
+  }));
+  const capacity = readNumber(record, ["capacity"]) ?? 0;
+  const bookedSlots = readNumber(record, ["booked_slots"]) ?? Math.max(0, capacity - (readNumber(record, ["available_slots"]) ?? capacity));
 
   return {
-    id: String(readValue(record, ["tour_id", "id"]) ?? fallback.id),
-    title: readString(record, ["name", "title"]) || fallback.title,
-    destination,
-    image: readString(record, ["thumbnail", "image", "image_url", "cover_image"]) || fallback.image || images.swiss,
-    rating: readNumber(record, ["average_rating", "avg_rating", "rating"]) ?? fallback.rating ?? 0,
-    reviews: formatReviewCount(readValue(record, ["reviews_count", "review_count", "total_reviews", "reviews"])),
-    duration,
-    price: readNumber(record, ["price", "adult_price"]) ?? fallback.price ?? 0,
-    category: readString(record, ["tour_category", "category", "category_name"]) || fallback.category,
-    capacity: capacity ? `${capacity} People` : fallback.capacity,
-    badge: readString(record, ["badge", "label"]) || fallback.badge,
-    schedule: readString(record, ["schedule", "time", "start_time"]),
+    id: String(readNumber(record, ["tour_id", "id"]) ?? ""),
+    title: readString(record, ["name", "title"]) || "Unnamed tour",
+    description: readString(record, ["description"]),
+    image: readString(record, ["thumbnail", "thumbnail_url", "image_url", "image"]) || images.swiss,
+    price: readNumber(record, ["price"]) ?? 0,
+    childPrice: readNumber(record, ["child_price"]) ?? 0,
+    schedule: readString(record, ["schedule"]),
+    capacity,
+    bookedSlots,
+    availableSlots: readNumber(record, ["available_slots"]) ?? Math.max(0, capacity - bookedSlots),
+    category: readNestedString(record, "tour_category", ["name"]) || readString(record, ["tour_category_name", "category_name"]) || "Tour",
     status: readString(record, ["status"]),
-    videoUrl: readString(record, ["video_url", "videoUrl", "video", "trailer_url", "trailerUrl"])
+    videoUrl: readString(record, ["video_url", "video", "trailer_url"]),
+    destinations,
+    reviews,
+    rating: readNumber(record, ["average_rating", "rating"]) ?? (reviews.length ? reviews.reduce((total, review) => total + review.rating, 0) / reviews.length : 0),
+    reviewCount: readNumber(record, ["review_count", "reviews_count"]) ?? reviews.length,
+    shortDescription: readString(record, ["short_description"]),
+    durationDays: readNumber(record, ["duration_days"]) ?? 0,
+    durationNights: readNumber(record, ["duration_nights"]) ?? 0,
+    startTime: readString(record, ["start_time"]),
+    endTime: readString(record, ["end_time"]),
+    tourType: readString(record, ["tour_type"]),
+    languages: readStringArray(record, ["languages"]),
+    difficulty: readString(record, ["difficulty"]),
+    meetingPoint: readString(record, ["meeting_point"]),
+    pickupAvailable: readBoolean(record, ["pickup_available"]),
+    pickupDescription: readString(record, ["pickup_description"]),
+    infantPrice: readNumber(record, ["infant_price"]) ?? 0,
+    currency: readString(record, ["currency"]) || "VND",
+    content: {
+      highlights: readStringArray(record, ["highlights"]),
+      inclusions: readStringArray(record, ["inclusions"]),
+      exclusions: readStringArray(record, ["exclusions"]),
+      requirements: readStringArray(record, ["requirements"]),
+      cancellationPolicy: readString(record, ["cancellation_policy"]),
+      bookingPolicy: readString(record, ["booking_policy"]),
+      additionalInformation: readString(record, ["additional_information"]),
+      faqs: readArray(record, ["faqs"]).map((item, index) => ({
+        id: readNumber(item, ["faq_id", "id"]) ?? index,
+        question: readString(item, ["question"]),
+        answer: readString(item, ["answer"]),
+        orderIndex: readNumber(item, ["order_index"]) ?? index + 1
+      })).filter((item) => item.question && item.answer).sort((a, b) => a.orderIndex - b.orderIndex),
+      gallery: readArray(record, ["gallery"]).map((item, index) => ({
+        id: readNumber(item, ["media_id", "image_id", "id"]) ?? index,
+        url: readString(item, ["url", "image_url", "media_url"]),
+        alt: readString(item, ["alt", "alt_text", "title"]),
+        orderIndex: readNumber(item, ["order_index"]) ?? index + 1
+      })).filter((item) => /^https?:\/\//i.test(item.url)).sort((a, b) => a.orderIndex - b.orderIndex)
+    }
   };
 }
 
-function readValue(record: BackendTour, keys: string[]) {
+function unwrapRecord(value: unknown): BackendRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as BackendRecord;
+  const nested = record.data ?? record.tour ?? record.item;
+  return nested && typeof nested === "object" && !Array.isArray(nested) ? unwrapRecord(nested) : record;
+}
+
+function unwrapList(value: unknown): BackendRecord[] {
+  if (Array.isArray(value)) return value.filter(isRecord);
+  if (!isRecord(value)) return [];
+  const nested = value.data ?? value.reviews ?? value.items;
+  return Array.isArray(nested) ? nested.filter(isRecord) : isRecord(nested) ? unwrapList(nested) : [];
+}
+
+function isRecord(value: unknown): value is BackendRecord {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readArray(record: BackendRecord, keys: string[]) {
+  for (const key of keys) if (Array.isArray(record[key])) return (record[key] as unknown[]).filter(isRecord);
+  return [];
+}
+
+function readString(record: BackendRecord, keys: string[]) {
   for (const key of keys) {
     const value = record[key];
-    if (value !== undefined && value !== null && value !== "") return value;
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return String(value);
   }
-  return undefined;
-}
-
-function readString(record: BackendTour, keys: string[]) {
-  const value = readValue(record, keys);
-  return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
-}
-
-function readNumber(record: BackendTour, keys: string[]) {
-  const value = readValue(record, keys);
-  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value.replace(/,/g, "")) : NaN;
-  return Number.isFinite(number) ? number : undefined;
-}
-
-function formatDuration(days?: number, nights?: number) {
-  if (days && nights !== undefined) return `${days} day${days > 1 ? "s" : ""} ${nights} night${nights !== 1 ? "s" : ""}`;
-  if (days) return `${days} day${days > 1 ? "s" : ""}`;
   return "";
 }
 
-function formatRating(value: number) {
-  return Number.isFinite(value) ? value.toFixed(1).replace(/\.0$/, "") : "0";
+function readNumber(record: BackendRecord, keys: string[]) {
+  const value = readString(record, keys);
+  if (!value) return null;
+  const number = Number(value.replace(/,/g, ""));
+  return Number.isFinite(number) ? number : null;
 }
 
-function formatReviewCount(value: unknown) {
-  if (Array.isArray(value)) return String(value.length);
-  if (typeof value === "number") return String(value);
-  if (typeof value === "string" && value.trim()) return value;
-  return "0";
+function readStringArray(record: BackendRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+  }
+  return [];
+}
+
+function readBoolean(record: BackendRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "boolean") return value;
+    if (value === 1 || value === "1" || value === "true") return true;
+  }
+  return false;
+}
+
+function readNestedString(record: BackendRecord, key: string, keys: string[]) {
+  return isRecord(record[key]) ? readString(record[key] as BackendRecord, keys) : "";
+}
+
+function formatVnd(value: number) {
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value || 0);
+}
+
+function formatRating(value: number) {
+  return Number.isFinite(value) ? value.toFixed(1) : "0.0";
 }

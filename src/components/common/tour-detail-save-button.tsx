@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useSavedItemsStore } from "@/store/use-saved-items-store";
@@ -51,10 +52,12 @@ export function TourDetailSaveButton({ id }: TourDetailSaveButtonProps) {
 
   return (
     <Button
-      variant={isSaved ? "outline" : "primary"}
-      className="mt-3 w-full"
+      variant="outline"
+      className={`mt-3 w-full ${isSaved ? "border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800" : "border-slate-300 text-slate-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"}`}
       onClick={handleClick}
+      aria-pressed={isSaved}
     >
+      <Heart size={17} className={isSaved ? "fill-current" : ""} />
       {isSaved ? "Remove from Wishlist" : "Add to Wishlist"}
     </Button>
   );
