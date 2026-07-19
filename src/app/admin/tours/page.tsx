@@ -39,7 +39,7 @@ type TourFormValue = AdminTourPayload & {
 
 type TourFieldName =
   | "name"
-  | "content_item_ids"
+  | "content_items"
   | "description"
   | "tour_category_id"
   | "status"
@@ -55,7 +55,7 @@ type TourFieldName =
 type TourFieldErrors = Partial<Record<TourFieldName, string>>;
 
 const emptyTour: TourFormValue = {
-  content_item_ids: [],
+  content_items: [],
   tour_category_id: "",
   name: "",
   slug: "",
@@ -150,7 +150,7 @@ export default function AdminToursPage() {
         }),
         adminTourCategoryService.list(),
         adminTravelDestinationService.list({ page: 1, limit: 100 }),
-        adminTourContentItemService.list({ status: "active" })
+        adminTourContentItemService.list({ status: "active", page: 1, limit: 100, sort: "type", order: "asc" })
       ]);
       const total = tourResult.pagination?.total ?? tourResult.data?.length ?? 0;
       setItems(tourResult.data ?? []);
@@ -174,7 +174,7 @@ export default function AdminToursPage() {
   const editingInitialValue = useMemo<TourFormValue>(() => {
     if (!editingTour) return emptyTour;
     return {
-      content_item_ids: [],
+      content_items: [],
       tour_category_id: String(getAdminTourCategoryId(editingTour) ?? ""),
       name: getAdminTourName(editingTour),
       slug: editingTour.slug ?? "",
@@ -269,7 +269,7 @@ export default function AdminToursPage() {
     setFieldErrors({});
     try {
       const requestPayload: AdminTourPayload = {
-        content_item_ids: payload.content_item_ids,
+        content_items: payload.content_items,
         tour_category_id: payload.tour_category_id,
         name: payload.name,
         slug: payload.slug,
@@ -563,6 +563,23 @@ function TourForm({
     }));
   }
 
+  function applySelectedContentItems(selectedIds: string[]) {
+    const selectedItems = contentItems.filter((item) => selectedIds.includes(String(getTourContentItemId(item))));
+    const values = (type: TourContentItemType) => selectedItems.filter((item) => item.type === type).map((item) => item.content.trim()).filter(Boolean);
+    setForm((current) => ({
+      ...current,
+      content_items: selectedIds.map((id, index) => ({ id: Number(id), sort_order: index + 1 })),
+      highlights: mergeUnique(current.highlights, values("highlight")),
+      requirements: mergeUnique(current.requirements, values("requirement")),
+      inclusions: mergeUnique(current.inclusions, values("inclusion")),
+      exclusions: mergeUnique(current.exclusions, values("exclusion")),
+      booking_policy: values("booking_policy").at(-1) ?? current.booking_policy,
+      cancellation_policy: values("cancellation_policy").at(-1) ?? current.cancellation_policy,
+      additional_information: values("additional_information").at(-1) ?? current.additional_information
+    }));
+    onClearFieldError("content_items");
+  }
+
   useEffect(() => {
     return () => {
       if (form.preview.startsWith("blob:")) {
@@ -592,7 +609,7 @@ function TourForm({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {!isEditing ? <div className="sm:col-span-2"><ContentItemSelector items={contentItems} selectedIds={form.content_item_ids} onChange={(content_item_ids) => { onClearFieldError("content_item_ids"); setForm({ ...form, content_item_ids }); }} /></div> : null}
+          {!isEditing ? <div className="sm:col-span-2"><ContentItemSelector items={contentItems} selectedIds={form.content_items.map((item) => String(item.id))} onChange={applySelectedContentItems} /></div> : null}
           <div className="sm:col-span-2">
             <Field label="Tour Name" message={fieldErrors.name} tone={fieldErrors.name ? "invalid" : "neutral"}>
               <input required value={form.name} onChange={(event) => {
@@ -852,16 +869,32 @@ function TourForm({
 function ContentItemSelector({ items, selectedIds, onChange }: { items: AdminTourContentItem[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
   const types: TourContentItemType[] = ["highlight", "requirement", "inclusion", "exclusion", "booking_policy", "cancellation_policy", "additional_information"];
   const [filter, setFilter] = useState<TourContentItemType | "all">("all");
+  const [draftIds, setDraftIds] = useState(selectedIds);
   const visibleItems = filter === "all" ? items : items.filter((item) => item.type === filter);
-  function toggle(id: string) { onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
+  const hasChanges = draftIds.length !== selectedIds.length || draftIds.some((id) => !selectedIds.includes(id));
+  function toggle(id: string) { setDraftIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]); }
   return <section className="rounded-lg border border-brand-100 bg-brand-50/40 p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-brand-900">Reusable Content Items</h3><p className="mt-1 text-xs text-brand-700">Select individual library items. Direct content entered below will be merged or override policies.</p></div><span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">{selectedIds.length} selected</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-brand-900">Reusable Content Items</h3><p className="mt-1 text-xs text-brand-700">Select items, then confirm to insert them into the editable fields below.</p></div><span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">{draftIds.length} selected</span></div>
     <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button type="button" onClick={() => setFilter("all")} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${filter === "all" ? "bg-brand-600 text-white" : "bg-white text-slate-600"}`}>All</button>{types.map((type) => <button key={type} type="button" onClick={() => setFilter(type)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${filter === type ? "bg-brand-600 text-white" : "bg-white text-slate-600"}`}>{formatLabel(type.replaceAll("_", " "))}</button>)}</div>
     <div className="mt-3 grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
-      {visibleItems.map((item) => { const id = String(getTourContentItemId(item)); const selected = selectedIds.includes(id); return <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={selected} className={`rounded-lg border p-3 text-left transition ${selected ? "border-brand-500 bg-white ring-2 ring-brand-100" : "border-slate-200 bg-white/70 hover:border-brand-300"}`}><span className="text-[11px] font-bold uppercase text-brand-600">{item.type.replaceAll("_", " ")}</span><p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-slate-700">{item.content}</p></button>; })}
+      {visibleItems.map((item) => { const id = String(getTourContentItemId(item)); const selected = draftIds.includes(id); return <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={selected} className={`rounded-lg border p-3 text-left transition ${selected ? "border-brand-500 bg-white ring-2 ring-brand-100" : "border-slate-200 bg-white/70 hover:border-brand-300"}`}><span className="text-[11px] font-bold uppercase text-brand-600">{item.type.replaceAll("_", " ")}</span><p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-slate-700">{item.content}</p></button>; })}
       {!visibleItems.length ? <p className="col-span-full rounded-lg bg-white p-5 text-center text-sm text-slate-500">No active content items found. Create them from Tour Content Items.</p> : null}
     </div>
+    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+      {hasChanges ? <button type="button" onClick={() => setDraftIds(selectedIds)} className="h-9 rounded-lg px-4 text-sm font-semibold text-slate-600 hover:bg-white">Reset selection</button> : null}
+      <button type="button" onClick={() => onChange(draftIds)} disabled={!draftIds.length || !hasChanges} className="h-9 rounded-lg bg-brand-600 px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Confirm & insert into fields</button>
+    </div>
   </section>;
+}
+
+function mergeUnique(current: string[], incoming: string[]) {
+  const seen = new Set(current.map((item) => item.trim().toLocaleLowerCase()));
+  return [...current, ...incoming.filter((item) => {
+    const key = item.trim().toLocaleLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  })];
 }
 
 function StringListEditor({ title, items, placeholder, onChange }: { title: string; items: string[]; placeholder: string; onChange: (items: string[]) => void }) {

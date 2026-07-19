@@ -26,6 +26,19 @@ export type AdminTourContentItemPayload = {
   status: "active" | "inactive";
 };
 
+export type AdminTourContentItemListMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+};
+
+export type AdminTourContentItemBulkPayload = {
+  type: TourContentItemType;
+  status: "active" | "inactive";
+  items: string[];
+};
+
 function unwrapItem(value: unknown): AdminTourContentItem {
   const body = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const data = body.data ?? body.item ?? value;
@@ -47,14 +60,35 @@ function unwrapList(value: unknown) {
   return Array.isArray(items) ? items as AdminTourContentItem[] : [];
 }
 
+function unwrapListMeta(value: unknown): AdminTourContentItemListMeta | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const body = value as Record<string, unknown>;
+  const nested = body.data && typeof body.data === "object" && !Array.isArray(body.data)
+    ? body.data as Record<string, unknown>
+    : undefined;
+  const raw = body.meta ?? nested?.meta;
+  if (!raw || typeof raw !== "object") return undefined;
+  const meta = raw as Record<string, unknown>;
+  return {
+    page: Number(meta.page ?? 1),
+    limit: Number(meta.limit ?? 20),
+    total: Number(meta.total ?? 0),
+    total_pages: Math.max(1, Number(meta.total_pages ?? 1))
+  };
+}
+
 export function getTourContentItemId(item: AdminTourContentItem) {
   return item.content_item_id ?? item.tour_content_item_id ?? item.id ?? 0;
 }
 
 export const adminTourContentItemService = {
-  async list(params: { type?: TourContentItemType; search?: string; status?: string } = {}) {
+  async list(params: { type?: TourContentItemType; search?: string; status?: string; page?: number; limit?: number; sort?: string; order?: "asc" | "desc" } = {}) {
     const response = await api.get("/admin/tour-content-items", { params });
     return unwrapList(response.data);
+  },
+  async listPage(params: { type?: TourContentItemType; search?: string; status?: string; page?: number; limit?: number; sort?: string; order?: "asc" | "desc" } = {}) {
+    const response = await api.get("/admin/tour-content-items", { params });
+    return { data: unwrapList(response.data), meta: unwrapListMeta(response.data) };
   },
   async detail(id: number) {
     const response = await api.get(`/admin/tour-content-items/${id}`);
@@ -63,6 +97,10 @@ export const adminTourContentItemService = {
   async create(payload: AdminTourContentItemPayload) {
     const response = await api.post("/admin/tour-content-items", payload);
     return unwrapItem(response.data);
+  },
+  async createBulk(payload: AdminTourContentItemBulkPayload) {
+    const response = await api.post("/admin/tour-content-items/bulk", payload);
+    return unwrapList(response.data);
   },
   async update(id: number, payload: AdminTourContentItemPayload) {
     const response = await api.put(`/admin/tour-content-items/${id}`, payload);

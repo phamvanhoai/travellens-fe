@@ -79,7 +79,7 @@ export type AdminTourFaq = { faq_id?: number; id?: number; question: string; ans
 export type AdminTourGalleryItem = { media_id?: number; id?: number; type?: string; url: string; alt?: string; order_index?: number };
 
 export type AdminTourPayload = {
-  content_item_ids: string[];
+  content_items: Array<{ id: number; sort_order: number }>;
   tour_category_id: string;
   name: string;
   description: string;
@@ -151,7 +151,7 @@ function unwrapList(responseData: unknown): ListResponse {
 
 function toFormData(payload: AdminTourPayload) {
   const formData = new FormData();
-  formData.append("content_item_ids", JSON.stringify(payload.content_item_ids.map(Number)));
+  formData.append("content_items", JSON.stringify(payload.content_items));
   formData.append("tour_category_id", payload.tour_category_id);
   formData.append("name", payload.name);
   if (payload.slug.trim()) formData.append("slug", payload.slug.trim());
