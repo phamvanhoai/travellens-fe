@@ -24,7 +24,7 @@ const paymentCreationRequests = new Map<string, Promise<CustomerPayment>>();
 
 export default function PaymentCheckoutPage() {
   return (
-    <AuthGuard allowedRoles={["admin", "staff", "customer"]}>
+    <AuthGuard allowedRoles={["admin", "staff", "customer"]} fallback={<PaymentCheckoutSkeleton />}>
       <PaymentCheckoutContent />
     </AuthGuard>
   );
@@ -158,14 +158,7 @@ function PaymentCheckoutContent() {
   }
 
   if (loading) {
-    return (
-      <section className="mx-auto grid min-h-[520px] max-w-3xl place-items-center px-4 py-10 sm:px-6 lg:px-8">
-        <div className="inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-sm">
-          <Loader2 className="size-5 animate-spin text-brand-600" />
-          Creating payment
-        </div>
-      </section>
-    );
+    return <PaymentCheckoutSkeleton />;
   }
 
   if (error || !payment) {
@@ -210,7 +203,7 @@ function PaymentCheckoutContent() {
   }
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Payment Checkout</h1>
@@ -226,7 +219,7 @@ function PaymentCheckoutContent() {
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
+      <div className="mt-8 grid min-w-0 gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="grid aspect-square place-items-center rounded-lg bg-slate-50">
             {payment.qr_url ? (
@@ -278,6 +271,18 @@ function PaymentCheckoutContent() {
       </div>
     </section>
   );
+}
+
+function PaymentCheckoutSkeleton() {
+  return <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8" aria-label="Loading payment checkout" aria-busy="true">
+    <div className="animate-pulse">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="h-9 w-64 rounded-lg bg-slate-200" /><div className="mt-3 h-4 w-full max-w-md rounded bg-slate-100" /></div><div className="h-8 w-24 rounded-full bg-slate-200" /></div>
+      <div className="mt-8 grid min-w-0 gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"><div className="aspect-square rounded-lg bg-slate-100"><div className="mx-auto grid h-full w-full place-items-center"><div className="size-36 rounded-lg bg-slate-200" /></div></div><div className="mt-4 h-24 rounded-lg bg-slate-100" /><div className="mt-5 h-11 rounded-lg bg-slate-200" /></div>
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"><div className="h-6 w-48 rounded bg-slate-200" /><div className="mt-5 grid gap-3 sm:grid-cols-2">{Array.from({ length: 8 }, (_, index) => <div key={index} className="rounded-lg bg-slate-50 p-4"><div className="h-3 w-20 rounded bg-slate-200" /><div className="mt-3 h-5 w-3/4 rounded bg-slate-200" /></div>)}</div><div className="mt-5 h-20 rounded-lg bg-slate-100" /><div className="mt-6 flex gap-3"><div className="h-11 w-36 rounded-lg bg-slate-200" /><div className="h-11 w-32 rounded-lg bg-slate-200" /></div></div>
+      </div>
+    </div>
+  </section>;
 }
 
 function InfoRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
