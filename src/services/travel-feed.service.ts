@@ -43,9 +43,9 @@ export type TravelFeedPost = {
   caption?: string | null;
   content?: string | null;
   description?: string | null;
-  photos?: Array<string | { url?: string | null; image_url?: string | null; photo_url?: string | null; path?: string | null }>;
-  images?: Array<string | { url?: string | null; image_url?: string | null; photo_url?: string | null; path?: string | null }>;
-  media?: Array<string | { url?: string | null; image_url?: string | null; photo_url?: string | null; path?: string | null }>;
+  photos?: Array<string | TravelFeedPhoto>;
+  images?: Array<string | TravelFeedPhoto>;
+  media?: Array<string | TravelFeedPhoto>;
   photo_urls?: string[];
   image_urls?: string[];
   thumbnail?: string | null;
@@ -98,6 +98,17 @@ export type TravelFeedPost = {
   created_at?: string | null;
   updated_at?: string | null;
   deleted_at?: string | null;
+};
+
+export type TravelFeedPhoto = {
+  photo_id?: number;
+  travel_post_photo_id?: number;
+  post_photo_id?: number;
+  id?: number;
+  url?: string | null;
+  image_url?: string | null;
+  photo_url?: string | null;
+  path?: string | null;
 };
 
 export type TravelFeedListParams = {
@@ -183,6 +194,15 @@ export type CreateTravelFeedPostPayload = {
   content: string;
   destination_id?: number;
   location_id?: number;
+  photos?: File[];
+};
+
+export type UpdateTravelFeedPostPayload = {
+  content: string;
+  destination_id?: number | null;
+  location_id?: number | null;
+  visibility: TravelFeedPostVisibility;
+  keep_photo_ids?: number[];
   photos?: File[];
 };
 
@@ -374,6 +394,11 @@ function readPhotoUrl(value: unknown) {
   return firstString(value.url, value.image_url, value.photo_url, value.path);
 }
 
+function readPhotoId(value: unknown) {
+  if (!isRecord(value)) return 0;
+  return Number(value.photo_id ?? value.travel_post_photo_id ?? value.post_photo_id ?? value.id ?? 0);
+}
+
 export function getTravelFeedPostId(post: TravelFeedPost) {
   return post.post_id ?? post.travel_post_id ?? post.feed_id ?? post.id ?? 0;
 }
@@ -405,6 +430,10 @@ export function getTravelFeedContent(post: TravelFeedPost) {
 }
 
 export function getTravelFeedPhotos(post: TravelFeedPost) {
+  return getTravelFeedPhotoItems(post).map((photo) => photo.url);
+}
+
+export function getTravelFeedPhotoItems(post: TravelFeedPost) {
   const candidates = [
     ...(post.photos ?? []),
     ...(post.images ?? []),
@@ -417,7 +446,9 @@ export function getTravelFeedPhotos(post: TravelFeedPost) {
     post.image
   ];
 
-  return candidates.map(readPhotoUrl).filter(Boolean);
+  return candidates
+    .map((value) => ({ id: readPhotoId(value), url: readPhotoUrl(value) }))
+    .filter((item) => item.url);
 }
 
 export function getTravelFeedAuthor(post: TravelFeedPost) {
@@ -641,6 +672,22 @@ export const travelFeedService = {
 
     const response = await api.post("/travel-feed", formData);
     return unwrapPost(response.data);
+  },
+  async update(postId: number | string, payload: UpdateTravelFeedPostPayload) {
+    const formData = new FormData();
+    formData.append("content", payload.content);
+    formData.append("destination_id", payload.destination_id == null ? "" : String(payload.destination_id));
+    formData.append("location_id", payload.location_id == null ? "" : String(payload.location_id));
+    formData.append("visibility", payload.visibility);
+    formData.append("keep_photo_ids", JSON.stringify(payload.keep_photo_ids ?? []));
+    payload.photos?.forEach((photo) => formData.append("photos", photo));
+
+    const response = await api.patch(`/travel-feed/${postId}`, formData);
+    return unwrapPost(response.data);
+  },
+  async deletePost(postId: number | string) {
+    const response = await api.delete(`/travel-feed/${postId}`);
+    return response.data;
   },
   async likePost(postId: number | string) {
     const response = await api.post(`/travel-feed/${postId}/like`);
