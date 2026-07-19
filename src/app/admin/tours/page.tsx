@@ -14,6 +14,7 @@ import {
   adminTourService,
   getAdminTourCategoryId,
   getAdminTourCategoryName,
+  getAdminTourContentItems,
   getAdminTourDestinationId,
   getAdminTourDestinationName,
   getAdminTourDestinations,
@@ -173,8 +174,13 @@ export default function AdminToursPage() {
 
   const editingInitialValue = useMemo<TourFormValue>(() => {
     if (!editingTour) return emptyTour;
+    const linkedContentItems = getAdminTourContentItems(editingTour).filter((link) => {
+      const source = contentItems.find((item) => getTourContentItemId(item) === link.id);
+      return !source || !isListContentType(source.type) || splitReusableListContent(source.content).length <= 1;
+    });
+    const normalizeList = (values: string[]) => mergeUnique([], values.flatMap(splitReusableListContent));
     return {
-      content_items: [],
+      content_items: linkedContentItems.map((item, index) => ({ ...item, sort_order: index + 1 })),
       tour_category_id: String(getAdminTourCategoryId(editingTour) ?? ""),
       name: getAdminTourName(editingTour),
       slug: editingTour.slug ?? "",
@@ -201,10 +207,10 @@ export default function AdminToursPage() {
       capacity: editingTour.capacity == null ? "" : String(editingTour.capacity),
       status: editingTour.status ?? "active",
       video_url: editingTour.video_url ?? "",
-      highlights: editingTour.highlights ?? [],
-      inclusions: editingTour.inclusions ?? [],
-      exclusions: editingTour.exclusions ?? [],
-      requirements: editingTour.requirements ?? [],
+      highlights: normalizeList(editingTour.highlights ?? []),
+      inclusions: normalizeList(editingTour.inclusions ?? []),
+      exclusions: normalizeList(editingTour.exclusions ?? []),
+      requirements: normalizeList(editingTour.requirements ?? []),
       cancellation_policy: editingTour.cancellation_policy ?? "",
       booking_policy: editingTour.booking_policy ?? "",
       additional_information: editingTour.additional_information ?? "",
@@ -222,7 +228,7 @@ export default function AdminToursPage() {
       thumbnail_file: null,
       preview: resolveBackendAssetUrl(getAdminTourThumbnail(editingTour))
     };
-  }, [editingTour]);
+  }, [contentItems, editingTour]);
 
   function getDisplayedCategoryName(tour: AdminTour) {
     const categoryName = getAdminTourCategoryName(tour);
@@ -475,7 +481,6 @@ export default function AdminToursPage() {
           categories={categories}
           destinations={destinations}
           contentItems={contentItems}
-          isEditing={Boolean(editingTour)}
           saving={saving}
           fieldErrors={fieldErrors}
           onSetFieldErrors={setFieldErrors}
@@ -511,7 +516,6 @@ function TourForm({
   categories,
   destinations,
   contentItems,
-  isEditing,
   saving,
   fieldErrors,
   onSetFieldErrors,
@@ -524,7 +528,6 @@ function TourForm({
   categories: AdminTourCategory[];
   destinations: AdminTravelDestination[];
   contentItems: AdminTourContentItem[];
-  isEditing: boolean;
   saving: boolean;
   fieldErrors: TourFieldErrors;
   onSetFieldErrors: (errors: TourFieldErrors) => void;
@@ -565,13 +568,16 @@ function TourForm({
 
   function applySelectedContentItems(selectedIds: string[]) {
     const selectedItems = contentItems.filter((item) => selectedIds.includes(String(getTourContentItemId(item))));
+    const linkableIds = selectedItems
+      .filter((item) => !isListContentType(item.type) || splitReusableListContent(item.content).length <= 1)
+      .map((item) => String(getTourContentItemId(item)));
     const values = (type: TourContentItemType) => selectedItems
       .filter((item) => item.type === type)
       .flatMap((item) => isListContentType(type) ? splitReusableListContent(item.content) : [item.content.trim()])
       .filter(Boolean);
     setForm((current) => ({
       ...current,
-      content_items: selectedIds.map((id, index) => ({ id: Number(id), sort_order: index + 1 })),
+      content_items: linkableIds.map((id, index) => ({ id: Number(id), sort_order: index + 1 })),
       highlights: mergeUnique(current.highlights, values("highlight")),
       requirements: mergeUnique(current.requirements, values("requirement")),
       inclusions: mergeUnique(current.inclusions, values("inclusion")),
@@ -612,7 +618,7 @@ function TourForm({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {!isEditing ? <div className="sm:col-span-2"><ContentItemSelector items={contentItems} selectedIds={form.content_items.map((item) => String(item.id))} onChange={applySelectedContentItems} /></div> : null}
+          <div className="sm:col-span-2"><ContentItemSelector items={contentItems} selectedIds={form.content_items.map((item) => String(item.id))} onChange={applySelectedContentItems} /></div>
           <div className="sm:col-span-2">
             <Field label="Tour Name" message={fieldErrors.name} tone={fieldErrors.name ? "invalid" : "neutral"}>
               <input required value={form.name} onChange={(event) => {

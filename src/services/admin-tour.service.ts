@@ -73,10 +73,21 @@ export type AdminTour = {
   destinations?: AdminTourDestination[];
   tour_destinations?: AdminTourDestination[];
   travel_destinations?: AdminTourDestination[];
+  content_items?: AdminTourContentItemLink[];
+  tour_content_items?: AdminTourContentItemLink[];
 };
 
 export type AdminTourFaq = { faq_id?: number; id?: number; question: string; answer: string; order_index?: number };
 export type AdminTourGalleryItem = { media_id?: number; id?: number; type?: string; url: string; alt?: string; order_index?: number };
+export type AdminTourContentItemLink = {
+  id?: number;
+  content_item_id?: number;
+  tour_content_item_id?: number;
+  sort_order?: number;
+  order_index?: number;
+  type?: string;
+  content?: string;
+};
 
 export type AdminTourPayload = {
   content_items: Array<{ id: number; sort_order: number }>;
@@ -243,6 +254,17 @@ export function getAdminTourCategoryName(tour: AdminTour) {
 
 export function getAdminTourDestinations(tour: AdminTour) {
   return tour.destinations ?? tour.tour_destinations ?? tour.travel_destinations ?? [];
+}
+
+export function getAdminTourContentItems(tour: AdminTour) {
+  return (tour.content_items ?? tour.tour_content_items ?? [])
+    .map((item, index) => ({
+      id: Number(item.content_item_id ?? item.tour_content_item_id ?? item.id ?? 0),
+      sort_order: Number(item.sort_order ?? item.order_index ?? index + 1)
+    }))
+    .filter((item) => item.id > 0)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item, index) => ({ ...item, sort_order: index + 1 }));
 }
 
 export function getAdminTourDestinationId(destination: AdminTourDestination) {
