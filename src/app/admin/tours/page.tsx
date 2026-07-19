@@ -565,7 +565,10 @@ function TourForm({
 
   function applySelectedContentItems(selectedIds: string[]) {
     const selectedItems = contentItems.filter((item) => selectedIds.includes(String(getTourContentItemId(item))));
-    const values = (type: TourContentItemType) => selectedItems.filter((item) => item.type === type).map((item) => item.content.trim()).filter(Boolean);
+    const values = (type: TourContentItemType) => selectedItems
+      .filter((item) => item.type === type)
+      .flatMap((item) => isListContentType(type) ? splitReusableListContent(item.content) : [item.content.trim()])
+      .filter(Boolean);
     setForm((current) => ({
       ...current,
       content_items: selectedIds.map((id, index) => ({ id: Number(id), sort_order: index + 1 })),
@@ -895,6 +898,33 @@ function mergeUnique(current: string[], incoming: string[]) {
     seen.add(key);
     return true;
   })];
+}
+
+function isListContentType(type: TourContentItemType) {
+  return type === "highlight" || type === "requirement" || type === "inclusion" || type === "exclusion";
+}
+
+function splitReusableListContent(content: string) {
+  const value = content.trim();
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+  } catch {
+    // Legacy records can contain plain text instead of JSON.
+  }
+
+  const withLineBreaks = value
+    .replace(/<\/?(?:ul|ol)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n")
+    .replace(/<\/li>/gi, "")
+    .replace(/\\n/g, "\n");
+
+  return withLineBreaks
+    .split(/\r?\n|\s*[•●▪]\s*/)
+    .map((item) => item.replace(/^\s*(?:[-*]|\d+[.)])\s+/, "").trim())
+    .filter(Boolean);
 }
 
 function StringListEditor({ title, items, placeholder, onChange }: { title: string; items: string[]; placeholder: string; onChange: (items: string[]) => void }) {
