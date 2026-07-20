@@ -32,8 +32,15 @@ function unwrapList(value: unknown): ListResult {
 }
 
 function unwrapMembers(value: unknown): MemberListResult {
-  const result = unwrapList(value);
-  return { ...result, items: result.items as unknown as GroupTripMember[] };
+  const body = record(value);
+  const data = body.data ?? value;
+  const dataRecord = record(data);
+  const source = Array.isArray(data) ? data : dataRecord.items ?? dataRecord.members ?? dataRecord.data;
+  const items = Array.isArray(source) ? source as GroupTripMember[] : [];
+  const pagination = record(dataRecord.pagination ?? body.pagination);
+  const limit = Number(pagination.limit ?? Math.max(items.length, 1));
+  const total = Number(pagination.total ?? dataRecord.total ?? items.length);
+  return { items, page: Number(pagination.page ?? 1), limit, total, totalPages: Number(pagination.totalPages ?? Math.max(1, Math.ceil(total / limit))) };
 }
 
 export const adminGroupTripService = {
