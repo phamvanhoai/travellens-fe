@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -27,6 +28,7 @@ import { PanoramaViewer } from "@/components/view360/panorama-viewer";
 import { view360Service, type View360Experience, type View360Hotspot, type View360Weather } from "@/services/view360.service";
 
 export default function View360Page() {
+  const reduceMotion = useReducedMotion();
   const rootRef = useRef<HTMLElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const autoplayAttemptedRef = useRef(new Set<number>());
@@ -47,6 +49,7 @@ export default function View360Page() {
   const [sceneNavigationCollapsed, setSceneNavigationCollapsed] = useState(false);
   const [hotspots, setHotspots] = useState<View360Hotspot[]>([]);
   const [activeHotspot, setActiveHotspot] = useState<View360Hotspot | null>(null);
+  const [hotspotTransition, setHotspotTransition] = useState<{ x: number; y: number; phase: "covering" | "loading" } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -100,6 +103,12 @@ export default function View360Page() {
     }
     setAudioPlaying(false);
   }, [activeSceneId]);
+
+  useEffect(() => {
+    if (!hotspotTransition || hotspotTransition.phase !== "loading" || panoramaLoading) return;
+    const timer = window.setTimeout(() => setHotspotTransition(null), reduceMotion ? 80 : 420);
+    return () => window.clearTimeout(timer);
+  }, [hotspotTransition, panoramaLoading, reduceMotion]);
 
   const handlePanoramaLoading = useCallback((value: boolean) => setPanoramaLoading(value), []);
   const handlePanoramaError = useCallback((message: string) => setError(message), []);
@@ -191,9 +200,14 @@ export default function View360Page() {
     setActiveSceneId(sceneId);
   }
 
-  function handleHotspotClick(hotspot: View360Hotspot) {
+  function handleHotspotClick(hotspot: View360Hotspot, position: { x: number; y: number }) {
     if (hotspot.type === "navigation" && hotspot.targetView360Id && experiences.some((scene) => scene.id === hotspot.targetView360Id)) {
-      selectScene(hotspot.targetView360Id);
+      if (hotspot.targetView360Id === activeScene?.id || hotspotTransition) return;
+      setHotspotTransition({ ...position, phase: "covering" });
+      window.setTimeout(() => {
+        setHotspotTransition({ ...position, phase: "loading" });
+        selectScene(hotspot.targetView360Id!);
+      }, reduceMotion ? 40 : 360);
       return;
     }
     if (hotspot.type === "link" && hotspot.targetUrl) {
@@ -230,22 +244,72 @@ export default function View360Page() {
 
   return (
     <section ref={rootRef} className="relative h-[calc(100vh-80px)] min-h-[620px] overflow-hidden bg-black text-white">
-      <PanoramaViewer
-        key={activeImage.id || activeImage.src}
-        imageUrl={activeImage.src}
-        autoRotate={autoRotate}
-        hotspots={hotspots}
-        onHotspotClick={handleHotspotClick}
-        onLoadingChange={handlePanoramaLoading}
-        onError={handlePanoramaError}
-      />
+      <AnimatePresence initial={false} mode="sync">
+        <motion.div
+          key={activeImage.id || activeImage.src}
+          className="absolute inset-0 origin-center"
+          initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 1.025, filter: "blur(8px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.99, filter: "blur(5px)" }}
+          transition={{ duration: reduceMotion ? 0.15 : 0.75, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <PanoramaViewer
+            imageUrl={activeImage.src}
+            autoRotate={autoRotate}
+            hotspots={hotspots}
+            onHotspotClick={handleHotspotClick}
+            onLoadingChange={handlePanoramaLoading}
+            onError={handlePanoramaError}
+          />
+        </motion.div>
+      </AnimatePresence>
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.48),transparent_28%,transparent_55%,rgba(0,0,0,0.82))]" />
 
-      {panoramaLoading ? (
-        <div className="pointer-events-none absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_45%,#26364a_0%,#111827_38%,#030712_100%)]">
-          <div className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 ring-[18px] ring-white/5" />
-        </div>
-      ) : null}
+      <AnimatePresence>
+        {hotspotTransition ? (
+          <motion.div
+            key="hotspot-portal"
+            className="pointer-events-none absolute inset-0 z-30 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.2),rgba(3,7,18,0.96)_62%)]"
+            style={{ transformOrigin: `${hotspotTransition.x}px ${hotspotTransition.y}px` }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, clipPath: `circle(0px at ${hotspotTransition.x}px ${hotspotTransition.y}px)` }}
+            animate={reduceMotion ? { opacity: hotspotTransition.phase === "loading" ? 0.92 : 0.75 } : { opacity: hotspotTransition.phase === "loading" ? 0.94 : 1, clipPath: `circle(150vmax at ${hotspotTransition.x}px ${hotspotTransition.y}px)` }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.035, filter: "blur(10px)" }}
+            transition={{ duration: reduceMotion ? 0.08 : hotspotTransition.phase === "covering" ? 0.42 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <motion.div
+              className="absolute size-20 rounded-full border border-white/35 bg-brand-500/20 shadow-[0_0_90px_30px_rgba(59,130,246,0.35)]"
+              style={{ left: hotspotTransition.x - 40, top: hotspotTransition.y - 40 }}
+              animate={reduceMotion ? undefined : { scale: [0.7, 1.3, 1], opacity: [0.4, 1, 0] }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_35%,rgba(255,255,255,0.07)_50%,transparent_65%)]" />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {panoramaLoading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.1 : 0.4 }}
+            className="pointer-events-none absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_45%,rgba(38,54,74,0.82)_0%,rgba(17,24,39,0.76)_42%,rgba(3,7,18,0.88)_100%)] backdrop-blur-[2px]"
+          >
+            <motion.div
+              className="absolute left-1/2 top-1/2 size-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/25 bg-white/10 shadow-[0_0_70px_rgba(255,255,255,0.16)]"
+              animate={reduceMotion ? undefined : { scale: [0.86, 1.08, 0.86], opacity: [0.45, 0.95, 0.45] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10"
+              animate={reduceMotion ? undefined : { scale: [0.72, 1.35], opacity: [0.6, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+            />
+            <p className="absolute left-1/2 top-[calc(50%+64px)] -translate-x-1/2 text-xs font-semibold uppercase tracking-[0.22em] text-white/65">Entering scene</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <header className="absolute left-0 top-0 h-20 w-screen max-w-full sm:h-24">
         <Link

@@ -68,13 +68,30 @@ export default function AdminGroupTripsPage() {
   }
 
   return <>
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div id="admin-group-trip-management" className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-bold">Group Trip Management</h1><p className="mt-1 text-sm text-slate-500">View, edit, and remove customer group trips.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh</Button></div>
       <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(input.trim()); }} className="mt-6 grid gap-3 lg:grid-cols-[minmax(240px,1fr)_180px_180px_auto]"><label className="relative"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={input} onChange={(event) => setInput(event.target.value)} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-brand-600" placeholder="Search trip or destination" /></label><select value={visibility} onChange={(event) => { setVisibility(event.target.value); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="">All visibility</option><option value="public">Public</option><option value="private">Private</option></select><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="h-11 rounded-lg border border-slate-200 px-3 text-sm"><option value="">All statuses</option><option value="active">Active</option><option value="archived">Archived</option></select><Button type="submit" variant="outline">Search</Button></form>
       {error ? <p className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</p> : null}
       <div className="mt-6 min-h-[681px] overflow-x-auto"><table className="w-full min-w-[1050px] table-fixed text-left text-sm"><colgroup><col className="w-[7%]" /><col className="w-[20%]" /><col className="w-[13%]" /><col className="w-[16%]" /><col className="w-[13%]" /><col className="w-[9%]" /><col className="w-[13%]" /><col className="w-[180px]" /></colgroup><thead className="bg-slate-50 text-slate-500"><tr>{["ID", "Name", "Destination", "Dates", "Leader", "Members", "Visibility / Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>{loading ? <AdminTableSkeleton columns={8} rows={10} /> : items.length ? items.map((trip) => <tr key={trip.group_trip_id} className="h-16 border-t border-slate-100"><td className="p-3 font-bold">#{trip.group_trip_id}</td><td className="max-w-64 p-3"><p className="truncate font-semibold">{trip.name}</p><p className="truncate text-xs text-slate-500">{trip.description || "No description"}</p></td><td className="truncate p-3">{trip.destination_name || (trip.destination_id ? `#${trip.destination_id}` : "—")}</td><td className="whitespace-nowrap p-3">{dateText(trip.start_date)} – {dateText(trip.end_date)}</td><td className="truncate p-3">{trip.leader?.name || `User #${trip.leader_id}`}</td><td className="p-3">{safeCount(trip.member_count)}{trip.max_members ? ` / ${trip.max_members}` : ""}</td><td className="p-3"><div className="flex flex-wrap gap-2"><Badge value={trip.visibility} /><Badge value={trip.status} /></div></td><td className="p-3"><div className="flex gap-2"><Button href={`/admin/group-trips/${trip.group_trip_id}`} variant="outline" className="h-9 px-3"><Eye size={15} /> View</Button><Button type="button" onClick={() => void openEdit(trip)} disabled={loadingEditId !== null} variant="outline" className="h-9 px-3">{loadingEditId === trip.group_trip_id ? <Loader2 className="animate-spin" size={15} /> : <Pencil size={15} />}</Button><button type="button" onClick={() => setDeleting(trip)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${trip.name}`}><Trash2 size={15} /></button></div></td></tr>) : <tr><td colSpan={8} className="h-64 p-12 text-center text-slate-500">No group trips found.</td></tr>}</tbody></table></div>
       {!loading ? <Pagination page={page} pageCount={pageCount} totalItems={total} pageSize={pageSize} itemLabel="group trips" onPageChange={setPage} /> : null}
     </div>
+    <style jsx global>{`
+      #admin-group-trip-management table { min-width: 920px; }
+      #admin-group-trip-management col:nth-child(1) { width: 80px; }
+      #admin-group-trip-management col:nth-child(2) { width: 280px; }
+      #admin-group-trip-management col:nth-child(3) { display: none; }
+      #admin-group-trip-management col:nth-child(4) { width: 210px; }
+      #admin-group-trip-management col:nth-child(5) { display: none; }
+      #admin-group-trip-management col:nth-child(6) { width: 110px; }
+      #admin-group-trip-management col:nth-child(7) { width: 170px; }
+      #admin-group-trip-management col:nth-child(8) { width: 190px; }
+      #admin-group-trip-management th,
+      #admin-group-trip-management td { overflow: hidden; }
+      #admin-group-trip-management th:nth-child(3),
+      #admin-group-trip-management td:nth-child(3),
+      #admin-group-trip-management th:nth-child(5),
+      #admin-group-trip-management td:nth-child(5) { display: none; }
+    `}</style>
     {editing && editForm ? <EditModal trip={editing} form={editForm} setForm={setEditForm} saving={busy} onClose={() => { if (!busy) { setEditing(null); setEditForm(null); } }} onSubmit={saveEdit} /> : null}
     {deleting ? <ConfirmDialog title="Delete group trip?" message={`“${deleting.name}” will be hidden from all Group Trip lists and detail pages. Its members, invitations, itinerary, and linked booking will remain stored.`} confirmLabel={busy ? "Deleting..." : "Delete"} onCancel={() => { if (!busy) setDeleting(null); }} onConfirm={() => void remove()} /> : null}
   </>;
