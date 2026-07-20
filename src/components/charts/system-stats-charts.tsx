@@ -129,7 +129,7 @@ export function TopReviewedLocationsChart({ data }: { data: any[] }) {
 
   // Format data for chart
   const formattedData = data.map(item => ({
-    name: `Loc ${item.location_id}`,
+    name: item.location_name || `Loc ${item.location_id}`,
     reviews: parseInt(item.total_reviews),
     rating: parseFloat(item.average_rating)
   }));
