@@ -20,6 +20,7 @@ export const adminRoutes = [
   "/admin/view360",
   "/admin/maps",
   "/admin/bookings",
+  "/admin/group-trips",
   "/admin/payments",
   "/admin/blogs",
   "/admin/travel-feed",
