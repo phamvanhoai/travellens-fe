@@ -1,8 +1,8 @@
 import { api } from "@/services/api";
 
 export const statisticsService = {
-  overview: () => api.get("/statistics/dashboard/summary"),
-  userStats: () => api.get("/statistics/users/summary"),
-  locationStats: () => api.get("/statistics/locations/summary"),
-  contentStats: () => api.get("/statistics/content/summary"),
+  overview: () => api.get("/admin/statistics/system"),
+  userStats: () => api.get("/admin/statistics/users"),
+  locationStats: () => api.get("/admin/statistics/locations"),
+  contentStats: () => api.get("/admin/statistics/content"),
 };
