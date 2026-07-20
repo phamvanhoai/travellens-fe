@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronDown, Globe2, Heart, Moon, ShieldCheck, Sparkles, Sun, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Globe2, Heart, Menu, Moon, ShieldCheck, Sparkles, Sun, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getDefaultRouteForRole } from "@/lib/auth";
@@ -34,6 +34,7 @@ export function Header() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const languageRef = useRef<HTMLDivElement>(null);
   const wishlistRef = useRef<HTMLDivElement>(null);
@@ -138,6 +139,8 @@ export function Header() {
     };
   }, []);
 
+  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
+
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
 
@@ -154,30 +157,29 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#07111f]">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 xl:grid xl:h-28 xl:grid-cols-[auto_1fr_auto] xl:grid-rows-[64px_48px]">
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-xl font-bold xl:col-start-1 xl:row-start-1">
           <span className="grid size-9 place-items-center rounded-full bg-brand-600 text-white">
             <ShieldCheck size={20} />
           </span>
           Travel<span className="text-brand-600">360</span>
         </Link>
-        <nav className="hidden items-center gap-7 text-sm font-semibold lg:flex">
+        <nav className="hidden min-w-0 items-center gap-8 border-t border-slate-100 text-sm font-semibold dark:border-slate-700 xl:col-span-3 xl:col-start-1 xl:row-start-2 xl:flex xl:h-12 xl:justify-center">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "relative py-7 text-slate-700 hover:text-brand-600",
-                pathname === item.href && "text-brand-600 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-brand-600"
+                "flex h-12 items-center text-slate-700 hover:text-brand-600 dark:text-slate-200",
+                isNavActive(pathname, item.href) && "text-brand-600 dark:text-brand-400"
               )}
             >
-              {item.label}
-              {item.href === "/ai" ? <Sparkles className="ml-1 inline size-3 text-amber-400" /> : null}
+              <span className={cn("inline-flex items-center border-b-2 border-transparent px-0.5 pb-1 leading-none", isNavActive(pathname, item.href) && "border-brand-600 dark:border-brand-400")}>{item.label}{item.href === "/ai" ? <Sparkles className="ml-1 inline size-3 text-amber-400" /> : null}</span>
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
-          <div ref={languageRef} className="relative hidden sm:block">
+        <div className="flex shrink-0 items-center gap-2 xl:col-start-3 xl:row-start-1">
+          <div ref={languageRef} className="relative hidden xl:block">
             <button
               onClick={() => setLanguageOpen((open) => !open)}
               className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-700"
@@ -212,7 +214,7 @@ export function Header() {
           </div>
           <button
             onClick={toggleTheme}
-            className="hidden size-10 place-items-center rounded-full border border-slate-200 text-slate-700 sm:grid"
+            className="hidden size-10 place-items-center rounded-full border border-slate-200 text-slate-700 xl:grid"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             title={theme === "dark" ? "Light mode" : "Dark mode"}
           >
@@ -253,7 +255,7 @@ export function Header() {
                     {user.name?.charAt(0)?.toUpperCase()}
                   </div>
                 )}
-                <span className="hidden max-w-[120px] truncate sm:inline-block">{user.name}</span>
+                <span className="hidden max-w-[120px] truncate xl:inline-block">{user.name}</span>
                 <ChevronDown size={14} className={cn("transition", userMenuOpen && "rotate-180")} />
               </button>
               
@@ -292,13 +294,19 @@ export function Header() {
               <Button href="/login" variant="outline" className="hidden h-10 px-4 md:inline-flex">
                 Sign In
               </Button>
-              <Button href="/register" className="h-10 px-4">
+              <Button href="/register" className="hidden h-10 px-4 md:inline-flex">
                 Sign Up
               </Button>
             </>
           )}
+          <button type="button" onClick={() => setMobileMenuOpen((open) => !open)} className="grid size-10 place-items-center rounded-full border border-slate-200 text-slate-700 xl:hidden" aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileMenuOpen}>{mobileMenuOpen ? <X size={19} /> : <Menu size={20} />}</button>
         </div>
       </div>
+      {mobileMenuOpen ? <div className="border-t border-slate-100 bg-white px-4 py-4 shadow-lg dark:border-slate-700 dark:bg-[#07111f] xl:hidden"><div className="mx-auto max-w-7xl"><nav className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4">{nav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className={cn("flex h-11 items-center rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-600 dark:text-slate-200", pathname === item.href && "bg-brand-50 text-brand-600")}>{item.label}{item.href === "/ai" ? <Sparkles className="ml-1 size-3 text-amber-400" /> : null}</Link>)}</nav><div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-700"><button type="button" onClick={toggleTheme} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}{theme === "dark" ? "Light mode" : "Dark mode"}</button><div className="flex rounded-lg border border-slate-200 p-1">{["EN", "VI", "JP"].map((code) => <button key={code} type="button" onClick={() => setLanguage(code)} className={cn("h-8 rounded-md px-3 text-xs font-bold", language === code ? "bg-brand-600 text-white" : "text-slate-600 dark:text-slate-300")}>{code}</button>)}</div>{!authChecking && !user ? <div className="ml-auto flex gap-2"><Button href="/login" variant="outline" className="h-10">Sign In</Button><Button href="/register" className="h-10">Sign Up</Button></div> : null}</div></div></div> : null}
     </header>
   );
+}
+
+function isNavActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
 }

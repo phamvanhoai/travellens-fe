@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, CalendarCheck, CreditCard, Flag, Images, Map, MapPinned, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video } from "lucide-react";
+import {BarChart3, CalendarCheck, ClipboardList, CreditCard, Flag, Images, Map,MapPinned, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video,} from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
@@ -10,6 +10,7 @@ const links = [
   [Plane, "Destinations", "/admin/travel-destinations"],
   [Tags, "Tour Categories", "/admin/tour-categories"],
   [Plane, "Tours", "/admin/tours"],
+  [ClipboardList, "Tour Content Items", "/admin/tour-content-items"],
   [Map, "Locations", "/admin/locations"],
   [Video, "View360", "/admin/view360"],
   [Images, "Maps", "/admin/maps"],

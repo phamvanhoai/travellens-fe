@@ -1,42 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Play } from "lucide-react";
-
-type TourSection = {
-  label: string;
-  href: string;
-};
-
-export function TourSectionNav({ sections }: { sections: TourSection[] }) {
-  const [activeHref, setActiveHref] = useState(sections[0]?.href ?? "#overview");
-
-  useEffect(() => {
-    function syncHash() {
-      setActiveHref(window.location.hash || sections[0]?.href || "#overview");
-    }
-
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, [sections]);
-
-  return (
-    <nav className="mt-6 flex gap-6 overflow-x-auto border-b border-slate-200 text-sm font-semibold">
-      {sections.map((item) => (
-        <a
-          key={item.href}
-          href={item.href}
-          onClick={() => setActiveHref(item.href)}
-          className={activeHref === item.href ? "border-b-2 border-brand-600 pb-3 text-brand-600" : "pb-3 text-slate-600"}
-        >
-          {item.label}
-        </a>
-      ))}
-    </nav>
-  );
-}
 
 export function TourVideoButton({ title, image, videoUrl }: { title: string; image: string; videoUrl?: string }) {
   const [open, setOpen] = useState(false);

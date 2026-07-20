@@ -9,6 +9,7 @@ import { canAccessRole, getDefaultRouteForRole, type UserRole } from "@/lib/auth
 type AuthGuardProps = {
   allowedRoles: readonly UserRole[];
   children: React.ReactNode;
+  fallback?: React.ReactNode;
 };
 
 function normalizeUser(responseData: any, fallback: any = {}) {
@@ -37,7 +38,7 @@ function clearAuthStorage() {
   localStorage.removeItem("token");
 }
 
-export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
+export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { setUser } = useAuthStore();
@@ -86,6 +87,7 @@ export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
   }, [allowedRoles, pathname, router, setUser]);
 
   if (checking) {
+    if (fallback) return <>{fallback}</>;
     const isStandaloneInvitation = pathname.startsWith("/group-trip-invites") || pathname.startsWith("/group-trips/invites");
 
     if (isStandaloneInvitation) {

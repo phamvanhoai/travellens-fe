@@ -2,10 +2,13 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AxiosError } from "axios";
-import { CalendarDays, ChevronDown, ChevronRight, Copy, ExternalLink, Filter, Flag, Heart, ImagePlus, Loader2, MapPin, MessageCircle, Pencil, Reply, Search, Send, Share2, SlidersHorizontal, Trash2, UserX, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, Filter, Flag, Heart, ImagePlus, Loader2, MapPin, MessageCircle, MoreHorizontal, Pencil, Reply, Search, Send, Share2, SlidersHorizontal, Trash2, UserX, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
 import { useToast } from "@/components/common/toast";
+import { TravelStoriesBar } from "@/components/travel-stories/travel-stories-bar";
+import { resolveBackendAssetUrl } from "@/lib/avatar";
 import { images } from "@/lib/data";
 import {
   getTravelFeedAuthor,
@@ -23,6 +26,7 @@ import {
   getTravelFeedLocationId,
   getTravelFeedLikeCount,
   getTravelFeedLocationName,
+  getTravelFeedPhotoItems,
   getTravelFeedPhotos,
   getTravelFeedPostId,
   getTravelFeedReportPayload,
@@ -103,6 +107,8 @@ function TravelFeedContent() {
   const [locationNames, setLocationNames] = useState<Record<number, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [editingPost, setEditingPost] = useState<TravelFeedPost | null>(null);
+  const [deletingPost, setDeletingPost] = useState<TravelFeedPost | null>(null);
   const [reportingPost, setReportingPost] = useState<TravelFeedPost | null>(null);
   const [commentingPost, setCommentingPost] = useState<TravelFeedPost | null>(null);
   const [sharingPost, setSharingPost] = useState<TravelFeedPost | null>(null);
@@ -110,6 +116,7 @@ function TravelFeedContent() {
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [likingPostIds, setLikingPostIds] = useState<Record<number, boolean>>({});
+  const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
   const [reportedPosts, setReportedPosts] = useState<Record<number, LocalReportState>>({});
   const [blockedUserIds, setBlockedUserIds] = useState<Record<number, boolean>>({});
   const [blockingUserIds, setBlockingUserIds] = useState<Record<number, boolean>>({});
@@ -342,6 +349,48 @@ function TravelFeedContent() {
     setCommentingPost((current) => current && getTravelFeedPostId(current) === postId ? withTravelFeedCommentCount(current, delta) : current);
   }
 
+  async function deleteOwnPost() {
+    if (!deletingPost || deletingPostId) return;
+    if (!requireCustomerAction("Please sign in with a customer account to delete this post.")) return;
+
+    const postId = getTravelFeedPostId(deletingPost);
+    if (!postId) {
+      setError("This post is missing a valid id from the API response.");
+      return;
+    }
+
+    if (getTravelFeedAuthorId(deletingPost) !== currentUserId) {
+      const message = "Only the customer who created this post can delete it.";
+      setError(message);
+      showToast({ variant: "error", title: "Delete failed", description: message });
+      setDeletingPost(null);
+      return;
+    }
+
+    setError("");
+    setDeletingPostId(postId);
+
+    try {
+      await travelFeedService.deletePost(postId);
+      setPosts((current) => current.filter((item) => getTravelFeedPostId(item) !== postId));
+      setTotalItems((current) => Math.max(0, current - 1));
+      setPageCount((current) => Math.max(1, current));
+      setEditingPost((current) => current && getTravelFeedPostId(current) === postId ? null : current);
+      setCommentingPost((current) => current && getTravelFeedPostId(current) === postId ? null : current);
+      setReportingPost((current) => current && getTravelFeedPostId(current) === postId ? null : current);
+      setSharingPost((current) => current && getTravelFeedPostId(current) === postId ? null : current);
+      setDeletingPost(null);
+      setRefreshKey((value) => value + 1);
+      showToast({ variant: "success", title: "Post deleted", description: getTravelFeedTitle(deletingPost) });
+    } catch (err) {
+      const message = getDeletePostError(err);
+      setError(message);
+      showToast({ variant: "error", title: "Delete failed", description: message });
+    } finally {
+      setDeletingPostId(null);
+    }
+  }
+
   async function blockPostAuthor(post: TravelFeedPost) {
     if (!requireCustomerAction("Please sign in with a customer account to block users.")) return;
 
@@ -410,6 +459,7 @@ function TravelFeedContent() {
       />
 
       <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <TravelStoriesBar />
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -505,7 +555,13 @@ function TravelFeedContent() {
                   if (requireCustomerAction("Please sign in with a customer account to share posts.")) setSharingPost(post);
                 }}
                 onBlockUser={() => void blockPostAuthor(post)}
+                onEdit={() => setEditingPost(post)}
+                onDelete={() => setDeletingPost(post)}
                 isBlockBusy={Boolean(blockingUserIds[getTravelFeedAuthorId(post)])}
+                isDeleteBusy={deletingPostId === getTravelFeedPostId(post)}
+                canEditPost={Boolean(currentUserId && getTravelFeedAuthorId(post) === currentUserId)}
+                canDeletePost={Boolean(currentUserId && getTravelFeedAuthorId(post) === currentUserId)}
+                canReportPost={getTravelFeedAuthorId(post) !== currentUserId}
                 canBlockUser={Boolean(getTravelFeedAuthorId(post) && getTravelFeedAuthorId(post) !== currentUserId)}
                 onReport={() => {
                   if (!requireCustomerAction("Please sign in with a customer account to report posts.")) return;
@@ -542,6 +598,21 @@ function TravelFeedContent() {
           />
         ) : null}
 
+        {editingPost ? (
+          <CreatePostModal
+            post={editingPost}
+            destinationNames={destinationNames}
+            locationNames={locationNames}
+            onClose={() => setEditingPost(null)}
+            onSaved={(updatedPost) => {
+              const postId = getTravelFeedPostId(editingPost);
+              setPosts((current) => current.map((item) => getTravelFeedPostId(item) === postId ? mergeUpdatedPost(item, updatedPost) : item));
+              setEditingPost(null);
+              setRefreshKey((value) => value + 1);
+            }}
+          />
+        ) : null}
+
         {reportingPost ? (
           <ReportPostModal
             post={reportingPost}
@@ -570,28 +641,57 @@ function TravelFeedContent() {
             onClose={() => setSharingPost(null)}
           />
         ) : null}
+
+        {deletingPost ? (
+          <ConfirmDialog
+            title="Delete post?"
+            message={`Delete "${getTravelFeedTitle(deletingPost)}"? This post will be removed from the travel feed.`}
+            confirmLabel={deletingPostId ? "Deleting..." : "Delete post"}
+            onCancel={() => {
+              if (!deletingPostId) setDeletingPost(null);
+            }}
+            onConfirm={() => void deleteOwnPost()}
+          />
+        ) : null}
       </section>
     </>
   );
 }
 
 function CreatePostModal({
+  post,
   destinationNames,
   locationNames,
   onClose,
-  onCreated
+  onCreated,
+  onSaved
 }: {
+  post?: TravelFeedPost;
   destinationNames: Record<number, string>;
   locationNames: Record<number, string>;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated?: () => void;
+  onSaved?: (post: TravelFeedPost) => void;
 }) {
-  const [content, setContent] = useState("");
-  const [placeName, setPlaceName] = useState("");
-  const [selectedPlace, setSelectedPlace] = useState<PlaceSelection | null>(null);
+  const isEditing = Boolean(post);
+  const initialLocationId = post ? getTravelFeedLocationId(post) : 0;
+  const initialDestinationId = post ? getTravelFeedDestinationId(post) : 0;
+  const initialPlaceName = post
+    ? getTravelFeedLocationName(post) || locationNames[initialLocationId] || getTravelFeedDestinationName(post) || destinationNames[initialDestinationId] || ""
+    : "";
+  const initialSelectedPlace = post && initialLocationId
+    ? { id: initialLocationId, name: initialPlaceName || `Location #${initialLocationId}`, type: "location" as const }
+    : post && initialDestinationId
+      ? { id: initialDestinationId, name: initialPlaceName || `Destination #${initialDestinationId}`, type: "destination" as const }
+      : null;
+  const [content, setContent] = useState(post ? getTravelFeedContent(post) : "");
+  const [placeName, setPlaceName] = useState(initialPlaceName);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSelection | null>(initialSelectedPlace);
+  const visibility: "public" | "private" = post?.visibility === "private" ? "private" : "public";
+  const [existingPhotos, setExistingPhotos] = useState(() => post ? getTravelFeedPhotoItems(post) : []);
   const [photos, setPhotos] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -610,17 +710,21 @@ function CreatePostModal({
     setMessage("");
 
     const trimmedContent = content.trim();
-    if (!trimmedContent && photos.length === 0) {
-      setError("Please write something or add at least one photo.");
+    const keepPhotoIds = existingPhotos.map((photo) => photo.id).filter((photoId) => photoId > 0);
+    const validationError = getPostFormValidationError({
+      content: trimmedContent,
+      existingPhotoCount: existingPhotos.length,
+      keepPhotoIds,
+      newFiles: photos,
+      visibility
+    });
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
-    if (trimmedContent.length > 5000) {
-      setError("Post content must be 5000 characters or fewer.");
-      return;
-    }
-
-    setIsCreating(true);
+    setIsSaving(true);
 
     try {
       const place = placeName.trim()
@@ -632,35 +736,76 @@ function CreatePostModal({
         return;
       }
 
-      await travelFeedService.create({
+      const payload = {
         content: trimmedContent,
         destination_id: place?.type === "destination" ? place.id : undefined,
         location_id: place?.type === "location" ? place.id : undefined,
         photos
-      });
+      };
+
+      if (post) {
+        const postId = getTravelFeedPostId(post);
+        if (!postId) {
+          setError("This post is missing a valid id from the API response.");
+          return;
+        }
+
+        const updatedPost = await travelFeedService.update(postId, {
+          content: trimmedContent,
+          destination_id: place?.type === "destination" ? place.id : null,
+          location_id: place?.type === "location" ? place.id : null,
+          photos,
+          keep_photo_ids: keepPhotoIds,
+          visibility
+        });
+
+        setMessage("");
+        onSaved?.(mergeUpdatedPost(post, updatedPost));
+        return;
+      }
+
+      await travelFeedService.create(payload);
 
       setContent("");
       setPlaceName("");
       setSelectedPlace(null);
       setPhotos([]);
       setMessage("");
-      onCreated();
+      onCreated?.();
     } catch (err) {
-      setError(getCreatePostError(err));
+      setError(isEditing ? getUpdatePostError(err) : getCreatePostError(err));
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
     }
   }
 
   function addPhotos(files: FileList | null) {
     if (!files?.length) return;
     setError("");
+    const remainingSlots = Math.max(0, 10 - existingPhotos.length - photos.length);
+    if (remainingSlots === 0) {
+      setError("Photos is too many. Maximum is 10 total after update.");
+      return;
+    }
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    setPhotos((current) => [...current, ...imageFiles].slice(0, 10));
+    if (imageFiles.length !== files.length) {
+      setError("Photos has an invalid file. Please upload image files only.");
+      return;
+    }
+    if (imageFiles.length > remainingSlots) {
+      setError(`Photos is too many. You can add ${remainingSlots} more photo${remainingSlots === 1 ? "" : "s"} only. Maximum is 10 total after update (${existingPhotos.length} kept old + ${photos.length} new selected).`);
+      return;
+    }
+
+    setPhotos((current) => [...current, ...imageFiles]);
   }
 
   function removePhoto(index: number) {
     setPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  }
+
+  function removeExistingPhoto(index: number) {
+    setExistingPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
 
   return (
@@ -668,15 +813,15 @@ function CreatePostModal({
       <form onSubmit={submitPost} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
           <div>
-            <h2 className="text-lg font-bold text-ink">Create post</h2>
-            <p className="mt-1 text-sm text-slate-500">Share your travel moment with other customers.</p>
+            <h2 className="text-lg font-bold text-ink">{isEditing ? "Edit post" : "Create post"}</h2>
+            <p className="mt-1 text-sm text-slate-500">{isEditing ? "Update your travel moment." : "Share your travel moment with other customers."}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            disabled={isCreating}
+            disabled={isSaving}
             className="grid size-9 place-items-center rounded-full border border-slate-200 text-slate-600 transition hover:border-brand-600 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Close create post popup"
+            aria-label={isEditing ? "Close edit post popup" : "Close create post popup"}
           >
             <X size={17} />
           </button>
@@ -712,6 +857,24 @@ function CreatePostModal({
                   />
                 </label>
               </div>
+
+              {existingPhotos.length > 0 ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-5">
+                  {existingPhotos.map((photo, index) => (
+                    <div key={`${photo.url}-${index}`} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
+                      <img src={resolveBackendAssetUrl(photo.url)} alt={`Existing photo ${index + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeExistingPhoto(index)}
+                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-black/65 text-white"
+                        aria-label="Remove existing photo"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               {previewUrls.length > 0 ? (
                 <div className="mt-4 grid gap-2 sm:grid-cols-5">
@@ -749,14 +912,14 @@ function CreatePostModal({
                     className="hidden"
                   />
                 </label>
-                <span className="text-xs font-semibold text-slate-500">{photos.length}/10 photos</span>
+                <span className="text-xs font-semibold text-slate-500">{existingPhotos.length + photos.length}/10 photos</span>
                 <button
                   type="submit"
-                  disabled={isCreating}
+                  disabled={isSaving}
                   className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isCreating ? <Loader2 className="size-4 animate-spin" /> : <Send size={16} />}
-                  Create post
+                  {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Send size={16} />}
+                  {isEditing ? "Save changes" : "Create post"}
                 </button>
               </div>
             </div>
@@ -771,11 +934,17 @@ function TravelFeedCard({
   post,
   isLikeBusy,
   isBlockBusy,
+  isDeleteBusy,
+  canEditPost,
+  canDeletePost,
+  canReportPost,
   canBlockUser,
   onToggleLike,
   onOpenComments,
   onShare,
   onBlockUser,
+  onEdit,
+  onDelete,
   onReport,
   reportState,
   destinationNames,
@@ -784,11 +953,17 @@ function TravelFeedCard({
   post: TravelFeedPost;
   isLikeBusy: boolean;
   isBlockBusy: boolean;
+  isDeleteBusy: boolean;
+  canEditPost: boolean;
+  canDeletePost: boolean;
+  canReportPost: boolean;
   canBlockUser: boolean;
   onToggleLike: (post: TravelFeedPost) => void;
   onOpenComments: () => void;
   onShare: () => void;
   onBlockUser: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
   onReport: () => void;
   reportState: LocalReportState | null;
   destinationNames: Record<number, string>;
@@ -796,16 +971,24 @@ function TravelFeedCard({
 }) {
   const author = getTravelFeedAuthor(post);
   const photos = getTravelFeedPhotos(post);
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const locationName = getTravelFeedLocationName(post) || locationNames[getTravelFeedLocationId(post)] || "";
   const destinationName = getTravelFeedDestinationName(post) || destinationNames[getTravelFeedDestinationId(post)] || "";
   const content = getTravelFeedContent(post);
   const createdAt = post.created_at ? safeFormatDate(post.created_at) : "";
+  const hasPostActions = canEditPost || canDeletePost || canBlockUser || canReportPost;
+
+  function runPostAction(action: () => void) {
+    setActionMenuOpen(false);
+    action();
+  }
 
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 p-4">
         {author.avatar ? (
-          <img src={author.avatar} alt={author.name} className="size-11 rounded-full object-cover" />
+          <img src={resolveBackendAssetUrl(author.avatar)} alt={author.name} className="size-11 rounded-full object-cover" />
         ) : (
           <div className="grid size-11 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
             {author.name.charAt(0).toUpperCase()}
@@ -818,29 +1001,83 @@ function TravelFeedCard({
             <span className="inline-flex items-center gap-1"><MapPin size={13} />{formatPlaceName(locationName, destinationName)}</span>
           </div>
         </div>
-        {canBlockUser ? (
-          <button
-            type="button"
-            onClick={onBlockUser}
-            disabled={isBlockBusy}
-            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-rose-100 px-3 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label={`Block ${author.name}`}
-          >
-            {isBlockBusy ? <Loader2 className="size-4 animate-spin" /> : <UserX size={15} />}
-            Block
-          </button>
+        {hasPostActions ? (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setActionMenuOpen((value) => !value)}
+              className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-600 hover:text-brand-600"
+              aria-label="Open post actions"
+              aria-expanded={actionMenuOpen}
+            >
+              <MoreHorizontal size={18} />
+            </button>
+
+            {actionMenuOpen ? (
+              <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-soft">
+                {canEditPost ? (
+                  <button
+                    type="button"
+                    onClick={() => runPostAction(onEdit)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-brand-600"
+                  >
+                    <Pencil size={15} />
+                    Edit
+                  </button>
+                ) : null}
+                {canDeletePost ? (
+                  <button
+                    type="button"
+                    onClick={() => runPostAction(onDelete)}
+                    disabled={isDeleteBusy}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDeleteBusy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 size={15} />}
+                    Delete
+                  </button>
+                ) : null}
+                {canBlockUser ? (
+                  <button
+                    type="button"
+                    onClick={() => runPostAction(onBlockUser)}
+                    disabled={isBlockBusy}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isBlockBusy ? <Loader2 className="size-4 animate-spin" /> : <UserX size={15} />}
+                    Block
+                  </button>
+                ) : null}
+                {canReportPost ? (
+                  <button
+                    type="button"
+                    onClick={() => runPostAction(onReport)}
+                    className={reportState ? "flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50" : "flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-amber-50 hover:text-amber-700"}
+                  >
+                    <Flag size={15} fill={reportState ? "currentColor" : "none"} />
+                    {reportState ? "Reported" : "Report"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
       {photos.length > 0 ? (
         <div className={photos.length === 1 ? "aspect-[16/9] overflow-hidden bg-slate-100" : "grid gap-1 bg-slate-100 sm:grid-cols-2"}>
           {photos.slice(0, 4).map((photo, index) => (
-            <div key={`${photo}-${index}`} className={photos.length === 1 ? "h-full" : "relative aspect-[4/3] overflow-hidden"}>
-              <img src={photo} alt={`${getTravelFeedTitle(post)} photo ${index + 1}`} className="h-full w-full object-cover" />
+            <button
+              key={`${photo}-${index}`}
+              type="button"
+              onClick={() => setGalleryIndex(index)}
+              className={photos.length === 1 ? "h-full cursor-zoom-in overflow-hidden text-left" : "relative aspect-[4/3] cursor-zoom-in overflow-hidden text-left"}
+              aria-label={index === 3 && photos.length > 4 ? `Open all ${photos.length} photos` : `Open photo ${index + 1}`}
+            >
+              <img src={resolveBackendAssetUrl(photo)} alt={`${getTravelFeedTitle(post)} photo ${index + 1}`} className="h-full w-full object-cover" />
               {index === 3 && photos.length > 4 ? (
                 <div className="absolute inset-0 grid place-items-center bg-black/55 text-2xl font-bold text-white">+{photos.length - 4}</div>
               ) : null}
-            </div>
+            </button>
           ))}
         </div>
       ) : null}
@@ -878,18 +1115,116 @@ function TravelFeedCard({
             <Share2 size={17} />
             Share
           </button>
-          <button
-            type="button"
-            onClick={onReport}
-            className={reportState ? "ml-auto inline-flex items-center gap-2 text-emerald-700 transition hover:text-emerald-800" : "ml-auto inline-flex items-center gap-2 text-slate-500 transition hover:text-amber-700"}
-            aria-label={reportState ? "Edit report" : "Report post"}
-          >
-            <Flag size={17} fill={reportState ? "currentColor" : "none"} />
-            {reportState ? "Reported" : "Report"}
-          </button>
         </div>
       </div>
+      {galleryIndex !== null ? (
+        <PhotoGalleryModal
+          title={getTravelFeedTitle(post)}
+          photos={photos}
+          initialIndex={galleryIndex}
+          onClose={() => setGalleryIndex(null)}
+        />
+      ) : null}
     </article>
+  );
+}
+
+function PhotoGalleryModal({
+  title,
+  photos,
+  initialIndex,
+  onClose
+}: {
+  title: string;
+  photos: string[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(initialIndex);
+  const activePhoto = photos[index] ?? photos[0] ?? "";
+  const canNavigate = photos.length > 1;
+
+  function previousPhoto() {
+    setIndex((current) => (current - 1 + photos.length) % photos.length);
+  }
+
+  function nextPhoto() {
+    setIndex((current) => (current + 1) % photos.length);
+  }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+      if (event.key === "ArrowLeft" && canNavigate) previousPhoto();
+      if (event.key === "ArrowRight" && canNavigate) nextPhoto();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canNavigate, onClose, photos.length]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 px-4 py-6">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-ink">{title}</p>
+            <p className="text-xs font-semibold text-slate-500">{index + 1} / {photos.length}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 text-slate-600 transition hover:border-brand-600 hover:text-brand-600"
+            aria-label="Close photo gallery"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="relative grid min-h-0 flex-1 place-items-center bg-slate-950">
+          {activePhoto ? (
+            <img src={resolveBackendAssetUrl(activePhoto)} alt={`${title} photo ${index + 1}`} className="max-h-[70vh] w-full object-contain" />
+          ) : null}
+
+          {canNavigate ? (
+            <>
+              <button
+                type="button"
+                onClick={previousPhoto}
+                className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-700 shadow-soft transition hover:bg-white"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft size={22} />
+              </button>
+              <button
+                type="button"
+                onClick={nextPhoto}
+                className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-700 shadow-soft transition hover:bg-white"
+                aria-label="Next photo"
+              >
+                <ChevronRight size={22} />
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        {photos.length > 1 ? (
+          <div className="flex gap-2 overflow-x-auto border-t border-slate-100 bg-white p-3">
+            {photos.map((photo, photoIndex) => (
+              <button
+                key={`${photo}-${photoIndex}`}
+                type="button"
+                onClick={() => setIndex(photoIndex)}
+                className={photoIndex === index ? "size-16 shrink-0 overflow-hidden rounded-lg ring-2 ring-brand-600" : "size-16 shrink-0 overflow-hidden rounded-lg opacity-70 transition hover:opacity-100"}
+                aria-label={`Open photo ${photoIndex + 1}`}
+              >
+                <img src={resolveBackendAssetUrl(photo)} alt={`${title} thumbnail ${photoIndex + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -1760,6 +2095,36 @@ function mergeLikeResponse(current: TravelFeedPost, response: TravelFeedPost, fa
   };
 }
 
+function mergeUpdatedPost(current: TravelFeedPost, response: TravelFeedPost) {
+  if (!response || typeof response !== "object") return current;
+
+  const hasResponsePost =
+    getTravelFeedPostId(response) > 0 ||
+    response.content !== undefined ||
+    response.description !== undefined ||
+    response.caption !== undefined ||
+    response.photos !== undefined ||
+    response.images !== undefined ||
+    response.media !== undefined ||
+    response.photo_urls !== undefined ||
+    response.image_urls !== undefined;
+
+  if (!hasResponsePost) return current;
+
+  return {
+    ...current,
+    ...response,
+    like_count: response.like_count ?? response.likes_count ?? getTravelFeedLikeCount(current),
+    likes_count: response.likes_count ?? response.like_count ?? getTravelFeedLikeCount(current),
+    comment_count: response.comment_count ?? response.comments_count ?? getTravelFeedCommentCount(current),
+    comments_count: response.comments_count ?? response.comment_count ?? getTravelFeedCommentCount(current),
+    is_liked: response.is_liked ?? response.liked ?? response.has_liked ?? response.liked_by_me ?? isTravelFeedLiked(current),
+    liked: response.liked ?? response.is_liked ?? response.has_liked ?? response.liked_by_me ?? isTravelFeedLiked(current),
+    has_liked: response.has_liked ?? response.is_liked ?? response.liked ?? response.liked_by_me ?? isTravelFeedLiked(current),
+    liked_by_me: response.liked_by_me ?? response.is_liked ?? response.liked ?? response.has_liked ?? isTravelFeedLiked(current)
+  };
+}
+
 function getPostReportState(post: TravelFeedPost, reportedPosts: Record<number, LocalReportState>) {
   const postId = getTravelFeedPostId(post);
   const localState = postId ? reportedPosts[postId] : undefined;
@@ -2012,6 +2377,19 @@ function getBlockUserError(error: unknown) {
   return "Cannot block this user.";
 }
 
+function getDeletePostError(error: unknown) {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { message?: string; error?: string } | undefined;
+    if (error.response?.status === 401) return "Please sign in with a customer account to delete this post.";
+    if (error.response?.status === 403) return data?.message ?? "Only the customer who created this post can delete it.";
+    if (error.response?.status === 404) return data?.message ?? "Travel post was not found.";
+    if (error.response?.status === 409) return data?.message ?? "This travel post has already been deleted or cannot be deleted.";
+    return data?.message ?? data?.error ?? "Cannot delete travel post.";
+  }
+
+  return "Cannot delete travel post.";
+}
+
 
 
 function getCommentApiError(error: unknown, fallback: string) {
@@ -2036,6 +2414,197 @@ function getCreatePostError(error: unknown) {
   }
 
   return "Cannot create travel post.";
+}
+
+function getUpdatePostError(error: unknown) {
+  if (error instanceof AxiosError) {
+    const serverMessage = getFieldAwareApiMessage(error.response?.data);
+    if (serverMessage) return serverMessage;
+
+    if (error.response?.status === 400) return [
+      "Please check these fields:",
+      "Content must be 5000 characters or fewer.",
+      "Photos can be at most 10 total, including kept old photos and newly uploaded photos.",
+      "Visibility must be public or private.",
+      "Destination and location must be valid ids or empty."
+    ].join(" ");
+    if (error.response?.status === 401) return "Please sign in with a customer account to update this post.";
+    if (error.response?.status === 403) return "Only the customer who created this post can update it.";
+    if (error.response?.status === 404) return "Travel post, destination, location or photo was not found.";
+    if (error.response?.status === 409) return "This travel post cannot be updated.";
+  }
+
+  return "Cannot update travel post.";
+}
+
+function getPostFormValidationError({
+  content,
+  existingPhotoCount,
+  keepPhotoIds,
+  newFiles,
+  visibility
+}: {
+  content: string;
+  existingPhotoCount: number;
+  keepPhotoIds: number[];
+  newFiles: File[];
+  visibility: "public" | "private";
+}) {
+  const totalPhotoCount = keepPhotoIds.length + newFiles.length;
+
+  if (!content && totalPhotoCount === 0) {
+    return "Content or photos is required. Please write content or keep/upload at least one photo.";
+  }
+
+  if (content.length > 5000) {
+    return `Content is too long. Maximum is 5000 characters, current is ${content.length}.`;
+  }
+
+  if (visibility !== "public" && visibility !== "private") {
+    return "Visibility is invalid. Please choose public or private.";
+  }
+
+  if (existingPhotoCount > 0 && keepPhotoIds.length !== existingPhotoCount) {
+    return "Photos cannot be updated because some existing photos are missing photo_id from the API. Please reload the post and try again.";
+  }
+
+  if (keepPhotoIds.length > 10) {
+    return `Existing photos is too many. You can keep at most 10 old photos, current is ${keepPhotoIds.length}.`;
+  }
+
+  if (newFiles.length > 10) {
+    return `New photos is too many. You can upload at most 10 new photos, current is ${newFiles.length}.`;
+  }
+
+  if (totalPhotoCount > 10) {
+    return `Photos is too many. Maximum is 10 total after update, current is ${totalPhotoCount} (${keepPhotoIds.length} kept old + ${newFiles.length} new).`;
+  }
+
+  const invalidFile = newFiles.find((file) => !file.type.startsWith("image/"));
+  if (invalidFile) {
+    return `Photos has an invalid file: "${invalidFile.name}". Please upload image files only.`;
+  }
+
+  return "";
+}
+
+function getFieldAwareApiMessage(data: unknown) {
+  const fieldMessages = collectUpdatePostFieldErrors(data);
+  if (fieldMessages.length > 0) return uniqueMessages(fieldMessages).join(" ");
+
+  const messages = uniqueMessages(collectApiErrorMessages(data)
+    .map((message) => normalizeUpdatePostErrorMessage(message))
+    .filter(Boolean));
+  if (messages.length === 0) return "";
+
+  return messages.join(" ");
+}
+
+function collectApiErrorMessages(value: unknown): string[] {
+  if (!value) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(collectApiErrorMessages);
+  if (typeof value !== "object") return [];
+
+  const record = value as Record<string, unknown>;
+  const directMessages = [
+    record.message,
+    record.error,
+    record.detail,
+    record.details
+  ].flatMap(collectApiErrorMessages);
+
+  const fieldMessages = ["errors", "validationErrors", "fields"]
+    .flatMap((key) => collectApiFieldMessages(record[key]));
+
+  return [...fieldMessages, ...directMessages];
+}
+
+function collectApiFieldMessages(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return collectApiErrorMessages(item);
+    const record = item as Record<string, unknown>;
+    if (typeof record.field === "string") {
+      const label = getUpdatePostFieldLabel(record.field);
+      const message = firstNonEmptyString(record.message, record.error, record.detail) || "invalid value.";
+      return [`${label}: ${normalizeUpdatePostErrorMessage(message) || message}`];
+    }
+    return collectApiErrorMessages(item);
+  });
+  if (typeof value !== "object") return collectApiErrorMessages(value);
+
+  return Object.entries(value as Record<string, unknown>).flatMap(([field, message]) => {
+    const label = getUpdatePostFieldLabel(field);
+    const fieldMessages = collectApiErrorMessages(message);
+    if (fieldMessages.length === 0) return [`${label}: invalid value.`];
+    return fieldMessages.map((item) => `${label}: ${item}`);
+  });
+}
+
+function getUpdatePostFieldLabel(field: string) {
+  const normalized = field.toLowerCase();
+  if (normalized.includes("content")) return "Content";
+  if (normalized.includes("destination")) return "Destination";
+  if (normalized.includes("location")) return "Location";
+  if (normalized.includes("visibility")) return "Visibility";
+  if (normalized.includes("keep_photo")) return "Existing photos";
+  if (normalized.includes("photo")) return "Photos";
+  return field;
+}
+
+function collectUpdatePostFieldErrors(data: unknown) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  const record = data as Record<string, unknown>;
+  const details = record.details;
+  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+  const fields = (details as Record<string, unknown>).fields;
+  if (!Array.isArray(fields)) return [];
+
+  return fields.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const fieldError = item as Record<string, unknown>;
+    const field = typeof fieldError.field === "string" ? fieldError.field : "";
+    const message = firstNonEmptyString(fieldError.message, fieldError.error, fieldError.detail);
+    if (!message) return [];
+
+    const normalizedMessage = normalizeUpdatePostErrorMessage(message) || message;
+    return field ? [`${getUpdatePostFieldLabel(field)}: ${normalizedMessage}`] : [normalizedMessage];
+  });
+}
+
+function uniqueMessages(messages: string[]) {
+  return Array.from(new Set(messages.map((message) => message.trim()).filter(Boolean)));
+}
+
+function firstNonEmptyString(...values: unknown[]) {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0)?.trim() ?? "";
+}
+
+function normalizeUpdatePostErrorMessage(message: string) {
+  const lower = message.toLowerCase();
+  if (lower === "validation error" || lower === "validation failed") {
+    return "";
+  }
+  if (lower.includes("content") && (lower.includes("5000") || lower.includes("length") || lower.includes("long"))) {
+    return "Content must be 5000 characters or fewer.";
+  }
+  if ((lower.includes("photos") || lower.includes("photo")) && (lower.includes("10") || lower.includes("max") || lower.includes("many"))) {
+    return "Photos can be at most 10 total after update.";
+  }
+  if (lower.includes("keep_photo_ids")) {
+    return "Existing photos is invalid. keep_photo_ids must be a JSON array of existing photo ids, maximum 10.";
+  }
+  if (lower.includes("visibility")) {
+    return "Visibility must be public or private.";
+  }
+  if (lower.includes("destination")) {
+    return "Destination must be a valid destination id or empty.";
+  }
+  if (lower.includes("location")) {
+    return "Location must be a valid location id or empty.";
+  }
+  return message;
 }
 
 
