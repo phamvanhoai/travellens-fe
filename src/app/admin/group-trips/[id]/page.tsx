@@ -21,6 +21,7 @@ export default function AdminGroupTripDetailPage() {
   const showToast = useToast();
   const [trip, setTrip] = useState<GroupTrip | null>(null);
   const [members, setMembers] = useState<GroupTripMember[]>([]);
+  const [memberTotal, setMemberTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(searchParams.get("edit") === "1");
@@ -33,7 +34,7 @@ export default function AdminGroupTripDetailPage() {
     setLoading(true); setError("");
     try {
       const [detail, memberResult] = await Promise.all([adminGroupTripService.detail(id), adminGroupTripService.members(id, { page: 1, limit: 100 })]);
-      setTrip(detail); setMembers(memberResult.items); setForm(toForm(detail));
+      setTrip(detail); setMembers(memberResult.items); setMemberTotal(memberResult.total); setForm(toForm(detail));
     } catch (err) { setError(apiError(err, "Cannot load group trip details.")); }
     finally { setLoading(false); }
   }, [id]);
@@ -43,7 +44,7 @@ export default function AdminGroupTripDetailPage() {
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (!form || !trip) return;
-    const nextErrors = validateEditForm(form, Math.max(2, memberCount(trip.member_count)));
+    const nextErrors = validateEditForm(form, Math.max(2, memberTotal));
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     setSaving(true);
@@ -72,7 +73,7 @@ export default function AdminGroupTripDetailPage() {
   return <>
     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><Button href="/admin/group-trips" variant="ghost" className="mb-3 h-9 px-0 hover:bg-transparent"><ArrowLeft size={17} /> Group Trips</Button><div className="flex flex-wrap items-center gap-2"><Badge value={trip.visibility} /><Badge value={trip.status} /></div><h1 className="mt-3 text-3xl font-bold">{trip.name}</h1><p className="mt-2 max-w-3xl text-slate-600">{trip.description || "No description"}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => setEditing(true)}><Pencil size={16} /> Edit</Button><button type="button" onClick={() => setConfirmDelete(true)} className="inline-flex h-11 items-center gap-2 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700"><Trash2 size={16} /> Delete</button></div></div>
-      <div className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info icon={<MapPin size={16} />} label="Destination" value={trip.destination_name || (trip.destination_id ? `Destination #${trip.destination_id}` : "Not set")} /><Info icon={<CalendarDays size={16} />} label="Dates" value={`${date(trip.start_date)} – ${date(trip.end_date)}`} /><Info icon={<Users size={16} />} label="Members" value={`${memberCount(trip.member_count)}${trip.max_members ? ` / ${trip.max_members}` : ""}`} /><Info icon={<UserRound size={16} />} label="Leader" value={trip.leader?.name || `User #${trip.leader_id}`} /></div>
+      <div className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info icon={<MapPin size={16} />} label="Destination" value={trip.destination_name || (trip.destination_id ? `Destination #${trip.destination_id}` : "Not set")} /><Info icon={<CalendarDays size={16} />} label="Dates" value={`${date(trip.start_date)} – ${date(trip.end_date)}`} /><Info icon={<Users size={16} />} label="Members" value={`${memberTotal}${trip.max_members ? ` / ${trip.max_members}` : ""}`} /><Info icon={<UserRound size={16} />} label="Leader" value={trip.leader?.name || `User #${trip.leader_id}`} /></div>
       <GroupTripRoutePreview trip={trip} />
       <section className="mt-7"><h2 className="text-lg font-bold">Itinerary</h2><div className="mt-3 space-y-3">{trip.itinerary?.length ? [...trip.itinerary].sort((a, b) => a.itinerary_date.localeCompare(b.itinerary_date) || Number(a.order_index ?? 0) - Number(b.order_index ?? 0)).map((item) => <article key={item.itinerary_item_id} className="rounded-lg border border-slate-200 p-4"><div className="flex gap-3 text-xs font-semibold text-brand-700"><span className="flex items-center gap-1"><CalendarDays size={14} />{date(item.itinerary_date)}</span>{item.start_time ? <span className="flex items-center gap-1"><Clock3 size={14} />{item.start_time.slice(0, 5)}</span> : null}</div><h3 className="mt-2 font-bold">{item.title}</h3>{item.description ? <p className="mt-1 text-sm text-slate-500">{item.description}</p> : null}<p className="mt-2 text-sm text-slate-600"><MapPin className="mr-1 inline" size={14} />{item.custom_location || (item.location_id ? `Location #${item.location_id}` : "No location")}</p></article>) : <p className="rounded-lg border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">No itinerary items.</p>}</div></section>
       <section className="mt-7"><h2 className="text-lg font-bold">Members ({members.length})</h2><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["User", "Email", "Phone", "Role", "Joined"].map((value) => <th key={value} className="p-3">{value}</th>)}</tr></thead><tbody>{members.length ? members.map((member) => <tr key={member.group_trip_member_id ?? member.user_id} className="border-t border-slate-100"><td className="p-3 font-semibold">{member.name || `User #${member.user_id}`}</td><td className="p-3">{member.email || "—"}</td><td className="p-3">{member.phone || "—"}</td><td className="p-3 capitalize">{member.role}</td><td className="p-3">{member.joined_at ? date(member.joined_at) : "—"}</td></tr>) : <tr><td colSpan={5} className="p-8 text-center text-slate-500">No active members found.</td></tr>}</tbody></table></div></section>
