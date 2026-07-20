@@ -1,6 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { View360Hotspot } from "@/services/view360.service";
@@ -16,10 +17,11 @@ export function PanoramaViewer({
   imageUrl: string;
   autoRotate: boolean;
   hotspots?: View360Hotspot[];
-  onHotspotClick?: (hotspot: View360Hotspot) => void;
+  onHotspotClick?: (hotspot: View360Hotspot, position: { x: number; y: number }) => void;
   onLoadingChange: (loading: boolean) => void;
   onError: (message: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
   const autoRotateRef = useRef(autoRotate);
   const hotspotsRef = useRef(hotspots);
@@ -202,17 +204,22 @@ export function PanoramaViewer({
           const position = hotspotPositions.find((item) => item.id === hotspot.id);
           if (!position?.visible) return null;
           return (
-            <button
+            <motion.button
               key={hotspot.id}
               type="button"
-              onClick={() => onHotspotClick?.(hotspot)}
-              className="pointer-events-auto absolute grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-brand-600 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)] ring-4 ring-white/20 transition hover:scale-110 hover:bg-brand-500"
-              style={{ left: position.x, top: position.y }}
+              onClick={() => onHotspotClick?.(hotspot, { x: position.x, y: position.y })}
+              className="pointer-events-auto absolute grid size-11 place-items-center rounded-full border border-white/50 bg-brand-600 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)] ring-4 ring-white/20 transition-colors hover:bg-brand-500"
+              style={{ left: position.x - 22, top: position.y - 22 }}
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.55 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: reduceMotion ? 0.1 : 0.35, ease: "backOut" }}
+              whileHover={reduceMotion ? undefined : { scale: 1.12 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.94 }}
               title={hotspot.title}
               aria-label={hotspot.title}
             >
               <MapPin size={19} />
-            </button>
+            </motion.button>
           );
         })}
       </div>
