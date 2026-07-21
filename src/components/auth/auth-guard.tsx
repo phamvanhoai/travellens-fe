@@ -116,7 +116,6 @@ export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) 
     }
 
     const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-    const isAdminOverview = pathname === "/admin";
     const sidebarRows = isAdmin ? 19 : 6;
 
     return (
@@ -128,24 +127,12 @@ export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) 
               {Array.from({ length: sidebarRows }, (_, index) => <div key={index} className="h-10 rounded-lg bg-slate-100" />)}
             </div>
           </aside>
-          {isAdminOverview ? (
-            <div className="min-w-0">
-              <div className="h-9 w-72 max-w-full rounded bg-slate-200" />
-              <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-[126px] rounded-lg border border-slate-200 bg-white shadow-sm" />)}
-              </div>
-              <div className="mt-6 grid gap-6 xl:grid-cols-2">
-                {Array.from({ length: 2 }, (_, index) => <div key={index} className="h-[390px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm"><div className="h-5 w-36 rounded bg-slate-200" /><div className="mt-8 h-[290px] rounded bg-slate-50" /></div>)}
-              </div>
-            </div>
-          ) : (
-            <div className="min-h-[680px] min-w-0 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="h-8 w-64 max-w-full rounded bg-slate-200" />
-              <div className="mt-3 h-4 w-96 max-w-full rounded bg-slate-100" />
-              <div className="mt-7 h-11 rounded-lg bg-slate-100" />
-              <div className="mt-6 grid gap-4"><div className="h-12 rounded bg-slate-100" />{Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 rounded border-t border-slate-100 bg-slate-50" />)}</div>
-            </div>
-          )}
+          <div className="min-h-[680px] min-w-0 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="h-8 w-64 max-w-full rounded bg-slate-200" />
+            <div className="mt-3 h-4 w-96 max-w-full rounded bg-slate-100" />
+            <div className="mt-7 h-11 rounded-lg bg-slate-100" />
+            <div className="mt-6 grid gap-4"><div className="h-12 rounded bg-slate-100" />{Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 rounded border-t border-slate-100 bg-slate-50" />)}</div>
+          </div>
         </div>
       </section>
     );

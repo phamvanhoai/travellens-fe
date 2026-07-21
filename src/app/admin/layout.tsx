@@ -1,11 +1,11 @@
 "use client";
 
-import {BarChart3, CalendarCheck, ClipboardList, CreditCard, Flag, Images, Map,MapPinned, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video,} from "lucide-react";
+import {BarChart3, ClipboardList, Flag, Images, Map,MapPinned, MessageSquareText, Newspaper, Plane, Rss, Tags, Users, Video,} from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
-  [BarChart3, "Overview", "/admin"],
+  [BarChart3, "Statistics Dashboard", "/admin"],
   [Tags, "Destination Categories", "/admin/destination-categories"],
   [Plane, "Destinations", "/admin/travel-destinations"],
   [Tags, "Tour Categories", "/admin/tour-categories"],
@@ -14,17 +14,14 @@ const links = [
   [Map, "Locations", "/admin/locations"],
   [Video, "View360", "/admin/view360"],
   [Images, "Maps", "/admin/maps"],
-  [CalendarCheck, "Bookings", "/admin/bookings"],
   [MapPinned, "Group Trips", "/admin/group-trips"],
-  [CreditCard, "Payments", "/admin/payments"],
   [Newspaper, "Blogs", "/admin/blogs"],
   [Tags, "Blog Categories", "/admin/blog-categories"],
   [Rss, "Travel Feed", "/admin/travel-feed"],
   [Flag, "Feed Reports", "/admin/travel-feed/reports"],
   [MessageSquareText, "Feed Comments", "/admin/travel-feed/comments"],
   [MessageSquareText, "Reviews", "/admin/reviews"],
-  [Users, "Users", "/admin/users"],
-  [BarChart3, "Statistics", "/admin/statistics"]
+  [Users, "Users", "/admin/users"]
 ] as const;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

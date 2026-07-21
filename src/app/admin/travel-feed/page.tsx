@@ -260,10 +260,8 @@ function PostRow({ post, onDelete }: { post: TravelFeedPost; onDelete: () => voi
         <span className="flex gap-2">
           {postId ? (
             <a
-              href={`/travel-feed/${postId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open post"
+              href={`/admin/travel-feed/${postId}`}
+              title="View post details"
               aria-label={`View ${title}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
             >

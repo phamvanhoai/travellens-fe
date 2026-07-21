@@ -9,6 +9,8 @@ import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
+import { adminUserService, getAdminUserId, type AdminUser } from "@/services/admin-user.service";
+import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import {
   getStaffReviewId,
   getStaffReviewLocationId,
@@ -33,6 +35,8 @@ function ReviewManagementPage() {
   const title = isAdmin ? "Review Management" : "Staff Reviews";
   const description = isAdmin ? "Moderate, update and delete location reviews." : "Moderate and delete location reviews.";
   const [items, setItems] = useState<StaffReview[]>([]);
+  const [users, setUsers] = useState<Map<number, AdminUser>>(new Map());
+  const [locations, setLocations] = useState<Map<number, AdminLocation>>(new Map());
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -42,7 +46,11 @@ function ReviewManagementPage() {
   const [deleting, setDeleting] = useState<StaffReview | null>(null);
   const showToast = useToast();
 
-  const visible = items.filter((item) => `${getStaffReviewId(item)} ${getStaffReviewUserName(item)} ${getStaffReviewLocationName(item)} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase()));
+  const visible = items.filter((item) => {
+    const user = users.get(getStaffReviewUserId(item));
+    const location = locations.get(getStaffReviewLocationId(item));
+    return `${getStaffReviewId(item)} ${user?.name ?? getStaffReviewUserName(item)} ${user?.email ?? ""} ${location?.name ?? getStaffReviewLocationName(item)} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase());
+  });
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const rows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -51,7 +59,16 @@ function ReviewManagementPage() {
     setLoading(true);
     setError("");
     try {
-      setItems(await staffReviewService.list());
+      const reviews = await staffReviewService.list();
+      setItems(reviews);
+      if (isAdmin) {
+        const [userResult, locationResult] = await Promise.all([
+          loadAllAdminUsers(),
+          loadAllAdminLocations()
+        ]);
+        setUsers(new Map(userResult.map((user) => [getAdminUserId(user), user])));
+        setLocations(new Map(locationResult.map((location) => [getLocationId(location), location])));
+      }
     } catch (err) {
       const message = getApiError(err, "Cannot load staff reviews from API.");
       setError(message);
@@ -59,7 +76,7 @@ function ReviewManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [isAdmin, showToast]);
 
   useEffect(() => {
     void loadReviews();
@@ -116,7 +133,15 @@ function ReviewManagementPage() {
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "User", "Location", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <AdminTableSkeleton columns={7} rows={10} />
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
-            : rows.map((item) => <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3">{getStaffReviewUserName(item)}</td><td className="p-3">{getStaffReviewLocationName(item)}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2">{isAdmin ? <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button> : null}<button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>)}
+            : rows.map((item) => {
+              const userId = getStaffReviewUserId(item);
+              const locationId = getStaffReviewLocationId(item);
+              const user = users.get(userId);
+              const location = locations.get(locationId);
+              const userName = user?.name || getStaffReviewUserName(item);
+              const locationName = location?.name || getStaffReviewLocationName(item);
+              return <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3"><p className="font-semibold text-slate-800">{userName}</p>{user?.email ? <p className="mt-1 text-xs text-slate-500">{user.email}</p> : userId ? <p className="mt-1 text-xs text-slate-400">User #{userId}</p> : null}</td><td className="p-3"><p className="font-semibold text-slate-800">{locationName}</p>{locationId ? <p className="mt-1 text-xs text-slate-400">Location #{locationId}</p> : null}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2">{isAdmin ? <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button> : null}<button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>;
+            })}
       </tbody></table></div>
       <Pagination page={currentPage} pageCount={pageCount} totalItems={visible.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
     </div>
@@ -132,6 +157,22 @@ function ReviewModal({ item, saving, onClose, onSave }: { item: StaffReview; sav
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3">{label}{children}</label>; }
 function Status({ value }: { value: string }) { const style = value === "approved" ? "bg-emerald-50 text-emerald-700" : value === "hidden" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"; return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{value}</span>; }
+
+async function loadAllAdminUsers() {
+  const first = await adminUserService.list({ page: 1, limit: 100, sortBy: "name", sortOrder: "ASC" });
+  const totalPages = first.pagination?.totalPages ?? 1;
+  if (totalPages <= 1) return first.data ?? [];
+  const remaining = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => adminUserService.list({ page: index + 2, limit: 100, sortBy: "name", sortOrder: "ASC" })));
+  return [...(first.data ?? []), ...remaining.flatMap((result) => result.data ?? [])];
+}
+
+async function loadAllAdminLocations() {
+  const first = await adminLocationService.list({ page: 1, limit: 100 });
+  const totalPages = first.pagination?.totalPages ?? 1;
+  if (totalPages <= 1) return first.data ?? [];
+  const remaining = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => adminLocationService.list({ page: index + 2, limit: 100 })));
+  return [...(first.data ?? []), ...remaining.flatMap((result) => result.data ?? [])];
+}
 
 function getApiError(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) return fallback;

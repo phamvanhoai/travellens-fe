@@ -9,6 +9,7 @@ import { MediaLibrary, RichTextEditor } from "@/components/admin/rich-text-edito
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
+import { currency } from "@/lib/utils";
 import { adminMediaService, getAdminMediaName, getAdminMediaUrl } from "@/services/admin-media.service";
 import {
   adminTourService,
@@ -202,7 +203,7 @@ export default function AdminToursPage() {
       price: editingTour.price == null ? "" : String(editingTour.price),
       child_price: editingTour.child_price == null ? "" : String(editingTour.child_price),
       infant_price: editingTour.infant_price == null ? "0" : String(editingTour.infant_price),
-      currency: editingTour.currency ?? "VND",
+      currency: "VND",
       schedule: editingTour.schedule ?? editingTour.duration ?? "",
       capacity: editingTour.capacity == null ? "" : String(editingTour.capacity),
       status: editingTour.status ?? "active",
@@ -752,7 +753,7 @@ function TourForm({
             <input min="0" type="number" step="any" value={form.infant_price} onChange={(event) => { onClearFieldError("infant_price"); setForm({ ...form, infant_price: event.target.value }); }} className="input" />
           </Field>
           <Field label="Currency">
-            <select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="input"><option value="VND">VND</option><option value="USD">USD</option></select>
+            <select value="VND" disabled className="input bg-slate-50"><option value="VND">VND</option></select>
           </Field>
           <Field label="Minimum Participants">
             <input min="1" type="number" value={form.minimum_participants} onChange={(event) => setForm({ ...form, minimum_participants: event.target.value })} className="input" />
@@ -1244,9 +1245,5 @@ function formatPrice(value: AdminTour["price"]) {
   if (value === undefined || value === null || value === "") return "-";
   const numberValue = Number(value);
   if (Number.isNaN(numberValue)) return String(value);
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0
-  }).format(numberValue);
+  return currency(numberValue, "VND");
 }

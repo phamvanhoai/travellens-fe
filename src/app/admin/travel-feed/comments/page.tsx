@@ -21,7 +21,7 @@ import {
 } from "@/services/travel-feed.service";
 import { formatDate } from "@/utils/format";
 
-const pageSize = 20;
+const pageSize = 10;
 
 export default function AdminTravelFeedCommentsPage() {
   const searchParams = useSearchParams();
@@ -275,10 +275,8 @@ function CommentRow({ comment, onDelete }: { comment: TravelFeedComment; onDelet
         <span className="flex gap-2">
           {postId ? (
             <a
-              href={`/travel-feed/${postId}?comment_id=${commentId}#comment-${commentId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open post"
+              href={`/admin/travel-feed/${postId}?comment_id=${commentId}`}
+              title="View post details"
               aria-label={`View comment ${commentId} in post ${postId}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
             >
