@@ -21,7 +21,7 @@ import {
 } from "@/services/travel-feed.service";
 import { formatDate } from "@/utils/format";
 
-const pageSize = 20;
+const pageSize = 10;
 
 export default function AdminTravelFeedCommentsPage() {
   const searchParams = useSearchParams();
