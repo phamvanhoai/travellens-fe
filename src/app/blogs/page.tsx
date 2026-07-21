@@ -109,14 +109,13 @@ export default function BlogsPage() {
                 const id = getCustomerBlogId(blog);
                 const locations = getCustomerBlogLocations(blog).map((location) => location.name).filter(Boolean);
                 return (
-                  <Link key={id || blog.title} href={getCustomerBlogPath(blog)} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
-                    <img src={getCustomerBlogImage(blog, images.balloons)} alt={blog.title} className="h-56 w-full object-cover" />
-                    <div className="p-5">
+                  <Link key={id || blog.title} href={getCustomerBlogPath(blog)} className="flex h-full min-h-[376px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
+                    <img src={getCustomerBlogImage(blog, images.balloons)} alt={blog.title} className="h-48 w-full object-cover" />
+                    <div className="flex flex-1 flex-col p-4">
                       <p className="line-clamp-1 text-xs font-bold uppercase tracking-wide text-brand-600">{getCustomerBlogCategoryNames(blog).join(" / ") || "Travel guide"}</p>
-                      <h2 className="mt-2 text-xl font-bold">{blog.title}</h2>
+                      <h2 className="mt-2 line-clamp-2 min-h-12 text-lg font-bold leading-6">{blog.title}</h2>
                       <p className="mt-3 line-clamp-2 text-sm text-slate-600">{getCustomerBlogExcerpt(blog)}</p>
-                      <p className="mt-4 text-xs font-semibold text-slate-400">By {getCustomerBlogAuthor(blog)}</p>
-                      {locations[0] ? <p className="mt-1 text-xs text-slate-400">{locations[0]}</p> : null}
+                      <div className="mt-auto min-h-10 pt-4"><p className="truncate text-xs font-semibold text-slate-400">By {getCustomerBlogAuthor(blog)}</p><p className="mt-1 truncate text-xs text-slate-400">{locations[0] || "Travel360"}</p></div>
                     </div>
                   </Link>
                 );
@@ -135,8 +134,8 @@ function BlogsSkeleton({ count }: { count: number }) {
     <div className="grid gap-6 md:grid-cols-3" aria-label="Loading blogs" aria-busy="true">
       {Array.from({ length: count }, (_, index) => (
         <article key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-hidden="true">
-          <div className="h-56 animate-pulse bg-slate-200" />
-          <div className="p-5">
+          <div className="h-48 animate-pulse bg-slate-200" />
+          <div className="p-4">
             <div className="h-3 w-2/5 animate-pulse rounded bg-brand-100" />
             <div className="mt-3 h-5 w-5/6 animate-pulse rounded bg-slate-200" />
             <div className="mt-2 h-5 w-3/5 animate-pulse rounded bg-slate-200" />

@@ -23,6 +23,7 @@ export type PublicTravelDestination = {
   review_count?: number | string | null;
   price_from?: number | string | null;
   min_price?: number | string | null;
+  currency?: string | null;
   best_time?: string | null;
   destination_category?: string | { name?: string | null } | null;
   destination_category_name?: string | null;
@@ -117,6 +118,7 @@ export function toDestinationCardModel(destination: PublicTravelDestination, fal
     rating: Number(destination.average_rating ?? destination.rating ?? 4.8),
     reviews: String(destination.reviews_count ?? destination.review_count ?? 0),
     priceFrom: Number(destination.price_from ?? destination.min_price ?? 0),
+    currency: destination.currency ?? "VND",
     description,
     bestTime: destination.best_time ?? "All year"
   };

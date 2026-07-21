@@ -22,6 +22,7 @@ export type PublicTour = {
   duration_days?: number | string;
   duration_nights?: number | string;
   tour_type?: string;
+  languages?: string[];
   meeting_point?: string | null;
   pickup_available?: boolean;
   pickup_description?: string | null;
@@ -37,7 +38,32 @@ export type PublicTour = {
   tour_destinations?: PublicTourDestination[];
   TourDestinations?: PublicTourDestination[];
   status?: string;
+  average_rating?: number | string;
+  review_count?: number | string;
+  tour_category?: string | PublicTourCategory;
 };
+
+export type PublicTourCategory = {
+  tour_category_id?: number;
+  id?: number;
+  name: string;
+};
+
+export type PublicTourListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  tour_category_id?: number;
+  min_price?: number;
+  max_price?: number;
+  tour_type?: "group" | "private" | "self_guided";
+  min_duration?: number;
+  max_duration?: number;
+  min_rating?: number;
+  language?: string;
+};
+
+export type PublicTourListResult = { items: PublicTour[]; total: number; totalPages: number };
 
 export type PublicTourDestination = {
   name?: string;
@@ -66,13 +92,40 @@ function unwrapList(value: unknown) {
   return [];
 }
 
+function unwrapPaginatedList(value: unknown): PublicTourListResult {
+  const body = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const items = unwrapList(value);
+  const pagination = body.pagination as { total?: number; totalPages?: number } | undefined;
+  return {
+    items,
+    total: Number(pagination?.total ?? items.length),
+    totalPages: Number(pagination?.totalPages ?? 1) || 1
+  };
+}
+
 export function getPublicTourId(tour: PublicTour) { return tour.tour_id ?? tour.id ?? 0; }
 export function getPublicTourName(tour: PublicTour) { return tour.name ?? tour.title ?? `Tour #${getPublicTourId(tour)}`; }
 
 export const tourService = {
-  async list() {
-    const response = await api.get("/tours");
+  async list(params: PublicTourListParams = {}) {
+    const response = await api.get("/tours", { params });
     return unwrapList(response.data);
+  },
+  async listPaginated(params: PublicTourListParams = {}) {
+    const response = await api.get("/tours", { params });
+    return unwrapPaginatedList(response.data);
+  },
+  async categories() {
+    const response = await api.get("/tour-categories");
+    const data = unwrapData<unknown>(response.data);
+    if (Array.isArray(data)) return data as PublicTourCategory[];
+    if (data && typeof data === "object") {
+      const nested = (data as { items?: unknown; categories?: unknown; data?: unknown }).items
+        ?? (data as { categories?: unknown }).categories
+        ?? (data as { data?: unknown }).data;
+      return Array.isArray(nested) ? nested as PublicTourCategory[] : [];
+    }
+    return [];
   },
   async detail(id: string) {
     const response = await api.get(`/tours/${id}`);

@@ -8,6 +8,7 @@ export type Destination = {
   rating: number;
   reviews: string;
   priceFrom: number;
+  currency?: string;
   badge?: string;
   description: string;
   bestTime: string;
@@ -22,6 +23,7 @@ export type Tour = {
   reviews: string;
   duration: string;
   price: number;
+  currency?: string;
   category: string;
   capacity: string;
   badge?: string;

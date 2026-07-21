@@ -1,6 +1,6 @@
 export function GroupTripListSkeleton() {
-  return <div className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Loading group trips" aria-busy="true">
-    {Array.from({ length: 4 }, (_, index) => <div key={index} className="animate-pulse rounded-lg border border-slate-200 p-5"><div className="flex justify-between gap-4"><div className="h-5 w-2/3 rounded bg-slate-200" /><div className="h-6 w-16 rounded-full bg-slate-100" /></div><div className="mt-4 h-3.5 w-full rounded bg-slate-100" /><div className="mt-2 h-3.5 w-4/5 rounded bg-slate-100" /><div className="mt-5 grid gap-3"><SkeletonLine width="w-1/2" /><SkeletonLine width="w-3/4" /><SkeletonLine width="w-2/5" /></div></div>)}
+  return <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3" aria-label="Loading group trips" aria-busy="true">
+    {Array.from({ length: 6 }, (_, index) => <div key={index} className="min-h-[292px] animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="h-28 bg-brand-100" /><div className="p-5"><div className="h-3.5 w-full rounded bg-slate-100" /><div className="mt-2 h-3.5 w-4/5 rounded bg-slate-100" /><div className="mt-5 grid grid-cols-2 gap-3"><div className="h-14 rounded-xl bg-slate-100" /><div className="h-14 rounded-xl bg-slate-100" /></div><div className="mt-5 h-8 rounded bg-slate-100" /></div></div>)}
   </div>;
 }
 
