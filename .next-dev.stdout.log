@@ -8,93 +8,33 @@
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 2.2s
- ○ Compiling / ...
- ✓ Compiled /admin/travel-destinations in 15.3s (2283 modules)
- GET / 200 in 15812ms
- GET /admin/travel-destinations 200 in 9654ms
- GET /admin 200 in 15023ms
- ○ Compiling /admin/locations ...
- ✓ Compiled /admin/locations in 1178ms (2282 modules)
- GET /admin/locations 200 in 1529ms
- ○ Compiling /admin/maps ...
- ✓ Compiled /admin/maps in 1129ms (2293 modules)
- GET /admin/maps?locationId=55 200 in 1344ms
- GET / 200 in 583ms
+ ✓ Ready in 2.5s
+ ○ Compiling /view360 ...
+ ✓ Compiled /view360 in 19.4s (1721 modules)
+ GET /view360?destinationId=6 200 in 21735ms
+ GET /view360?destinationId=6 200 in 293ms
+ GET /view360?destinationId=6 200 in 220ms
  ○ Compiling /api/view360 ...
- ✓ Compiled /api/view360 in 1240ms (2313 modules)
- GET /api/view360 200 in 1842ms
- ○ Compiling /api/view360/image ...
- ✓ Compiled /api/view360/image in 792ms (2315 modules)
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1781967839780-captured-just-as-peak-hour-begins-the-calm-and-tranquility-of-the-river-on-one-side-is-in-stark-contrast-to-the-hustle-and-bustle-of-the-cbd-2DH8Y78.jpg 200 in 2778ms
- ○ Compiling /tours ...
- ✓ Compiled /tours in 2.1s (2338 modules)
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784534451072-picture3-17171710448722083760711.png 200 in 6889ms
- GET /tours 200 in 2382ms
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg 200 in 7093ms
- ○ Compiling /destinations ...
- ✓ Compiled /destinations in 1092ms (2351 modules)
- GET /destinations 200 in 1306ms
- GET / 200 in 660ms
- GET /api/view360 200 in 1958ms
- GET / 200 in 209ms
- GET /api/view360 200 in 1484ms
- GET /destinations 200 in 68ms
- GET /tours 200 in 133ms
- GET /destinations 200 in 86ms
- GET /admin/travel-destinations 200 in 129ms
- GET /admin/locations 200 in 133ms
- GET /admin/locations 200 in 198ms
- ○ Compiling /admin/travel-feed ...
- ✓ Compiled /admin/travel-feed in 3s (1804 modules)
- ○ Compiling /travel-feed ...
- ✓ Compiled /travel-feed in 1817ms (1831 modules)
- GET /admin/travel-feed 200 in 5282ms
- GET /travel-feed 200 in 2325ms
- ○ Compiling /blogs ...
- ✓ Compiled /blogs in 1096ms (1819 modules)
- GET /blogs 200 in 1355ms
- ○ Compiling /blogs/[id] ...
- ✓ Compiled /blogs/[id] in 1029ms (1830 modules)
- GET /blogs/hon-son-vien-ngoc-xanh-kien-giang 200 in 1883ms
- GET /admin/travel-feed 200 in 625ms
- ○ Compiling /admin/destination-categories ...
- ✓ Compiled /admin/travel-destinations in 3s (1834 modules)
- GET /admin/travel-destinations 200 in 2416ms
- GET /admin/destination-categories 200 in 3491ms
- ○ Compiling /admin/tour-categories ...
- ✓ Compiled /admin/tour-categories in 1021ms (1828 modules)
- GET /admin/tour-categories 200 in 1331ms
- GET /admin/tour-categories 200 in 567ms
- ○ Compiling /admin/users ...
- ✓ Compiled /admin/users in 3.3s (1839 modules)
- GET /admin/users 200 in 3438ms
- GET /blogs/hon-son-vien-ngoc-xanh-kien-giang 200 in 218ms
- GET /destinations 200 in 225ms
- GET /admin/users 200 in 84ms
- ○ Compiling /admin/destination-categories ...
- ✓ Compiled /admin/destination-categories in 531ms (741 modules)
- GET /admin/destination-categories 200 in 782ms
- GET /admin/travel-destinations 200 in 175ms
- GET /destinations 200 in 111ms
+ ✓ Compiled /api/view360 in 1733ms (1706 modules)
+ GET /view360?destinationId=6 200 in 536ms
+ GET /api/view360?destinationId=6 200 in 2997ms
+ ○ Compiling /api/locations/[id]/weather ...
+ ✓ Compiled /api/locations/[id]/weather in 1324ms (1700 modules)
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784658264491-thuyet-minh-view360-149.mp3 206 in 1757ms
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784658243795-ong-de-folk-games-360.png 200 in 2614ms
+ GET /api/view360/149/hotspots 200 in 3141ms
+ GET /api/locations/157/weather 200 in 4250ms
  ○ Compiling /destinations/[id] ...
- ✓ Compiled /destinations/[id] in 2.1s (1849 modules)
- GET /destinations/34 200 in 2944ms
- ○ Compiling / ...
- ✓ Compiled / in 2.5s (762 modules)
- GET / 200 in 2856ms
- ○ Compiling /api/view360 ...
- ✓ Compiled /api/view360 in 758ms (781 modules)
- GET /api/view360 200 in 2012ms
- GET /api/view360 200 in 2234ms
- ○ Compiling /blogs ...
- ✓ Compiled /blogs in 882ms (781 modules)
- GET /blogs 200 in 1171ms
- ○ Compiling /group-trips ...
- ✓ Compiled /maps/travel in 4.8s (1908 modules)
- GET /maps/travel 200 in 3154ms
- GET /group-trips 200 in 5262ms
- ○ Compiling /destinations ...
- ✓ Compiled /destinations in 611ms (799 modules)
- GET /admin/travel-destinations 200 in 1920ms
- GET /destinations 200 in 1927ms
+ ✓ Compiled /destinations/[id] in 1353ms (1739 modules)
+ GET /destinations/6 200 in 2783ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 10.4s (2824 modules)
+ GET /admin 200 in 11067ms
+ GET /admin 200 in 130ms
+ ○ Compiling /admin/travel-feed/comments ...
+ ✓ Compiled /admin/travel-feed/comments in 3.8s (2855 modules)
+ GET /admin/travel-feed/comments 200 in 4198ms
+ ○ Compiling /api/view360/image ...
+ ✓ Compiled /api/view360/image in 956ms (1542 modules)
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784660554743-ninh-kieu-park-360-v2.png 200 in 11634ms
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784660572126-ninh-kieu-footbridge-360-v2.png 200 in 8608ms

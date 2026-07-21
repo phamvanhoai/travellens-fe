@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const audioUrl = new URL(source);
-    if (audioUrl.protocol !== "https:" || !allowedHosts.has(audioUrl.hostname)) {
-      return NextResponse.json({ message: "Audio host is not allowed." }, { status: 400 });
+    if (audioUrl.protocol !== "https:") {
+      return NextResponse.json({ message: "Audio URL must use HTTPS." }, { status: 400 });
+    }
+    if (!allowedHosts.has(audioUrl.hostname)) {
+      return NextResponse.redirect(audioUrl, 307);
     }
 
     const range = request.headers.get("range");
