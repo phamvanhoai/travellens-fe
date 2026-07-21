@@ -1,8 +1,8 @@
 "use client";
 
 import axios from "axios";
-import { ArrowLeft, MessageSquareText, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Heart, MapPin, MessageCircle, MessageSquareText, RefreshCw, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { useToast } from "@/components/common/toast";
@@ -11,7 +11,11 @@ import { resolveBackendAssetUrl } from "@/lib/avatar";
 import {
   adminTravelFeedService,
   getTravelFeedAuthor,
+  getTravelFeedCommentAuthor,
+  getTravelFeedCommentContent,
   getTravelFeedCommentCount,
+  getTravelFeedCommentId,
+  getTravelFeedCommentReplies,
   getTravelFeedContent,
   getTravelFeedDestinationName,
   getTravelFeedLikeCount,
@@ -21,6 +25,7 @@ import {
   getTravelFeedReportCount,
   getTravelFeedShareCount,
   getTravelFeedTitle,
+  type TravelFeedComment,
   type TravelFeedPost
 } from "@/services/travel-feed.service";
 import { formatDate } from "@/utils/format";
@@ -28,8 +33,11 @@ import { formatDate } from "@/utils/format";
 export default function AdminTravelFeedPostDetailPage() {
   const params = useParams<{ postId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const postId = params.postId;
+  const highlightedCommentId = Number(searchParams.get("comment_id") ?? 0);
   const [post, setPost] = useState<TravelFeedPost | null>(null);
+  const [comments, setComments] = useState<TravelFeedComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -40,13 +48,17 @@ export default function AdminTravelFeedPostDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await adminTravelFeedService.detailPost(postId);
+      const [result, commentsResult] = await Promise.all([
+        adminTravelFeedService.detailPost(postId),
+        adminTravelFeedService.listComments({ post_id: Number(postId), page: 1, limit: 100, include_deleted: true, sort: "newest" })
+      ]);
       if (!result) {
         setPost(null);
         setError("Cannot find this travel feed post from the admin API.");
         return;
       }
       setPost(result);
+      setComments(buildCommentTree(commentsResult.items));
     } catch (err) {
       const message = getApiError(err, "Cannot load this travel feed post.");
       setError(message);
@@ -149,22 +161,54 @@ export default function AdminTravelFeedPostDetailPage() {
           </div>
         ) : post ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="min-w-0">
+            <article className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="p-5">
+                <div className="flex items-start gap-3">
+                  {author?.avatar ? (
+                    <img src={resolveBackendAssetUrl(author.avatar)} alt={author.name} className="size-11 rounded-full object-cover" />
+                  ) : (
+                    <div className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                      {(author?.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-bold text-ink">{title}</h2>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
+                      <span>{author?.name || "Unknown user"}</span>
+                      {post.created_at ? <span>{formatDate(post.created_at)}</span> : null}
+                      {place ? <span className="inline-flex items-center gap-1"><MapPin size={13} />{place}</span> : null}
+                    </div>
+                  </div>
+                </div>
+                {getTravelFeedContent(post) ? <p className="mt-4 whitespace-pre-line text-[15px] leading-7 text-slate-700">{getTravelFeedContent(post)}</p> : null}
+              </div>
+
               {photos.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className={photos.length === 1 ? "grid" : "grid gap-1 sm:grid-cols-2"}>
                   {photos.map((photo, index) => (
-                    <img key={`${photo}-${index}`} src={resolveBackendAssetUrl(photo)} alt={`${title} photo ${index + 1}`} className="h-64 w-full rounded-lg border border-slate-200 object-cover" />
+                    <img key={`${photo}-${index}`} src={resolveBackendAssetUrl(photo)} alt={`${title} photo ${index + 1}`} className={photos.length === 1 ? "max-h-[620px] w-full object-cover" : "h-80 w-full object-cover"} />
                   ))}
                 </div>
-              ) : (
-                <div className="grid h-64 place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm font-semibold text-slate-400">No images</div>
-              )}
+              ) : null}
 
-              <section className="mt-6">
-                <h2 className="text-lg font-bold">Content</h2>
-                <p className="mt-3 whitespace-pre-line rounded-lg bg-slate-50 p-4 leading-7 text-slate-700">{getTravelFeedContent(post) || "-"}</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-slate-500">
+                <span className="inline-flex items-center gap-2"><Heart size={16} />{getTravelFeedLikeCount(post)} likes</span>
+                <span className="inline-flex items-center gap-2"><MessageCircle size={16} />{getTravelFeedCommentCount(post)} comments</span>
+                <span className="inline-flex items-center gap-2"><Share2 size={16} />{getTravelFeedShareCount(post)} shares</span>
+              </div>
+
+              <section className="border-t border-slate-100 px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-bold text-ink">Comments</h3>
+                  <Button href={`/admin/travel-feed/comments?post_id=${postId}`} variant="ghost" className="h-8 px-2 text-xs">Manage comments</Button>
+                </div>
+                <div className="mt-3 grid gap-3">
+                  {comments.length ? comments.map((comment, index) => (
+                    <AdminCommentItem key={getTravelFeedCommentId(comment) || `${comment.created_at}-${index}`} comment={comment} highlightedCommentId={highlightedCommentId} />
+                  )) : <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No comments yet.</p>}
+                </div>
               </section>
-            </div>
+            </article>
 
             <aside className="h-fit rounded-lg border border-slate-200 p-4">
               <dl className="grid gap-4 text-sm">
@@ -200,6 +244,59 @@ export default function AdminTravelFeedPostDetailPage() {
       ) : null}
     </>
   );
+}
+
+function AdminCommentItem({ comment, highlightedCommentId }: { comment: TravelFeedComment; highlightedCommentId: number }) {
+  const id = getTravelFeedCommentId(comment);
+  const highlighted = id > 0 && id === highlightedCommentId;
+  const deleted = comment.status === "deleted" || Boolean(comment.deleted_at);
+  const replies = getTravelFeedCommentReplies(comment);
+
+  return (
+    <div id={id ? `comment-${id}` : undefined} className="scroll-mt-24">
+      <div className={`flex gap-3 rounded-lg p-3 ${highlighted ? "bg-amber-50 ring-2 ring-amber-300" : "bg-slate-50"}`}>
+        <div className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-slate-600 shadow-sm">
+          {getTravelFeedCommentAuthor(comment).charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-bold text-slate-800">{getTravelFeedCommentAuthor(comment)}</p>
+            {comment.created_at ? <span className="text-xs text-slate-400">{formatDate(comment.created_at)}</span> : null}
+            {deleted ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-700">Deleted</span> : null}
+          </div>
+          <p className={`mt-1 whitespace-pre-line text-sm leading-6 ${deleted ? "text-slate-400 line-through" : "text-slate-600"}`}>{getTravelFeedCommentContent(comment) || "-"}</p>
+        </div>
+      </div>
+      {replies.length ? (
+        <div className="ml-6 mt-3 grid gap-3 border-l-2 border-slate-200 pl-4 sm:ml-10">
+          {replies.map((reply, index) => <AdminCommentItem key={getTravelFeedCommentId(reply) || `${reply.created_at}-${index}`} comment={reply} highlightedCommentId={highlightedCommentId} />)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function buildCommentTree(items: TravelFeedComment[]) {
+  const byId = new Map<number, TravelFeedComment>();
+  const roots: TravelFeedComment[] = [];
+
+  items.forEach((item) => {
+    const id = getTravelFeedCommentId(item);
+    if (!id) return;
+    byId.set(id, { ...item, replies: getTravelFeedCommentReplies(item), Replies: undefined });
+  });
+
+  byId.forEach((comment) => {
+    const parentId = Number(comment.parent_comment_id ?? 0);
+    const parent = parentId ? byId.get(parentId) : undefined;
+    if (parent) {
+      parent.replies = [...getTravelFeedCommentReplies(parent), comment];
+    } else {
+      roots.push(comment);
+    }
+  });
+
+  return roots;
 }
 
 function DetailItem({ label, children }: { label: string; children: React.ReactNode }) {
