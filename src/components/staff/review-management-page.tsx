@@ -15,6 +15,7 @@ import {
   getStaffReviewId,
   getStaffReviewLocationId,
   getStaffReviewLocationName,
+  getStaffReviewTarget,
   getStaffReviewUserId,
   getStaffReviewUserName,
   staffReviewService,
@@ -49,7 +50,8 @@ function ReviewManagementPage() {
   const visible = items.filter((item) => {
     const user = users.get(getStaffReviewUserId(item));
     const location = locations.get(getStaffReviewLocationId(item));
-    return `${getStaffReviewId(item)} ${user?.name ?? getStaffReviewUserName(item)} ${user?.email ?? ""} ${location?.name ?? getStaffReviewLocationName(item)} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase());
+    const target = getStaffReviewTarget(item);
+    return `${getStaffReviewId(item)} ${user?.name ?? getStaffReviewUserName(item)} ${user?.email ?? item.user_email ?? ""} ${location?.name ?? target.name} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase());
   });
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -130,7 +132,7 @@ function ReviewManagementPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-1 text-sm text-slate-500">{description}</p></div><Button variant="outline" onClick={() => void loadReviews()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button></div>
       {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
       <div className="relative mt-6 max-w-md"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search reviews..." /></div>
-      <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "User", "Location", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
+      <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "Customer", "Review target", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <AdminTableSkeleton columns={7} rows={10} />
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
             : rows.map((item) => {
@@ -139,8 +141,10 @@ function ReviewManagementPage() {
               const user = users.get(userId);
               const location = locations.get(locationId);
               const userName = user?.name || getStaffReviewUserName(item);
-              const locationName = location?.name || getStaffReviewLocationName(item);
-              return <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3"><p className="font-semibold text-slate-800">{userName}</p>{user?.email ? <p className="mt-1 text-xs text-slate-500">{user.email}</p> : userId ? <p className="mt-1 text-xs text-slate-400">User #{userId}</p> : null}</td><td className="p-3"><p className="font-semibold text-slate-800">{locationName}</p>{locationId ? <p className="mt-1 text-xs text-slate-400">Location #{locationId}</p> : null}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2">{isAdmin ? <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button> : null}<button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>;
+              const target = getStaffReviewTarget(item);
+              const targetName = target.type === "Location" ? location?.name || target.name : target.name;
+              const email = user?.email || item.user_email;
+              return <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3"><p className="font-semibold text-slate-800">{userName}</p>{email ? <p className="mt-1 text-xs text-slate-500">{email}</p> : userId ? <p className="mt-1 text-xs text-slate-400">User #{userId}</p> : null}</td><td className="p-3"><p className="font-semibold text-slate-800">{targetName}</p><p className="mt-1 text-xs text-slate-400">{target.type}{target.id ? ` #${target.id}` : ""}</p></td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2">{isAdmin ? <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button> : null}<button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>;
             })}
       </tbody></table></div>
       <Pagination page={currentPage} pageCount={pageCount} totalItems={visible.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />

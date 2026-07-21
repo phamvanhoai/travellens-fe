@@ -7,12 +7,16 @@ export type StaffReview = {
   id?: number;
   user_id?: number;
   location_id?: number;
+  tour_id?: number;
+  booking_id?: number;
   rating: number;
   comment?: string;
   status: StaffReviewStatus;
   user_name?: string;
+  user_email?: string;
   location_name?: string;
-  user?: { user_id?: number; id?: number; name?: string };
+  tour_name?: string;
+  user?: { user_id?: number; id?: number; name?: string; email?: string };
   location?: { location_id?: number; id?: number; name?: string };
 };
 
@@ -61,9 +65,14 @@ export function getStaffReviewLocationName(review: StaffReview) {
   return review.location_name ?? review.location?.name ?? `#${getStaffReviewLocationId(review)}`;
 }
 
+export function getStaffReviewTarget(review: StaffReview) {
+  if (review.tour_id || review.tour_name) return { type: "Tour", name: review.tour_name ?? `Tour #${review.tour_id}`, id: review.tour_id ?? 0 };
+  return { type: "Location", name: review.location_name ?? review.location?.name ?? `Location #${getStaffReviewLocationId(review)}`, id: getStaffReviewLocationId(review) };
+}
+
 export const staffReviewService = {
   async list() {
-    const response = await api.get("/staff/reviews");
+    const response = await api.get("/staff/reviews", { params: { page: 1, limit: 100 } });
     return unwrapList(response.data);
   },
   async detail(id: number) {
