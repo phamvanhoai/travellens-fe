@@ -12,6 +12,22 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "s3.cloudfly.vn",
       },
+      {
+        protocol: "https",
+        hostname: "commons.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "scontent.iocvnpt.com",
+      },
+      {
+        protocol: "https",
+        hostname: "visitphuquoc.com.vn",
+      },
     ],
   },
 };

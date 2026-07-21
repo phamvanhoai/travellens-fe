@@ -30,7 +30,7 @@ export type AdminView360Image = {
 export type AdminView360Payload = {
   title: string;
   description: string;
-  audio_file?: File | null;
+  audio_file?: File | string | null;
   language: string;
   order_index: string;
 };
@@ -82,7 +82,9 @@ function sceneFormData(payload: AdminView360Payload) {
   const formData = new FormData();
   formData.append("title", payload.title);
   formData.append("description", payload.description);
-  if (payload.audio_file) formData.append("audio_file", payload.audio_file);
+  if (payload.audio_file) {
+    formData.append("audio_file", payload.audio_file instanceof File ? payload.audio_file : payload.audio_file.trim());
+  }
   if (payload.language) formData.append("language", payload.language);
   if (payload.order_index) formData.append("order_index", payload.order_index);
   return formData;
