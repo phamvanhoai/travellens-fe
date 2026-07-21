@@ -73,6 +73,7 @@ export function PanoramaViewer({
     let startLatitude = 0;
     let frameId = 0;
     let texture: THREE.Texture | null = null;
+    let cancelled = false;
     let hotspotFrameCount = 0;
 
     onLoadingChange(true);
@@ -81,16 +82,41 @@ export function PanoramaViewer({
     loader.load(
       imageUrl,
       (loadedTexture) => {
-        texture = loadedTexture;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.minFilter = THREE.LinearFilter;
-        material.map = texture;
-        material.color.set(0xffffff);
-        material.needsUpdate = true;
-        onLoadingChange(false);
+        if (cancelled) {
+          loadedTexture.dispose();
+          return;
+        }
+
+        try {
+          const source = loadedTexture.image as CanvasImageSource;
+          const canvas = document.createElement("canvas");
+          canvas.width = 2048;
+          canvas.height = 1024;
+          const context = canvas.getContext("2d", { alpha: false });
+          if (!context) throw new Error("Canvas 2D is unavailable.");
+          context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+          texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.generateMipmaps = false;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          material.map = texture;
+          material.color.set(0xffffff);
+          material.needsUpdate = true;
+          loadedTexture.dispose();
+          onLoadingChange(false);
+        } catch {
+          loadedTexture.dispose();
+          onLoadingChange(false);
+          onError("This panorama image could not be prepared for 360 viewing.");
+        }
       },
       undefined,
       () => {
+        if (cancelled) return;
         onLoadingChange(false);
         onError("This panorama image could not be loaded.");
       }
@@ -182,6 +208,7 @@ export function PanoramaViewer({
     render();
 
     return () => {
+      cancelled = true;
       window.cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
@@ -193,6 +220,7 @@ export function PanoramaViewer({
       material.dispose();
       texture?.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     };
   }, [imageUrl, onError, onLoadingChange]);

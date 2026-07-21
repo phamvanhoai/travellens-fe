@@ -8,42 +8,8 @@
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 2.5s
- ○ Compiling /view360 ...
- ✓ Compiled /view360 in 19.4s (1721 modules)
- GET /view360?destinationId=6 200 in 21735ms
- GET /view360?destinationId=6 200 in 293ms
- GET /view360?destinationId=6 200 in 220ms
- ○ Compiling /api/view360 ...
- ✓ Compiled /api/view360 in 1733ms (1706 modules)
- GET /view360?destinationId=6 200 in 536ms
- GET /api/view360?destinationId=6 200 in 2997ms
- ○ Compiling /api/locations/[id]/weather ...
- ✓ Compiled /api/locations/[id]/weather in 1324ms (1700 modules)
- GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784658264491-thuyet-minh-view360-149.mp3 206 in 1757ms
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784658243795-ong-de-folk-games-360.png 200 in 2614ms
- GET /api/view360/149/hotspots 200 in 3141ms
- GET /api/locations/157/weather 200 in 4250ms
- ○ Compiling /destinations/[id] ...
- ✓ Compiled /destinations/[id] in 1353ms (1739 modules)
- GET /destinations/6 200 in 2783ms
- ○ Compiling /admin ...
- ✓ Compiled /admin in 10.4s (2824 modules)
- GET /admin 200 in 11067ms
- GET /admin 200 in 130ms
- ○ Compiling /admin/travel-feed/comments ...
- ✓ Compiled /admin/travel-feed/comments in 3.8s (2855 modules)
- GET /admin/travel-feed/comments 200 in 4198ms
- ○ Compiling /api/view360/image ...
- ✓ Compiled /api/view360/image in 956ms (1542 modules)
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784660554743-ninh-kieu-park-360-v2.png 200 in 11634ms
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784660572126-ninh-kieu-footbridge-360-v2.png 200 in 8608ms
- ○ Compiling /admin/travel-feed/[postId] ...
- ✓ Compiled /admin/travel-feed/[postId] in 4.7s (2855 modules)
- GET /admin/travel-feed/98?comment_id=199 200 in 6661ms
- ○ Compiling /admin/users ...
- ✓ Compiled /admin/users in 2.4s (2871 modules)
- GET /admin/users 200 in 2973ms
- ○ Compiling /api/view360/image ...
- ✓ Compiled /api/view360/image in 3.5s (1542 modules)
- GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784666080216-view-150-independence-palace-reception-hall-v2.png 200 in 13362ms
+ ✓ Ready in 4.3s
+ ○ Compiling / ...
+ ✓ Compiled / in 15.3s (1015 modules)
+ GET / 200 in 16594ms
+[?25h
