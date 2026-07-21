@@ -9,24 +9,94 @@
 
  ✓ Starting...
  ✓ Ready in 2.4s
- ○ Compiling /destinations ...
- ✓ Compiled /destinations in 1588ms (958 modules)
- GET /destinations 200 in 2120ms
- GET /destinations 200 in 314ms
- ○ Compiling /destinations/[id] ...
- ✓ Compiled /destinations/[id] in 6.7s (1005 modules)
- GET /destinations/75 200 in 8010ms
- GET /destinations/75 200 in 147ms
  ○ Compiling /view360 ...
- ✓ Compiled /view360 in 6.8s (1748 modules)
- GET /view360?destinationId=75 200 in 7884ms
- GET /view360?destinationId=75 200 in 670ms
+ ✓ Compiled /view360 in 4.9s (1672 modules)
+ GET /view360 200 in 6680ms
+ GET /view360 200 in 343ms
  ○ Compiling /api/view360 ...
- ✓ Compiled /api/view360 in 1755ms (1768 modules)
- GET /api/view360?destinationId=75 200 in 4937ms
- GET /api/view360?destinationId=75 200 in 5581ms
- GET /destinations/75 200 in 241ms
- ○ Compiling /admin/view360 ...
- ✓ Compiled /admin/view360 in 1660ms (1837 modules)
- GET /admin/view360 200 in 1953ms
-[?25h
+ ✓ Compiled /api/view360 in 1066ms (1692 modules)
+ GET /api/view360 200 in 1667ms
+ ○ Compiling /api/view360/image ...
+ ✓ Compiled /api/view360/image in 770ms (1694 modules)
+ GET /api/view360/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1570366583862-f91883984fde%3Fauto%3Dformat%26fit%3Dcrop%26w%3D1600%26q%3D85 400 in 1156ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F5%2F54%2FNinh_Kieu_Quay.jpg 502 in 1422ms
+ GET /api/view360/image?url=https%3A%2F%2Fscontent.iocvnpt.com%2Fresources%2Fportal%2FImages%2FCTO%2Fsuperadminportal.cto%2FDiaDiem%2FConSon%2Fconson_avatar_637018231142067294.jpg 502 in 1519ms
+ ○ Compiling /api/view360/[id]/hotspots ...
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fe%2Fe1%2FNha_co_Binh_Thuy_1.jpg 200 in 3773ms
+ ✓ Compiled /api/view360/[id]/hotspots in 2.9s (1698 modules)
+ GET /api/view360/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1559314809-0d155014e29e%3Fauto%3Dformat%26fit%3Dcrop%26w%3D1600%26q%3D85 400 in 2800ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F0%2F0f%2FCentral_Sector_of_the_Imperial_Citadel_of_Thang_Long_-_Hanoi.jpg 502 in 716ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fb%2Fb9%2FHue_Vietnam_Citadel-of-Hu%25E1%25BA%25BF-13.jpg 502 in 194ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F5%2F56%2FThi%25E1%25BB%2581n_Vi%25E1%25BB%2587n_Tr%25C3%25BAc_L%25C3%25A2m_Ph%25C6%25B0%25C6%25A1ng_Nam_(2).jpg 502 in 298ms
+ ○ Compiling /api/view360/audio ...
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fb%2Fb7%2FMain_gate_of_the_Temple_of_Literature%252C_Hanoi%252C_Vietnam%252C_20240123_0929_3068.jpg 200 in 5558ms
+ ✓ Compiled /api/view360/audio in 862ms (1700 modules)
+ GET /api/locations/4/weather 200 in 4960ms
+ GET /api/view360/2/hotspots 200 in 4796ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1781939913232-River-Flows-In-You-Piano-00_00_00-00_01_13.mp3 206 in 1638ms
+ GET /api/view360/50/hotspots 200 in 803ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F5%2F54%2FNinh_Kieu_Quay.jpg 200 in 949ms
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg 200 in 7521ms
+ GET /api/locations/58/weather 200 in 1430ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657226223-thuyet-minh-view360-50.mp3 206 in 1394ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657215571-thuyet-minh-view360-49.mp3 206 in 852ms
+ GET /api/locations/57/weather 200 in 1357ms
+ GET /api/view360/49/hotspots 200 in 1467ms
+ GET /api/view360/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1570366583862-f91883984fde%3Fauto%3Dformat%26fit%3Dcrop%26w%3D1600%26q%3D85 400 in 261ms
+ GET /api/view360/51/hotspots 200 in 765ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657215241-thuyet-minh-view360-51.mp3 206 in 718ms
+ GET /api/locations/59/weather 200 in 1363ms
+ GET /view360 200 in 1324ms
+ GET /api/view360 200 in 942ms
+ GET /api/view360/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1559314809-0d155014e29e%3Fauto%3Dformat%26fit%3Dcrop%26w%3D1600%26q%3D85 400 in 92ms
+ GET /api/view360/image?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1570366583862-f91883984fde%3Fauto%3Dformat%26fit%3Dcrop%26w%3D1600%26q%3D85 400 in 189ms
+ GET /api/view360/image?url=https%3A%2F%2Fscontent.iocvnpt.com%2Fresources%2Fportal%2FImages%2FCTO%2Fsuperadminportal.cto%2FDiaDiem%2FConSon%2Fconson_avatar_637018231142067294.jpg 502 in 307ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fb%2Fb9%2FHue_Vietnam_Citadel-of-Hu%25E1%25BA%25BF-13.jpg 502 in 385ms
+ GET /api/locations/4/weather 200 in 933ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1781939913232-River-Flows-In-You-Piano-00_00_00-00_01_13.mp3 206 in 691ms
+ GET /api/view360/2/hotspots 200 in 1003ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F5%2F56%2FThi%25E1%25BB%2581n_Vi%25E1%25BB%2587n_Tr%25C3%25BAc_L%25C3%25A2m_Ph%25C6%25B0%25C6%25A1ng_Nam_(2).jpg 200 in 1747ms
+ GET /api/view360/image?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F0%2F0f%2FCentral_Sector_of_the_Imperial_Citadel_of_Thang_Long_-_Hanoi.jpg 200 in 2894ms
+ GET /api/view360/56/hotspots 200 in 1065ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657245584-thuyet-minh-view360-56.mp3 206 in 1423ms
+ GET /api/locations/64/weather 200 in 1685ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657239492-thuyet-minh-view360-55.mp3 206 in 775ms
+ GET /api/view360/55/hotspots 200 in 833ms
+ GET /api/locations/63/weather 200 in 899ms
+ GET /api/view360/121/hotspots 200 in 788ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657258934-thuyet-minh-view360-121.mp3 206 in 981ms
+ GET /api/locations/129/weather 200 in 1386ms
+ GET /api/view360/122/hotspots 200 in 452ms
+ GET /api/locations/130/weather 200 in 1458ms
+ GET /api/view360/audio?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-audio%2F1784657257555-thuyet-minh-view360-122.mp3 206 in 1871ms
+ ○ Compiling /destinations ...
+ ✓ Compiled /destinations in 2.3s (1747 modules)
+ GET /destinations 200 in 3116ms
+ GET /destinations 200 in 324ms
+ ○ Compiling /destinations/[id] ...
+ ✓ Compiled /destinations/[id] in 2.8s (1749 modules)
+ GET /destinations/8 200 in 3945ms
+ GET /destinations/8 200 in 125ms
+ GET /view360?destinationId=8 200 in 137ms
+ ✓ Compiled /api/view360 in 341ms (1010 modules)
+ GET /api/view360?destinationId=8 200 in 2049ms
+ GET /api/view360?destinationId=8 200 in 2726ms
+ GET /destinations/8 200 in 265ms
+ ○ Compiling /api/view360/image ...
+ ✓ Compiled /api/view360/image in 715ms (1010 modules)
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784658243795-ong-de-folk-games-360.png 200 in 1479ms
+ GET /api/view360/image?url=https%3A%2F%2Fs3.cloudfly.vn%2Ftravellens%2Fview360-images%2F1784658245730-dinh-doc-lap-reception-hall-360.png 200 in 273ms
+ GET /destinations/8 200 in 783ms
+ GET /view360?destinationId=8 200 in 105ms
+ ✓ Compiled /api/view360 in 411ms (1012 modules)
+ GET /api/view360?destinationId=8 200 in 3336ms
+ GET /api/view360?destinationId=8 200 in 4006ms
+ GET /destinations/8 200 in 155ms
+ GET /destinations 200 in 110ms
+ GET /destinations/6 200 in 121ms
+ GET /view360?destinationId=6 200 in 115ms
+ GET /api/view360?destinationId=6 200 in 1464ms
+ GET /api/view360?destinationId=6 200 in 2138ms
+ GET /view360?destinationId=6 200 in 65ms
+ GET /api/view360?destinationId=6 200 in 1455ms
+ GET /api/view360?destinationId=6 200 in 2113ms

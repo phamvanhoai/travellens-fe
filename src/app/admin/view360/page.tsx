@@ -62,6 +62,8 @@ export default function AdminView360Page() {
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -81,51 +83,32 @@ export default function AdminView360Page() {
     setLoading(true);
     setError("");
     try {
-      const locationResult = await adminLocationService.list({ page: 1, limit: 100 });
-      const locationList = locationResult.data ?? [];
-      const sceneGroups = await Promise.all(locationList.map(async (location) => {
-        const locationId = getLocationId(location);
-        if (!locationId) return [];
-        try {
-          const scenes = await adminView360Service.listByLocation(locationId);
-          const scenesWithImages = await Promise.all(scenes.map(async (scene) => {
-            const viewId = getView360Id(scene);
-            const images = viewId ? await adminView360Service.listImages(viewId).catch(() => []) : [];
-            return {
-              ...scene,
-              location_id: locationId,
-              location_name: location.name,
-              images
-            };
-          }));
-          return scenesWithImages;
-        } catch {
-          return [];
-        }
-      }));
-
-      setLocations(locationList);
-      setItems(sceneGroups.flat());
+      const [locationResult, sceneResult] = await Promise.all([
+        adminLocationService.list({ page: 1, limit: 100 }),
+        adminView360Service.list({
+          page,
+          limit: pageSize,
+          search: query || undefined,
+          location_id: locationFilter ? Number(locationFilter) : undefined
+        })
+      ]);
+      setLocations(locationResult.data ?? []);
+      setItems(sceneResult.data.map((scene) => ({ ...scene, location_id: Number(scene.location_id), location_name: scene.location_name ?? "-", images: [] })));
+      setTotalItems(sceneResult.pagination.total);
+      setPageCount(Math.max(sceneResult.pagination.totalPages, 1));
     } catch (err) {
       setError("Cannot load View360 scenes from API.");
       showToast({ variant: "error", title: "Load failed", description: "Cannot load View360 scenes from API." });
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [locationFilter, page, query, showToast]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  const visibleItems = useMemo(() => items.filter((item) => {
-    const matchesLocation = !locationFilter || String(item.location_id) === locationFilter;
-    const matchesQuery = `${item.title} ${item.location_name} ${item.language ?? ""}`.toLowerCase().includes(query.toLowerCase());
-    return matchesLocation && matchesQuery;
-  }), [items, locationFilter, query]);
-  const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const paginatedItems = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const editingInitialValue = useMemo<FormValue>(() => {
     if (!editing) return emptyForm;
@@ -281,22 +264,23 @@ export default function AdminView360Page() {
             <tbody>
               {loading ? (
                 <AdminTableSkeleton columns={8} rows={10} />
-              ) : paginatedItems.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr><td colSpan={8} className="p-6 text-center text-slate-500">No View360 scenes found.</td></tr>
-              ) : paginatedItems.map((item) => (
+              ) : items.map((item) => (
                 <tr key={`${item.location_id}-${getView360Id(item)}`} className="border-t border-slate-100">
                   <td className="p-3 font-bold">#{getView360Id(item)}</td>
                   <td className="p-3 font-semibold"><Video className="mr-2 inline size-4 text-brand-600" />{item.title}</td>
                   <td className="p-3 text-slate-600">{item.location_name}</td>
                   <td className="p-3"><Languages className="mr-2 inline size-4 text-brand-600" />{item.language || "-"}</td>
-                  <td className="p-3 font-semibold">{item.images.length} images</td>
+                  <td className="p-3 font-semibold">{Number(item.image_count ?? item.images.length)} images</td>
                   <td className="p-3">{getView360Audio(item) ? <span className="text-brand-600"><Headphones className="mr-2 inline size-4" />Attached</span> : <span className="text-slate-400">Not attached</span>}</td>
                   <td className="p-3 text-slate-600">{item.order_index ?? "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
-                      <Button variant="outline" className="h-9 px-3" onClick={() => {
+                      <Button variant="outline" className="h-9 px-3" onClick={async () => {
                         setFieldErrors({});
-                        setEditing(item);
+                        const images = await adminView360Service.listImages(getView360Id(item)).catch(() => []);
+                        setEditing({ ...item, images });
                       }}><Pencil size={15} /> Edit</Button>
                       <DeleteButton label={item.title} onClick={() => setDeleting(item)} />
                     </span>
@@ -307,7 +291,7 @@ export default function AdminView360Page() {
           </table>
         </div>
 
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="View360 experiences" onPageChange={setPage} />
+        <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="View360 experiences" onPageChange={setPage} />
       </div>
 
       {creating || editing ? (

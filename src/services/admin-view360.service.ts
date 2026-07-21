@@ -13,6 +13,7 @@ export type AdminView360 = {
   language?: string;
   order_index?: number | string;
   images?: AdminView360Image[];
+  image_count?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -118,6 +119,19 @@ export function getView360HotspotId(hotspot: AdminView360Hotspot) {
 }
 
 export const adminView360Service = {
+  async list(params: { page?: number; limit?: number; search?: string; location_id?: number } = {}) {
+    const response = await api.get(`/admin/view360`, { params });
+    const body = response.data as { data?: AdminView360[]; pagination?: { page?: number; limit?: number; total?: number; totalPages?: number } };
+    return {
+      data: Array.isArray(body.data) ? body.data : [],
+      pagination: {
+        page: Number(body.pagination?.page ?? params.page ?? 1),
+        limit: Number(body.pagination?.limit ?? params.limit ?? 10),
+        total: Number(body.pagination?.total ?? 0),
+        totalPages: Number(body.pagination?.totalPages ?? 1)
+      }
+    };
+  },
   async listByLocation(locationId: number) {
     const response = await api.get(`/admin/locations/${locationId}/view360`);
     return unwrapList<AdminView360>(response.data);
