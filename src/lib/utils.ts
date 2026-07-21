@@ -5,10 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function currency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+export function currency(value: number, currencyCode = "USD") {
+  const normalizedCurrency = currencyCode.toUpperCase();
+  return new Intl.NumberFormat(normalizedCurrency === "VND" ? "vi-VN" : "en-US", {
     style: "currency",
-    currency: "USD",
+    currency: normalizedCurrency,
     maximumFractionDigits: 0
   }).format(value);
 }

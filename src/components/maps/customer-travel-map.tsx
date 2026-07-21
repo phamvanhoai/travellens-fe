@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import L, { type LatLngExpression } from "leaflet";
 import { Circle, LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { VietnamIslandsOverlay } from "@/components/maps/vietnam-islands-overlay";
-import { LocateFixed, MapPin, RefreshCw, Search, Star, Video } from "lucide-react";
+import { Compass, LocateFixed, MapPin, RefreshCw, Search, SlidersHorizontal, Star, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { destinationService, type PublicDestinationCategory } from "@/services/destination.service";
 import { mapService, type TravelMapFilterParams, type TravelMapMarker } from "@/services/map.service";
@@ -143,14 +143,14 @@ export default function CustomerTravelMap() {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-      <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold">Interactive Travel Map</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Explore destinations and locations from Travel360 API.</p>
+    <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <aside className="h-fit overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 [scrollbar-width:thin] lg:sticky lg:top-24 lg:max-h-[700px]">
+        <div className="flex items-center justify-between bg-gradient-to-r from-brand-600 to-cyan-500 px-5 py-4 text-white">
+          <div><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Plan your discovery</span><h2 className="mt-0.5 font-bold">Map filters</h2></div>
+          <span className="grid size-9 place-items-center rounded-xl bg-white/15"><SlidersHorizontal size={17} /></span>
         </div>
 
-        <form className="mt-5 space-y-4" onSubmit={handleSearch}>
+        <form className="space-y-4 p-5" onSubmit={handleSearch}>
           <label className="block text-sm font-semibold">
             Search
             <span className="relative mt-2 block">
@@ -158,7 +158,7 @@ export default function CustomerTravelMap() {
               <input
                 value={keywordInput}
                 onChange={(event) => setKeywordInput(event.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-brand-600"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white"
                 placeholder="Destination or location..."
               />
             </span>
@@ -172,7 +172,7 @@ export default function CustomerTravelMap() {
                 setDestinationCategoryId(event.target.value);
                 void loadMapData({ destination_category_id: event.target.value ? Number(event.target.value) : undefined });
               }}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white"
             >
               <option value="">All categories</option>
               {categories.map((item) => <option key={getCategoryId(item)} value={getCategoryId(item)}>{item.name}</option>)}
@@ -187,7 +187,7 @@ export default function CustomerTravelMap() {
                 setHasView360(event.target.value);
                 void loadMapData({ has_view360: event.target.value === "" ? undefined : event.target.value === "true" });
               }}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white"
             >
               <option value="">Any</option>
               <option value="true">Has 360</option>
@@ -203,14 +203,14 @@ export default function CustomerTravelMap() {
                 setMinRating(event.target.value);
                 void loadMapData({ min_rating: event.target.value ? Number(event.target.value) : undefined });
               }}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white"
             >
               <option value="">Any rating</option>
               {["3", "4", "4.5", "5"].map((item) => <option key={item} value={item}>{item}+ stars</option>)}
             </select>
           </label>
 
-          <label className="flex items-center gap-2 text-sm font-semibold">
+          <label className="flex cursor-pointer items-center justify-between rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold">
             <input
               type="checkbox"
               checked={popularOnly}
@@ -220,7 +220,7 @@ export default function CustomerTravelMap() {
               }}
               className="size-4 rounded border-slate-300 text-brand-600"
             />
-            Popular only
+            <span>Popular places only</span>
           </label>
 
           <label className="block text-sm font-semibold">
@@ -228,7 +228,7 @@ export default function CustomerTravelMap() {
             <select
               value={radius}
               onChange={(event) => setRadius(event.target.value)}
-              className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-600"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white"
             >
               {["2", "5", "10", "25", "50"].map((item) => <option key={item} value={item}>{item} km</option>)}
             </select>
@@ -246,11 +246,11 @@ export default function CustomerTravelMap() {
           </div>
         </form>
 
-        {error ? <div className="mt-5 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
+        {error ? <div className="mx-5 mb-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
 
-        <div className="mt-5 border-t border-slate-100 pt-5">
-          <p className="text-sm font-bold">{loading ? "Loading..." : `${visibleMarkers.length} places found`}</p>
-          <div className="mt-3 max-h-[360px] space-y-3 overflow-auto pr-1">
+        <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+          <div className="flex items-center justify-between"><p className="text-sm font-bold">Places</p><span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700">{loading ? "..." : visibleMarkers.length}</span></div>
+          <div className="mt-3 max-h-[300px] space-y-2 overflow-auto pr-1">
             {loading ? Array.from({ length: 5 }, (_, index) => (
               <div key={index} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3" aria-hidden="true">
                 <div className="size-12 shrink-0 animate-pulse rounded-md bg-slate-200" />
@@ -262,9 +262,9 @@ export default function CustomerTravelMap() {
               </div>
             )) : null}
             {!loading ? visibleMarkers.map((marker) => (
-              <a key={marker.id} href={marker.type === "location" ? `/locations/${marker.sourceId}` : `/destinations/${marker.sourceId}`} className="block rounded-lg border border-slate-200 p-3 hover:border-brand-500">
+              <a key={marker.id} href={marker.type === "location" ? `/locations/${marker.sourceId}` : `/destinations/${marker.sourceId}`} className="block rounded-xl border border-slate-200 p-2.5 transition hover:border-brand-300 hover:bg-brand-50/40">
                 <span className="flex items-start gap-3">
-                  {marker.imageUrl ? <img src={marker.imageUrl} alt="" className="size-12 rounded-md object-cover" /> : <span className="grid size-12 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-600"><MapPin size={18} /></span>}
+                  {marker.imageUrl ? <img src={marker.imageUrl} alt="" className="size-12 shrink-0 rounded-lg object-cover" /> : <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600"><MapPin size={18} /></span>}
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-ink">{marker.name}</span>
                     <span className="mt-1 block text-xs text-slate-500">{marker.category ?? marker.type}</span>
@@ -282,8 +282,9 @@ export default function CustomerTravelMap() {
         </div>
       </aside>
 
-      <div className="relative z-0 isolate overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <MapContainer center={defaultCenter} zoom={12} scrollWheelZoom className="h-[720px] min-h-[520px] w-full">
+      <div className="relative z-0 isolate overflow-hidden rounded-2xl border-4 border-white bg-white shadow-xl shadow-slate-900/10">
+        <div className="pointer-events-none absolute left-4 top-4 z-[500] hidden items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur sm:flex"><Compass size={15} className="text-brand-600" />Drag to explore · Scroll to zoom</div>
+        <MapContainer center={defaultCenter} zoom={12} scrollWheelZoom className="h-[700px] min-h-[520px] w-full">
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Street">
               <TileLayer

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Filter, Search } from "lucide-react";
+import { ChevronRight, Compass, Filter, Search, Sparkles } from "lucide-react";
 import { DestinationCard } from "@/components/cards/destination-card";
 import { Pagination } from "@/components/common/pagination";
 import { PageHero } from "@/components/common/page-hero";
@@ -33,6 +33,14 @@ export default function DestinationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const pageSize = 8;
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get("search")?.trim() ?? "";
+    if (query) {
+      setSearchInput(query);
+      setSearch(query);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -98,36 +106,36 @@ export default function DestinationsPage() {
         title="Explore Destinations"
         subtitle="Find your next adventure from around the world"
         image={images.santorini}
+        searchClassName="w-full"
         searchContent={
-          <form onSubmit={submitSearch} className="rounded-lg bg-white p-3 text-ink shadow-soft">
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <label className="rounded-lg border border-slate-100 px-4 py-3">
-                <span className="mb-2 block text-xs font-semibold text-slate-500">Where to?</span>
-                <span className="flex items-center gap-2">
-                  <Search size={16} className="text-brand-600" />
+          <form onSubmit={submitSearch} className="flex flex-col gap-3 rounded-2xl border border-white/40 bg-white/95 p-2.5 text-ink shadow-2xl backdrop-blur sm:flex-row sm:items-center">
+              <label className="flex min-w-0 flex-1 items-center gap-4 rounded-xl px-3 py-2">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Search size={20} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Discover a destination</span>
                   <input
                     value={searchInput}
                     onChange={(event) => setSearchInput(event.target.value)}
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-slate-400"
-                    placeholder="Search destinations..."
+                    className="mt-0.5 h-7 w-full bg-transparent text-base font-semibold text-ink outline-none placeholder:font-normal placeholder:text-slate-400"
+                    placeholder="Search by name or description..."
                   />
                 </span>
               </label>
-              <button type="submit" className="inline-flex h-full min-h-14 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700">
-                <Search size={17} /> Search
+              <button type="submit" className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-600 px-7 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700">
+                Explore places <ChevronRight size={17} />
               </button>
-            </div>
           </form>
         }
       />
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-wrap items-center gap-3">
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
           <button
             type="button"
             onClick={() => selectCategory("")}
-            className={!selectedCategoryId ? "rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white" : "rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold hover:border-brand-600 hover:text-brand-600"}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${!selectedCategoryId ? "bg-brand-600 text-white shadow-md shadow-brand-600/20" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
           >
-            All Destinations
+            <Compass size={16} /> All Destinations
           </button>
           {categories.map((category) => {
             const id = String(category.destination_category_id ?? category.id ?? "");
@@ -136,24 +144,23 @@ export default function DestinationsPage() {
                 key={id || category.name}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={selectedCategoryId === id ? "rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white" : "rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold hover:border-brand-600 hover:text-brand-600"}
+                className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold transition ${selectedCategoryId === id ? "bg-brand-600 text-white shadow-md shadow-brand-600/20" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
               >
                 {category.name}
               </button>
             );
           })}
-          <label className="ml-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold">
-            <Filter size={16} />
-            <select value={sortIndex} onChange={(event) => changeSort(event.target.value)} className="bg-transparent outline-none">
+          </div>
+          <label className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-600">
+            <Filter size={15} className="text-brand-600" />
+            <select value={sortIndex} onChange={(event) => changeSort(event.target.value)} className="cursor-pointer bg-transparent outline-none">
               {sortOptions.map((option, index) => (
                 <option key={option.label} value={index}>{option.label}</option>
               ))}
             </select>
           </label>
         </div>
-        <p className="mb-4 text-sm text-slate-500">
-          {search ? `Showing destinations for "${search}"` : "Showing travel destinations"}
-        </p>
+        <div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold text-slate-500">{isLoading ? "Finding destinations..." : `${totalItems} destination${totalItems === 1 ? "" : "s"} found`}</p>{search || selectedCategoryId ? <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-600"><Sparkles size={12} />Filtered</span> : null}</div>
         
         {error ? (
           <div className="mb-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
@@ -189,7 +196,7 @@ function DestinationsSkeleton({ count }: { count: number }) {
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading destinations" aria-busy="true">
       {Array.from({ length: count }, (_, index) => (
         <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="relative h-52 animate-pulse bg-slate-200">
+          <div className="relative h-44 animate-pulse bg-slate-200">
             <span className="absolute right-3 top-3 size-9 rounded-full bg-white/90" />
           </div>
           <div className="space-y-4 p-4">
