@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { Eye, MessageSquareText, RefreshCw, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
@@ -259,24 +260,24 @@ function PostRow({ post, onDelete }: { post: TravelFeedPost; onDelete: () => voi
       <td className="p-3">
         <span className="flex gap-2">
           {postId ? (
-            <a
+            <Link
               href={`/admin/travel-feed/${postId}`}
               title="View post details"
               aria-label={`View ${title}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Eye size={16} />
-            </a>
+            </Link>
           ) : null}
           {postId ? (
-            <a
+            <Link
               href={`/admin/travel-feed/comments?post_id=${postId}`}
               title="View post comments"
               aria-label={`View comments for ${title}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
             >
               <MessageSquareText size={16} />
-            </a>
+            </Link>
           ) : null}
           <button
             type="button"

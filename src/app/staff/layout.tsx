@@ -1,10 +1,11 @@
 "use client";
 
-import { CalendarCheck, CreditCard, MessageSquareText, Percent, RotateCcw } from "lucide-react";
+import { BarChart3, CalendarCheck, CreditCard, MessageSquareText, Percent, RotateCcw } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
+  [BarChart3, "Dashboard", "/staff"],
   [Percent, "Coupons", "/staff/coupons"],
   [CalendarCheck, "Bookings", "/staff/bookings"],
   [MessageSquareText, "Reviews", "/staff/reviews"],

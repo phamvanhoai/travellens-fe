@@ -1,0 +1,14 @@
+Failed to set fetch cache URL {
+  href: 'https://s3.cloudfly.vn/travellens/view360-images/1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg',
+  origin: 'https://s3.cloudfly.vn',
+  protocol: 'https:',
+  username: '',
+  password: '',
+  host: 's3.cloudfly.vn',
+  hostname: 's3.cloudfly.vn',
+  port: '',
+  pathname: '/travellens/view360-images/1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg',
+  search: '',
+  searchParams: URLSearchParams {},
+  hash: ''
+} [Error: Failed to set Next.js data cache for https://s3.cloudfly.vn/travellens/view360-images/1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg, items over 2MB can not be cached (2153684 bytes)]
