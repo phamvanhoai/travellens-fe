@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarCheck, CheckCircle2, Loader2, Minus, Pencil, Plus, RefreshCw, Search, Tag, Trash2, X, XCircle } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Eye, Loader2, Minus, Pencil, Plus, RefreshCw, Search, Tag, Trash2, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   getStaffBookingCustomer,
   getStaffBookingId,
   getStaffBookingPassengers,
+  getStaffBookingPaymentStatus,
   getStaffBookingTourName,
   getStaffBookingTravelDate,
   staffBookingService,
@@ -56,6 +57,8 @@ export default function StaffBookingsPage() {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<BookingFormValue | null>(null);
+  const [details, setDetails] = useState<StaffBooking | null>(null);
+  const [detailsLoadingId, setDetailsLoadingId] = useState(0);
 
   const loadBookings = useCallback(async (nextPage: number, search: string, status: string) => {
     setLoading(true);
@@ -145,6 +148,19 @@ export default function StaffBookingsPage() {
     }
   }
 
+  async function openDetails(item: StaffBooking) {
+    const id = getStaffBookingId(item);
+    setDetailsLoadingId(id);
+    try {
+      setDetails(await staffBookingService.detail(id));
+    } catch (err) {
+      const message = getApiError(err, "Cannot load booking details.");
+      showToast({ variant: "error", title: "Load failed", description: message });
+    } finally {
+      setDetailsLoadingId(0);
+    }
+  }
+
   return (
     <>
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -204,6 +220,9 @@ export default function StaffBookingsPage() {
                     <td className="p-3"><StatusBadge value={formValue.status} /></td>
                     <td className="p-3">
                       <span className="flex gap-2">
+                        <Button variant="outline" className="h-9 px-3" disabled={detailsLoadingId === getStaffBookingId(item)} onClick={() => void openDetails(item)}>
+                          {detailsLoadingId === getStaffBookingId(item) ? <Loader2 className="size-4 animate-spin" /> : <Eye size={15} />} Details
+                        </Button>
                         <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(formValue)}>
                           <Pencil size={15} /> Edit
                         </Button>
@@ -221,6 +240,7 @@ export default function StaffBookingsPage() {
 
       {creating ? <CreateBookingModal saving={saving} onClose={() => setCreating(false)} onCreate={create} /> : null}
       {editing ? <BookingModal item={editing} saving={saving} onClose={() => setEditing(null)} onSave={save} /> : null}
+      {details ? <BookingDetailsModal booking={details} onClose={() => setDetails(null)} /> : null}
     </>
   );
 }
@@ -736,6 +756,46 @@ function buildDepartureAt(date: string, schedule?: string) {
   const minute = timeMatch?.[2] ?? "00";
   return `${date}T${hour}:${minute}:00+07:00`;
 }
+
+function BookingDetailsModal({ booking, onClose }: { booking: StaffBooking; onClose: () => void }) {
+  const passengers = getStaffBookingPassengers(booking);
+  const customer = typeof booking.customer === "object" && booking.customer ? booking.customer : booking.user ?? booking.User;
+  const record = booking as StaffBooking & { contact_phone?: string; phone?: string; coupon_code?: string; discount_amount?: number | string; subtotal?: number | string; currency?: string };
+  const phone = record.contact_phone ?? record.phone ?? (customer as { phone?: string } | null | undefined)?.phone ?? "-";
+  const email = customer?.email ?? "-";
+  const paymentStatus = getStaffBookingPaymentStatus(booking) ?? "unpaid";
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl bg-white p-6 shadow-soft">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
+          <div><p className="text-xs font-bold uppercase tracking-wider text-brand-600">Booking details</p><h2 className="mt-1 text-2xl font-bold">{getStaffBookingCode(booking)}</h2><p className="mt-1 text-sm text-slate-500">Created {formatDateTime(booking.created_at)}</p></div>
+          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100" aria-label="Close booking details"><X size={18} /></button>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailCard label="Booking status"><StatusBadge value={booking.status ?? "pending"} /></DetailCard>
+          <DetailCard label="Payment status"><StatusBadge value={paymentStatus} /></DetailCard>
+          <DetailCard label="Travel date" value={formatDate(getStaffBookingTravelDate(booking))} />
+          <DetailCard label="Total amount" value={formatVnd(getStaffBookingAmount(booking))} strong />
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <section className="rounded-lg border border-slate-200 p-4"><h3 className="font-bold">Customer</h3><dl className="mt-3 grid gap-3 text-sm"><DetailRow label="Name" value={getStaffBookingCustomer(booking)} /><DetailRow label="Email" value={email} /><DetailRow label="Phone" value={phone} /><DetailRow label="User ID" value={booking.user_id ? `#${booking.user_id}` : "-"} /></dl></section>
+          <section className="rounded-lg border border-slate-200 p-4"><h3 className="font-bold">Tour & pricing</h3><dl className="mt-3 grid gap-3 text-sm"><DetailRow label="Tour" value={getStaffBookingTourName(booking)} /><DetailRow label="Tour ID" value={booking.tour_id ? `#${booking.tour_id}` : "-"} /><DetailRow label="Subtotal" value={record.subtotal !== undefined ? formatVnd(record.subtotal) : "-"} /><DetailRow label="Coupon" value={record.coupon_code || "None"} /><DetailRow label="Discount" value={record.discount_amount !== undefined ? formatVnd(record.discount_amount) : "-"} /></dl></section>
+        </div>
+
+        <section className="mt-6"><div className="flex items-center justify-between"><h3 className="font-bold">Passengers</h3><span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{passengers.length} passenger{passengers.length === 1 ? "" : "s"}</span></div><div className="mt-3 overflow-x-auto rounded-lg border border-slate-200"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Passenger", "Category", "Price", "Seat", "Special request"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>{passengers.length ? passengers.map((passenger, index) => <tr key={passenger.booking_detail_id ?? passenger.id ?? index} className="border-t border-slate-100"><td className="p-3 font-semibold">{passenger.passenger_name ?? passenger.name ?? `Passenger ${index + 1}`}</td><td className="p-3 capitalize">{passenger.age_category ?? passenger.ageCategory ?? "-"}</td><td className="p-3">{formatVnd(passenger.price)}</td><td className="p-3">{passenger.seat_number || "-"}</td><td className="max-w-xs p-3 text-slate-600">{passenger.special_request || "-"}</td></tr>) : <tr><td colSpan={5} className="p-8 text-center text-slate-500">No passenger records returned by the API.</td></tr>}</tbody></table></div></section>
+
+        <div className="mt-6 flex justify-end"><Button type="button" variant="outline" onClick={onClose}>Close</Button></div>
+      </div>
+    </div>
+  );
+}
+
+function DetailCard({ label, value, strong = false, children }: { label: string; value?: React.ReactNode; strong?: boolean; children?: React.ReactNode }) { return <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">{label}</p><div className={`mt-2 ${strong ? "text-lg font-bold text-brand-700" : "font-semibold text-slate-800"}`}>{children ?? value ?? "-"}</div></div>; }
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) { return <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3"><dt className="text-slate-400">{label}</dt><dd className="break-words font-semibold text-slate-700">{value}</dd></div>; }
+function formatDateTime(value?: string) { if (!value) return "-"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date); }
 
 function isValidVietnamMobilePhone(value: string) {
   return /^0(?:3|5|7|8|9)\d{8}$/.test(value);
