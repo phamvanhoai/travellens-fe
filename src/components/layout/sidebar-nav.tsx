@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,9 +9,14 @@ export type SidebarLink = readonly [LucideIcon, string, string];
 
 export function SidebarNav({ title, links }: { title: string; links: readonly SidebarLink[] }) {
   const pathname = usePathname();
-  const activeHref = links
-    .filter(([, , href]) => isActivePath(pathname, href))
-    .sort((a, b) => b[2].length - a[2].length)[0]?.[2];
+  const searchParams = useSearchParams();
+  const isAdminCommentDetail = /^\/admin\/travel-feed\/[^/]+$/.test(pathname) && searchParams.has("comment_id");
+  const commentHref = links.find(([, , href]) => href === "/admin/travel-feed/comments")?.[2];
+  const activeHref = isAdminCommentDetail && commentHref
+    ? commentHref
+    : links
+      .filter(([, , href]) => isActivePath(pathname, href))
+      .sort((a, b) => b[2].length - a[2].length)[0]?.[2];
 
   return (
     <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

@@ -1,4 +1,5 @@
 import { api } from "@/services/api";
+import { resolveBackendAssetUrl } from "@/lib/avatar";
 
 export type CustomerBlog = {
   blog_id?: number;
@@ -114,7 +115,11 @@ export function getCustomerBlogLocations(blog: CustomerBlog) { return [...(blog.
 export function getCustomerBlogCategoryIds(blog: CustomerBlog) { if (Array.isArray(blog.category_ids)) return blog.category_ids.map(Number).filter(Boolean); return (blog.categories ?? []).map((category) => Number(category.blog_category_id ?? category.id ?? 0)).filter(Boolean); }
 export function getCustomerBlogCategoryNames(blog: CustomerBlog) { return (blog.categories ?? []).map((category) => category.name).filter((name): name is string => Boolean(name)); }
 export function getCustomerBlogImage(blog: CustomerBlog, fallback: string) {
-  return blog.thumbnail_url ?? blog.thumbnail ?? blog.image_url ?? blog.image ?? extractFirstImage(blog.content) ?? fallback;
+  const image = [blog.thumbnail_url, blog.thumbnail, blog.image_url, blog.image, extractFirstImage(blog.content)]
+    .find((value): value is string => Boolean(value?.trim()))
+    ?.trim();
+
+  return image ? resolveBackendAssetUrl(image) : fallback;
 }
 export function getCustomerBlogExcerpt(blog: CustomerBlog, maxLength = 180) {
   const text = plainText(blog.excerpt ?? blog.description ?? blog.content ?? "");
@@ -128,7 +133,21 @@ export function getBlogCommentContent(comment: BlogComment) { return comment.con
 export function getBlogCommentReplies(comment: BlogComment) { return [...(comment.replies ?? []), ...(comment.Replies ?? [])]; }
 
 function extractFirstImage(value?: string | null) {
-  return value?.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+  if (!value) return undefined;
+  const match = value.match(/<img\b[^>]*?\bsrc\s*=\s*(?:["']([^"']+)["']|([^\s>]+))/i);
+  const source = match?.[1] ?? match?.[2];
+  return source ? decodeHtmlAttribute(source) : undefined;
+}
+
+function decodeHtmlAttribute(value: string) {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/gi, (_, code: string) => String.fromCodePoint(Number.parseInt(code, 16)));
 }
 
 function plainText(value: string) {
