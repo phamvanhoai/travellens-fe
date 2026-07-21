@@ -65,7 +65,7 @@ function unwrapPaymentStatus(value: unknown) {
 function unwrapPaymentList(value: unknown) {
   const body = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const data = body.data ?? value;
-  const items = Array.isArray(data) ? data : data && typeof data === "object" ? (data as Record<string, unknown>).payments ?? (data as Record<string, unknown>).data : [];
+  const items = Array.isArray(data) ? data : data && typeof data === "object" ? (data as Record<string, unknown>).items ?? (data as Record<string, unknown>).payments ?? (data as Record<string, unknown>).data : [];
   const rawPagination = body.pagination ?? (data && typeof data === "object" ? (data as Record<string, unknown>).pagination : undefined);
   const pagination = rawPagination && typeof rawPagination === "object" ? rawPagination as Record<string, unknown> : {};
   return {
@@ -103,5 +103,17 @@ export const paymentService = {
   async status(id: number | string) {
     const response = await api.get(`/payments/${id}/status`);
     return unwrapPaymentStatus(response.data);
+  },
+  async listForStaff(params: { page?: number; limit?: number; search?: string; status?: CustomerPaymentStatus } = {}) {
+    const response = await api.get("/staff/payments", { params });
+    return unwrapPaymentList(response.data);
+  },
+  async updateStatusForStaff(id: number | string, status: CustomerPaymentStatus) {
+    const response = await api.patch(`/staff/payments/${id}/status`, { status });
+    return unwrapPayment(response.data);
+  },
+  async refundForStaff(id: number | string, payload: { transaction_code?: string } = {}) {
+    const response = await api.patch(`/staff/payments/${id}/refund`, payload);
+    return unwrapPayment(response.data);
   }
 };
