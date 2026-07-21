@@ -20,7 +20,6 @@ const links = [
   [Rss, "Travel Feed", "/admin/travel-feed"],
   [Flag, "Feed Reports", "/admin/travel-feed/reports"],
   [MessageSquareText, "Feed Comments", "/admin/travel-feed/comments"],
-  [MessageSquareText, "Reviews", "/admin/reviews"],
   [Users, "Users", "/admin/users"]
 ] as const;
 
