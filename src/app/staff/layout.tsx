@@ -1,13 +1,12 @@
 "use client";
 
-import { CalendarCheck, CreditCard, MessageSquareText, Percent, ReceiptText, RotateCcw } from "lucide-react";
+import { CalendarCheck, CreditCard, MessageSquareText, Percent, RotateCcw } from "lucide-react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
   [Percent, "Coupons", "/staff/coupons"],
   [CalendarCheck, "Bookings", "/staff/bookings"],
-  [ReceiptText, "Booking Details", "/staff/booking-details"],
   [MessageSquareText, "Reviews", "/staff/reviews"],
   [CreditCard, "Payments", "/staff/payments"],
   [RotateCcw, "Refund Requests", "/staff/refund-requests"]
