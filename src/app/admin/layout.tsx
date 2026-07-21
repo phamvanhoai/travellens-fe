@@ -5,7 +5,7 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 const links = [
-  [BarChart3, "Overview", "/admin"],
+  [BarChart3, "Statistics Dashboard", "/admin"],
   [Tags, "Destination Categories", "/admin/destination-categories"],
   [Plane, "Destinations", "/admin/travel-destinations"],
   [Tags, "Tour Categories", "/admin/tour-categories"],
@@ -23,8 +23,7 @@ const links = [
   [Flag, "Feed Reports", "/admin/travel-feed/reports"],
   [MessageSquareText, "Feed Comments", "/admin/travel-feed/comments"],
   [MessageSquareText, "Reviews", "/admin/reviews"],
-  [Users, "Users", "/admin/users"],
-  [BarChart3, "Statistics", "/admin/statistics"]
+  [Users, "Users", "/admin/users"]
 ] as const;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
