@@ -31,7 +31,8 @@ body {
 
 .dark .bg-white,
 .dark .bg-white\/90,
-.dark .bg-white\/92 {
+.dark .bg-white\/92,
+.dark .bg-white\/95 {
   background-color: rgba(10, 20, 35, 0.96) !important;
 }
 
@@ -39,6 +40,14 @@ body {
 .dark .bg-slate-50,
 .dark .bg-slate-100 {
   background-color: #0f1b2d !important;
+}
+
+.dark .bg-gradient-to-b.from-slate-50.to-white {
+  background-image: linear-gradient(to bottom, #07111f, #0b1628) !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #26364b !important;
 }
 
 .dark .text-ink,
@@ -51,9 +60,34 @@ body {
   color: #a8b5c7 !important;
 }
 
+.dark .text-slate-400 {
+  color: #93a4ba !important;
+}
+
 .dark .border-slate-100,
 .dark .border-slate-200 {
   border-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+.dark .border-slate-200\/80,
+.dark .border-slate-300 {
+  border-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+.dark .bg-rose-50 {
+  background-color: rgba(76, 5, 25, 0.42) !important;
+}
+
+.dark .text-rose-700 {
+  color: #fda4af !important;
+}
+
+.dark .bg-brand-50 {
+  background-color: rgba(14, 116, 144, 0.18) !important;
+}
+
+.dark .text-brand-700 {
+  color: #7dd3fc !important;
 }
 
 .dark input,
