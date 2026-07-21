@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { Eye, RefreshCw, Rss, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -274,14 +275,14 @@ function CommentRow({ comment, onDelete }: { comment: TravelFeedComment; onDelet
       <td className="p-3">
         <span className="flex gap-2">
           {postId ? (
-            <a
+            <Link
               href={`/admin/travel-feed/${postId}?comment_id=${commentId}`}
               title="View post details"
               aria-label={`View comment ${commentId} in post ${postId}`}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Eye size={16} />
-            </a>
+            </Link>
           ) : null}
           <button
             type="button"
