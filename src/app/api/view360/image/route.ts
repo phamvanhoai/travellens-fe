@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const allowedHosts = new Set(["s3.cloudfly.vn"]);
+const allowedHosts = new Set([
+  "s3.cloudfly.vn",
+  "upload.wikimedia.org",
+  "commons.wikimedia.org",
+  "scontent.iocvnpt.com",
+  "visitphuquoc.com.vn"
+]);
 
 export async function GET(request: NextRequest) {
   const source = request.nextUrl.searchParams.get("url");
@@ -16,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(imageUrl, {
       signal: AbortSignal.timeout(15_000),
-      next: { revalidate: 3600 }
+      cache: "no-store"
     });
     if (!response.ok || !response.body) {
       return NextResponse.json({ message: "Panorama image is unavailable." }, { status: 502 });

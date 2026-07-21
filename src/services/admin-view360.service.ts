@@ -13,6 +13,7 @@ export type AdminView360 = {
   language?: string;
   order_index?: number | string;
   images?: AdminView360Image[];
+  image_count?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -30,7 +31,7 @@ export type AdminView360Image = {
 export type AdminView360Payload = {
   title: string;
   description: string;
-  audio_file?: File | null;
+  audio_file?: File | string | null;
   language: string;
   order_index: string;
 };
@@ -82,7 +83,9 @@ function sceneFormData(payload: AdminView360Payload) {
   const formData = new FormData();
   formData.append("title", payload.title);
   formData.append("description", payload.description);
-  if (payload.audio_file) formData.append("audio_file", payload.audio_file);
+  if (payload.audio_file) {
+    formData.append("audio_file", payload.audio_file instanceof File ? payload.audio_file : payload.audio_file.trim());
+  }
   if (payload.language) formData.append("language", payload.language);
   if (payload.order_index) formData.append("order_index", payload.order_index);
   return formData;
@@ -116,6 +119,19 @@ export function getView360HotspotId(hotspot: AdminView360Hotspot) {
 }
 
 export const adminView360Service = {
+  async list(params: { page?: number; limit?: number; search?: string; location_id?: number } = {}) {
+    const response = await api.get(`/admin/view360`, { params });
+    const body = response.data as { data?: AdminView360[]; pagination?: { page?: number; limit?: number; total?: number; totalPages?: number } };
+    return {
+      data: Array.isArray(body.data) ? body.data : [],
+      pagination: {
+        page: Number(body.pagination?.page ?? params.page ?? 1),
+        limit: Number(body.pagination?.limit ?? params.limit ?? 10),
+        total: Number(body.pagination?.total ?? 0),
+        totalPages: Number(body.pagination?.totalPages ?? 1)
+      }
+    };
+  },
   async listByLocation(locationId: number) {
     const response = await api.get(`/admin/locations/${locationId}/view360`);
     return unwrapList<AdminView360>(response.data);

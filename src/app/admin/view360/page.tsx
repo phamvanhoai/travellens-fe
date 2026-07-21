@@ -62,6 +62,8 @@ export default function AdminView360Page() {
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -81,51 +83,32 @@ export default function AdminView360Page() {
     setLoading(true);
     setError("");
     try {
-      const locationResult = await adminLocationService.list({ page: 1, limit: 100 });
-      const locationList = locationResult.data ?? [];
-      const sceneGroups = await Promise.all(locationList.map(async (location) => {
-        const locationId = getLocationId(location);
-        if (!locationId) return [];
-        try {
-          const scenes = await adminView360Service.listByLocation(locationId);
-          const scenesWithImages = await Promise.all(scenes.map(async (scene) => {
-            const viewId = getView360Id(scene);
-            const images = viewId ? await adminView360Service.listImages(viewId).catch(() => []) : [];
-            return {
-              ...scene,
-              location_id: locationId,
-              location_name: location.name,
-              images
-            };
-          }));
-          return scenesWithImages;
-        } catch {
-          return [];
-        }
-      }));
-
-      setLocations(locationList);
-      setItems(sceneGroups.flat());
+      const [locationResult, sceneResult] = await Promise.all([
+        adminLocationService.list({ page: 1, limit: 100 }),
+        adminView360Service.list({
+          page,
+          limit: pageSize,
+          search: query || undefined,
+          location_id: locationFilter ? Number(locationFilter) : undefined
+        })
+      ]);
+      setLocations(locationResult.data ?? []);
+      setItems(sceneResult.data.map((scene) => ({ ...scene, location_id: Number(scene.location_id), location_name: scene.location_name ?? "-", images: [] })));
+      setTotalItems(sceneResult.pagination.total);
+      setPageCount(Math.max(sceneResult.pagination.totalPages, 1));
     } catch (err) {
       setError("Cannot load View360 scenes from API.");
       showToast({ variant: "error", title: "Load failed", description: "Cannot load View360 scenes from API." });
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [locationFilter, page, query, showToast]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  const visibleItems = useMemo(() => items.filter((item) => {
-    const matchesLocation = !locationFilter || String(item.location_id) === locationFilter;
-    const matchesQuery = `${item.title} ${item.location_name} ${item.language ?? ""}`.toLowerCase().includes(query.toLowerCase());
-    return matchesLocation && matchesQuery;
-  }), [items, locationFilter, query]);
-  const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const paginatedItems = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const editingInitialValue = useMemo<FormValue>(() => {
     if (!editing) return emptyForm;
@@ -133,7 +116,7 @@ export default function AdminView360Page() {
       location_id: String(editing.location_id),
       title: editing.title ?? "",
       description: editing.description ?? "",
-      audio_file: null,
+      audio_file: getView360Audio(editing) || null,
       audioPreview: getView360Audio(editing),
       language: editing.language ?? "Vietnamese",
       order_index: editing.order_index == null ? "0" : String(editing.order_index),
@@ -281,22 +264,23 @@ export default function AdminView360Page() {
             <tbody>
               {loading ? (
                 <AdminTableSkeleton columns={8} rows={10} />
-              ) : paginatedItems.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr><td colSpan={8} className="p-6 text-center text-slate-500">No View360 scenes found.</td></tr>
-              ) : paginatedItems.map((item) => (
+              ) : items.map((item) => (
                 <tr key={`${item.location_id}-${getView360Id(item)}`} className="border-t border-slate-100">
                   <td className="p-3 font-bold">#{getView360Id(item)}</td>
                   <td className="p-3 font-semibold"><Video className="mr-2 inline size-4 text-brand-600" />{item.title}</td>
                   <td className="p-3 text-slate-600">{item.location_name}</td>
                   <td className="p-3"><Languages className="mr-2 inline size-4 text-brand-600" />{item.language || "-"}</td>
-                  <td className="p-3 font-semibold">{item.images.length} images</td>
+                  <td className="p-3 font-semibold">{Number(item.image_count ?? item.images.length)} images</td>
                   <td className="p-3">{getView360Audio(item) ? <span className="text-brand-600"><Headphones className="mr-2 inline size-4" />Attached</span> : <span className="text-slate-400">Not attached</span>}</td>
                   <td className="p-3 text-slate-600">{item.order_index ?? "-"}</td>
                   <td className="p-3">
                     <span className="flex gap-2">
-                      <Button variant="outline" className="h-9 px-3" onClick={() => {
+                      <Button variant="outline" className="h-9 px-3" onClick={async () => {
                         setFieldErrors({});
-                        setEditing(item);
+                        const images = await adminView360Service.listImages(getView360Id(item)).catch(() => []);
+                        setEditing({ ...item, images });
                       }}><Pencil size={15} /> Edit</Button>
                       <DeleteButton label={item.title} onClick={() => setDeleting(item)} />
                     </span>
@@ -307,7 +291,7 @@ export default function AdminView360Page() {
           </table>
         </div>
 
-        <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="View360 experiences" onPageChange={setPage} />
+        <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="View360 experiences" onPageChange={setPage} />
       </div>
 
       {creating || editing ? (
@@ -735,24 +719,38 @@ function toMarkerPosition(yaw: number, pitch: number) {
   };
 }
 
-function UploadAudio({ value, message, onChange }: { value: string; message?: string; onChange: (preview: string, file: File | null) => void }) {
+function UploadAudio({ value, message, onChange }: { value: string; message?: string; onChange: (preview: string, source: File | string | null) => void }) {
+  const urlValue = /^https?:\/\//i.test(value) ? value : "";
   return (
-    <label className="block text-sm font-semibold">
+    <div className="block text-sm font-semibold">
       Audio Narration
-      <span className="mt-2 block rounded-lg border border-dashed border-slate-300 p-4">
-        <Music className="inline size-5 text-brand-600" /> <span className="ml-2 text-sm font-normal text-slate-500">Upload audio_file narration.</span>
+      <div className="mt-2 rounded-lg border border-dashed border-slate-300 p-4">
+        <Music className="inline size-5 text-brand-600" /> <span className="ml-2 text-sm font-normal text-slate-500">Upload an audio file or paste a direct HTTPS audio URL.</span>
         {value ? <audio controls src={value} className="mt-3 w-full" /> : null}
-        <span className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">
-          <Upload size={16} /> Choose Audio
-          <input type="file" accept="audio/*" className="hidden" onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) onChange(URL.createObjectURL(file), file);
-          }} />
-        </span>
-        {value ? <button type="button" onClick={() => onChange("", null)} className="ml-3 text-sm font-bold text-rose-600">Remove</button> : null}
+        <label className="mt-3 block text-xs font-bold uppercase tracking-wide text-slate-500">Audio URL</label>
+        <input
+          type="url"
+          value={urlValue}
+          placeholder="https://cdn.example.com/narration.mp3"
+          className="input mt-2"
+          onChange={(event) => {
+            const url = event.target.value.trim();
+            onChange(url, url || null);
+          }}
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white">
+            <Upload size={16} /> Choose Audio File
+            <input type="file" accept="audio/*" className="hidden" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onChange(URL.createObjectURL(file), file);
+            }} />
+          </label>
+          {value ? <button type="button" onClick={() => onChange("", null)} className="text-sm font-bold text-rose-600">Remove</button> : null}
+        </div>
         {message ? <span className="mt-2 block text-xs font-semibold text-rose-600">{message}</span> : null}
-      </span>
-    </label>
+      </div>
+    </div>
   );
 }
 
@@ -824,6 +822,9 @@ function validateView360Form(form: FormValue): View360FieldErrors {
   if (!form.location_id) errors.location_id = "Location is required.";
   if (!form.title.trim()) errors.title = "View360 title is required.";
   if (!form.language) errors.language = "Language is required.";
+  if (typeof form.audio_file === "string" && form.audio_file && !/^https:\/\//i.test(form.audio_file) && !form.audio_file.startsWith("/public/")) {
+    errors.audio_file = "Audio URL must use HTTPS.";
+  }
 
   const orderIndex = Number(form.order_index);
   if (form.order_index === "") {
