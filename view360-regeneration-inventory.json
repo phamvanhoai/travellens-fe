@@ -1,0 +1,317 @@
+﻿[
+    {
+        "view_id":  2,
+        "location_id":  4,
+        "title":  "test",
+        "description":  "",
+        "current_image":  "https://s3.cloudfly.vn/travellens/locations/1781623977782-0e04e76aedce4acc383c256e9fb7418c.jpg"
+    },
+    {
+        "view_id":  3,
+        "location_id":  1,
+        "title":  "Dinh Độc Lập",
+        "description":  "Dinh Độc Lập được công nhận là Di tích lịch sử văn hóa quốc gia bằng Quyết định số 77A/VHQĐ ngày 25/6/1976 của Bộ trưởng Bộ Văn hóa. Ngày 12 tháng 8 năm 2009, Thủ tướng Chính phủ nước Cộng hòa Xã hội Chủ nghĩa Việt Nam đã ký Quyết định số 1272/QĐ-TTg xếp hạng Di tích lịch sử Dinh Độc Lập là một trong 10 di tích quốc gia đặc biệt đầu tiên của cả nước.",
+        "current_image":  "https://s3.cloudfly.vn/travellens/locations/1781624144931-1e3fd15e0a7b9a0deca0f0da302df3a6.jpg"
+    },
+    {
+        "view_id":  4,
+        "location_id":  5,
+        "title":  "Test",
+        "description":  "vgdvsdcg",
+        "current_image":  "https://s3.cloudfly.vn/travellens/travel-feed/1783258673881-1780417888189-_3911261f-c1f7-43c7-8c63-1cf813795905.jpg"
+    },
+    {
+        "view_id":  5,
+        "location_id":  7,
+        "title":  "FPT",
+        "description":  "Toạ lạc tại số 600 Nguyễn Văn Cừ nối dài, TP Cần Thơ, Trường Đại học FPT trở thành một không gian học tập chuẩn quốc tế dành cho sinh viên ngay tại Đồng bằng Sông Cửu Long với các nhóm ngành Công Nghệ Thông Tin, Quản trị kinh doanh, Công nghệ Truyền thông, Luật và Ngôn ngữ. Với phương châm Trải nghiệm để thành công, Trường Đại học FPT tự hào mang đến cho sinh viên một môi trường học tập đa trải nghiệm với 3 trụ cột chính Công nghệ, Quốc tế và Khởi nghiệp, cung cấp cho thị trường lao động nguồn nhân lực chất lượng cao, sở hữu đầy đủ các phẩm chất cần thiết từ kiến thức chuyên môn, kỹ năng mềm đến tư duy công nghệ và thái độ chuyên nghiệp trong công việc.",
+        "current_image":  "https://s3.cloudfly.vn/travellens/view360-images/1782917241262-truong-pho-thong-fpt-can-tho-xet-hoc-ba.jpg"
+    },
+    {
+        "view_id":  6,
+        "location_id":  8,
+        "title":  "Sảnh Tòa Alpha ĐH fpt cần thơ",
+        "description":  "Tòa nhà hiệu bộ Alpha tại campus Cần Thơ có tổng diện tích sàn xây dựng gần 25.000 m2. Kết cấu gồm 1 tầng bán hầm, 9 tầng nổi và tum thang có mái che. Công trình có kiến trúc mặt đứng, thiết kế đồng điệu với tổng thể các tòa nhà khác và lấy ý tưởng chính từ họa tiết Penrose.\r\n\r\nQuy mô gồm 136 phòng học và phòng chức năng, đáp ứng nhu cầu học tập và sinh hoạt của hơn 5.000 cán bộ, giáo viên, sinh viên. Tòa nhà được kỳ vọng sẽ góp phần giúp nhà trường thực hiện tốt sứ mệnh cung cấp nguồn nhân lực số nhạy bén với cuộc cách mạng 4.0, giỏi về khoa học - công nghệ, qua đó cung ứng nguồn lao động chất lượng cao cho Đồng bằng sông Cửu Long.",
+        "current_image":  "https://s3.cloudfly.vn/travellens/view360-images/1784516441051-ChatGPT-Image-09_56_43-20-thg-7-2026.jpg"
+    },
+    {
+        "view_id":  49,
+        "location_id":  57,
+        "title":  "Toàn cảnh Công viên Ninh Kiều",
+        "description":  "Khám phá không gian Công viên Ninh Kiều qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/5/54/Ninh_Kieu_Quay.jpg"
+    },
+    {
+        "view_id":  50,
+        "location_id":  58,
+        "title":  "Toàn cảnh Cầu đi bộ Ninh Kiều",
+        "description":  "Khám phá không gian Cầu đi bộ Ninh Kiều qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/5/54/Ninh_Kieu_Quay.jpg"
+    },
+    {
+        "view_id":  51,
+        "location_id":  59,
+        "title":  "Toàn cảnh Bến tàu chợ nổi",
+        "description":  "Khám phá không gian Bến tàu chợ nổi qua hình ảnh toàn cảnh.",
+        "current_image":  "https://images.unsplash.com/photo-1570366583862-f91883984fde?auto=format\u0026fit=crop\u0026w=1600\u0026q=85"
+    },
+    {
+        "view_id":  52,
+        "location_id":  60,
+        "title":  "Toàn cảnh Khu ghe ẩm thực",
+        "description":  "Khám phá không gian Khu ghe ẩm thực qua hình ảnh toàn cảnh.",
+        "current_image":  "https://images.unsplash.com/photo-1559314809-0d155014e29e?auto=format\u0026fit=crop\u0026w=1600\u0026q=85"
+    },
+    {
+        "view_id":  53,
+        "location_id":  61,
+        "title":  "Toàn cảnh Nhà chính Bình Thủy",
+        "description":  "Khám phá không gian Nhà chính Bình Thủy qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/e/e1/Nha_co_Binh_Thuy_1.jpg"
+    },
+    {
+        "view_id":  54,
+        "location_id":  62,
+        "title":  "Toàn cảnh Vườn lan Bình Thủy",
+        "description":  "Khám phá không gian Vườn lan Bình Thủy qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/e/e1/Nha_co_Binh_Thuy_1.jpg"
+    },
+    {
+        "view_id":  55,
+        "location_id":  63,
+        "title":  "Toàn cảnh Chánh điện",
+        "description":  "Khám phá không gian Chánh điện qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/5/56/Thi%E1%BB%81n_Vi%E1%BB%87n_Tr%C3%BAc_L%C3%A2m_Ph%C6%B0%C6%A1ng_Nam_(2).jpg"
+    },
+    {
+        "view_id":  56,
+        "location_id":  64,
+        "title":  "Toàn cảnh Vườn thiền",
+        "description":  "Khám phá không gian Vườn thiền qua hình ảnh toàn cảnh.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/5/56/Thi%E1%BB%81n_Vi%E1%BB%87n_Tr%C3%BAc_L%C3%A2m_Ph%C6%B0%C6%A1ng_Nam_(2).jpg"
+    },
+    {
+        "view_id":  57,
+        "location_id":  65,
+        "title":  "Toàn cảnh Vườn trái cây Cồn Sơn",
+        "description":  "Khám phá không gian Vườn trái cây Cồn Sơn qua hình ảnh toàn cảnh.",
+        "current_image":  "https://scontent.iocvnpt.com/resources/portal/Images/CTO/superadminportal.cto/DiaDiem/ConSon/conson_avatar_637018231142067294.jpg"
+    },
+    {
+        "view_id":  58,
+        "location_id":  66,
+        "title":  "Toàn cảnh Khu làm bánh dân gian",
+        "description":  "Khám phá không gian Khu làm bánh dân gian qua hình ảnh toàn cảnh.",
+        "current_image":  "https://scontent.iocvnpt.com/resources/portal/Images/CTO/superadminportal.cto/DiaDiem/ConSon/conson_avatar_637018231142067294.jpg"
+    },
+    {
+        "view_id":  119,
+        "location_id":  127,
+        "title":  "Toàn cảnh Khuê Văn Các",
+        "description":  "Hình ảnh toàn cảnh tại Khuê Văn Các.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/b/b7/Main_gate_of_the_Temple_of_Literature%2C_Hanoi%2C_Vietnam%2C_20240123_0929_3068.jpg"
+    },
+    {
+        "view_id":  120,
+        "location_id":  128,
+        "title":  "Toàn cảnh Nhà Thái Học",
+        "description":  "Hình ảnh toàn cảnh tại Nhà Thái Học.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/b/b7/Main_gate_of_the_Temple_of_Literature%2C_Hanoi%2C_Vietnam%2C_20240123_0929_3068.jpg"
+    },
+    {
+        "view_id":  121,
+        "location_id":  129,
+        "title":  "Toàn cảnh Đoan Môn",
+        "description":  "Hình ảnh toàn cảnh tại Đoan Môn.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0f/Central_Sector_of_the_Imperial_Citadel_of_Thang_Long_-_Hanoi.jpg"
+    },
+    {
+        "view_id":  122,
+        "location_id":  130,
+        "title":  "Toàn cảnh Khu khảo cổ 18 Hoàng Diệu",
+        "description":  "Hình ảnh toàn cảnh tại Khu khảo cổ 18 Hoàng Diệu.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0f/Central_Sector_of_the_Imperial_Citadel_of_Thang_Long_-_Hanoi.jpg"
+    },
+    {
+        "view_id":  123,
+        "location_id":  131,
+        "title":  "Toàn cảnh Ngọ Môn",
+        "description":  "Hình ảnh toàn cảnh tại Ngọ Môn.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/b/b9/Hue_Vietnam_Citadel-of-Hu%E1%BA%BF-13.jpg"
+    },
+    {
+        "view_id":  124,
+        "location_id":  132,
+        "title":  "Toàn cảnh Điện Thái Hòa",
+        "description":  "Hình ảnh toàn cảnh tại Điện Thái Hòa.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/b/b9/Hue_Vietnam_Citadel-of-Hu%E1%BA%BF-13.jpg"
+    },
+    {
+        "view_id":  125,
+        "location_id":  133,
+        "title":  "Toàn cảnh Tháp Phước Duyên",
+        "description":  "Hình ảnh toàn cảnh tại Tháp Phước Duyên.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/e/e7/Hue_Vietnam_Thien-Mu-Temple-and-Pagoda-01.jpg"
+    },
+    {
+        "view_id":  126,
+        "location_id":  134,
+        "title":  "Toàn cảnh Điện Đại Hùng",
+        "description":  "Hình ảnh toàn cảnh tại Điện Đại Hùng.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/e/e7/Hue_Vietnam_Thien-Mu-Temple-and-Pagoda-01.jpg"
+    },
+    {
+        "view_id":  127,
+        "location_id":  135,
+        "title":  "Toàn cảnh Chùa Cầu",
+        "description":  "Hình ảnh toàn cảnh tại Chùa Cầu.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/d/d6/H%E1%BB%99i_An%2C_Ancient_Town%2C_2020-01_CN-11.jpg"
+    },
+    {
+        "view_id":  128,
+        "location_id":  136,
+        "title":  "Toàn cảnh Hội quán Phúc Kiến",
+        "description":  "Hình ảnh toàn cảnh tại Hội quán Phúc Kiến.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/d/d6/H%E1%BB%99i_An%2C_Ancient_Town%2C_2020-01_CN-11.jpg"
+    },
+    {
+        "view_id":  129,
+        "location_id":  137,
+        "title":  "Toàn cảnh Cầu Vàng",
+        "description":  "Hình ảnh toàn cảnh tại Cầu Vàng.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0c/Golden_Bridge_at_Ba_Na_Hills_20250718.jpg"
+    },
+    {
+        "view_id":  130,
+        "location_id":  138,
+        "title":  "Toàn cảnh Làng Pháp",
+        "description":  "Hình ảnh toàn cảnh tại Làng Pháp.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0c/Golden_Bridge_at_Ba_Na_Hills_20250718.jpg"
+    },
+    {
+        "view_id":  131,
+        "location_id":  139,
+        "title":  "Toàn cảnh Cửa Nam",
+        "description":  "Hình ảnh toàn cảnh tại Cửa Nam.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/f/f5/Ben_Thanh%2C_Ciudad_Ho_Chi_Minh%2C_Vietnam%2C_2013-08-14%2C_DD_01.JPG"
+    },
+    {
+        "view_id":  132,
+        "location_id":  140,
+        "title":  "Toàn cảnh Khu ẩm thực",
+        "description":  "Hình ảnh toàn cảnh tại Khu ẩm thực.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/f/f5/Ben_Thanh%2C_Ciudad_Ho_Chi_Minh%2C_Vietnam%2C_2013-08-14%2C_DD_01.JPG"
+    },
+    {
+        "view_id":  133,
+        "location_id":  141,
+        "title":  "Toàn cảnh Tòa nhà chính",
+        "description":  "Hình ảnh toàn cảnh tại Tòa nhà chính.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0f/B%E1%BA%A3o_t%C3%A0ng_M%E1%BB%B9_thu%E1%BA%ADt_Tp_(ki%E1%BA%BFn_tr%C3%BAc_t%E1%BB%95ng_th%E1%BB%83)_(2).jpg"
+    },
+    {
+        "view_id":  134,
+        "location_id":  142,
+        "title":  "Toàn cảnh Khu trưng bày nghệ thuật hiện đại",
+        "description":  "Hình ảnh toàn cảnh tại Khu trưng bày nghệ thuật hiện đại.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0f/B%E1%BA%A3o_t%C3%A0ng_M%E1%BB%B9_thu%E1%BA%ADt_Tp_(ki%E1%BA%BFn_tr%C3%BAc_t%E1%BB%95ng_th%E1%BB%83)_(2).jpg"
+    },
+    {
+        "view_id":  135,
+        "location_id":  143,
+        "title":  "Toàn cảnh Chùa Bà",
+        "description":  "Hình ảnh toàn cảnh tại Chùa Bà.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/c/c7/Ba_Den_Mountain_summit_temple_illuminated_night_fog_Tay_Ninh_Vietnam.jpg"
+    },
+    {
+        "view_id":  136,
+        "location_id":  144,
+        "title":  "Toàn cảnh Đỉnh Vân Sơn",
+        "description":  "Hình ảnh toàn cảnh tại Đỉnh Vân Sơn.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/c/c7/Ba_Den_Mountain_summit_temple_illuminated_night_fog_Tay_Ninh_Vietnam.jpg"
+    },
+    {
+        "view_id":  137,
+        "location_id":  145,
+        "title":  "Toàn cảnh Trạm quan sát chim",
+        "description":  "Hình ảnh toàn cảnh tại Trạm quan sát chim.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/f/fa/%C4%90%E1%BB%93ng_c%E1%BB%8F_v%C3%A0_chim_n%C6%B0%E1%BB%9Bc.jpg"
+    },
+    {
+        "view_id":  138,
+        "location_id":  146,
+        "title":  "Toàn cảnh Tuyến xuồng xuyên rừng",
+        "description":  "Hình ảnh toàn cảnh tại Tuyến xuồng xuyên rừng.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/f/fa/%C4%90%E1%BB%93ng_c%E1%BB%8F_v%C3%A0_chim_n%C6%B0%E1%BB%9Bc.jpg"
+    },
+    {
+        "view_id":  139,
+        "location_id":  147,
+        "title":  "Toàn cảnh Bãi tắm trung tâm",
+        "description":  "Hình ảnh toàn cảnh tại Bãi tắm trung tâm.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0b/B%C3%A3i_Sao_Beach.jpg"
+    },
+    {
+        "view_id":  140,
+        "location_id":  148,
+        "title":  "Toàn cảnh Khu chèo kayak",
+        "description":  "Hình ảnh toàn cảnh tại Khu chèo kayak.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/0/0b/B%C3%A3i_Sao_Beach.jpg"
+    },
+    {
+        "view_id":  141,
+        "location_id":  149,
+        "title":  "Toàn cảnh Nhà trưng bày",
+        "description":  "Hình ảnh toàn cảnh tại Nhà trưng bày.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/2/2e/Nh%C3%A0_t%C3%B9_Ph%C3%BA_Qu%E1%BB%91c.JPG"
+    },
+    {
+        "view_id":  142,
+        "location_id":  150,
+        "title":  "Toàn cảnh Khu tái hiện lịch sử",
+        "description":  "Hình ảnh toàn cảnh tại Khu tái hiện lịch sử.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/2/2e/Nh%C3%A0_t%C3%B9_Ph%C3%BA_Qu%E1%BB%91c.JPG"
+    },
+    {
+        "view_id":  143,
+        "location_id":  151,
+        "title":  "Toàn cảnh Cầu cảng Hàm Ninh",
+        "description":  "Hình ảnh toàn cảnh tại Cầu cảng Hàm Ninh.",
+        "current_image":  "https://visitphuquoc.com.vn/VisitPhuQuoc/_default_upload_bucket/3251/image-thumb__3251__720_jpg/lang-chai-ham-ninh-phu-quoc_1743752658.166ec62c.jpg"
+    },
+    {
+        "view_id":  144,
+        "location_id":  152,
+        "title":  "Toàn cảnh Khu hải sản",
+        "description":  "Hình ảnh toàn cảnh tại Khu hải sản.",
+        "current_image":  "https://visitphuquoc.com.vn/VisitPhuQuoc/_default_upload_bucket/3251/image-thumb__3251__720_jpg/lang-chai-ham-ninh-phu-quoc_1743752658.166ec62c.jpg"
+    },
+    {
+        "view_id":  145,
+        "location_id":  153,
+        "title":  "Toàn cảnh Bàu Sấu",
+        "description":  "Hình ảnh toàn cảnh tại Bàu Sấu.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/1/18/Cat_Tien_National_Park%2C_Vietnam.jpg"
+    },
+    {
+        "view_id":  146,
+        "location_id":  154,
+        "title":  "Toàn cảnh Tuyến cây cổ thụ",
+        "description":  "Hình ảnh toàn cảnh tại Tuyến cây cổ thụ.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/1/18/Cat_Tien_National_Park%2C_Vietnam.jpg"
+    },
+    {
+        "view_id":  147,
+        "location_id":  155,
+        "title":  "Toàn cảnh Sảnh chính",
+        "description":  "Hình ảnh toàn cảnh tại Sảnh chính.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/6/6b/Saigon_Opera_House_2014.jpg"
+    },
+    {
+        "view_id":  148,
+        "location_id":  156,
+        "title":  "Toàn cảnh Khán phòng",
+        "description":  "Hình ảnh toàn cảnh tại Khán phòng.",
+        "current_image":  "https://upload.wikimedia.org/wikipedia/commons/6/6b/Saigon_Opera_House_2014.jpg"
+    }
+]
