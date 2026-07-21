@@ -24,14 +24,24 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(15_000),
       cache: "no-store"
     });
-    if (!response.ok || !response.body) {
+    if (!response.ok) {
       return NextResponse.json({ message: "Panorama image is unavailable." }, { status: 502 });
     }
 
-    return new NextResponse(response.body, {
+    const image = await response.arrayBuffer();
+    const upstreamLength = Number(response.headers.get("content-length"));
+    if (!image.byteLength || (Number.isFinite(upstreamLength) && upstreamLength > 0 && image.byteLength !== upstreamLength)) {
+      return NextResponse.json({ message: "Panorama image download was incomplete." }, { status: 502 });
+    }
+
+    return new NextResponse(image, {
       headers: {
         "Content-Type": response.headers.get("content-type") ?? "image/jpeg",
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400"
+        "Content-Length": String(image.byteLength),
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "CDN-Cache-Control": "no-store",
+        "Vercel-CDN-Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"
       }
     });
   } catch {
