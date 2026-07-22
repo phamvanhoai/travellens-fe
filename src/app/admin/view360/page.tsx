@@ -315,7 +315,6 @@ export default function AdminView360Page() {
             setCreating(false);
             setFieldErrors({});
           }}
-          sceneOptions={items}
           onSave={save}
         />
       ) : null}
@@ -336,7 +335,6 @@ function ExperienceForm({
   onSetFieldErrors,
   onClearFieldError,
   onClose,
-  sceneOptions,
   onSave
 }: {
   title: string;
@@ -349,7 +347,6 @@ function ExperienceForm({
   onSetFieldErrors: (errors: View360FieldErrors) => void;
   onClearFieldError: (field: View360FieldName) => void;
   onClose: () => void;
-  sceneOptions: View360Row[];
   onSave: (payload: FormValue) => void;
 }) {
   const [form, setForm] = useState(initialValue);
@@ -416,7 +413,7 @@ function ExperienceForm({
             onClearFieldError("images");
             setForm({ ...form, images });
           }} />
-          {editing ? <HotspotsEditor viewId={viewId} images={form.images.filter((image) => !image.removed)} sceneOptions={sceneOptions} /> : (
+          {editing ? <HotspotsEditor viewId={viewId} images={form.images.filter((image) => !image.removed)} /> : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
               Save this View360 first, then edit it again to add interactive hotspots.
             </div>
@@ -446,8 +443,9 @@ const emptyHotspotForm = {
 
 type HotspotFormValue = typeof emptyHotspotForm;
 
-function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; images: ImageDraft[]; sceneOptions: View360Row[] }) {
+function HotspotsEditor({ viewId, images }: { viewId: number; images: ImageDraft[] }) {
   const [hotspots, setHotspots] = useState<AdminView360Hotspot[]>([]);
+  const [navigationTargets, setNavigationTargets] = useState<AdminView360[]>([]);
   const [form, setForm] = useState<HotspotFormValue>(emptyHotspotForm);
   const [editingHotspotId, setEditingHotspotId] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -460,8 +458,12 @@ function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; imag
     setLoading(true);
     setMessage("");
     try {
-      const result = await adminView360Service.listHotspots(viewId);
-      setHotspots(result);
+      const [hotspotResult, navigationTargetResult] = await Promise.all([
+        adminView360Service.listHotspots(viewId),
+        adminView360Service.listNavigationTargets(viewId)
+      ]);
+      setHotspots(hotspotResult);
+      setNavigationTargets(navigationTargetResult);
     } catch {
       setMessage("Cannot load hotspots for this View360.");
     } finally {
@@ -512,6 +514,10 @@ function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; imag
     }
     if (!Number.isFinite(pitch) || pitch < -90 || pitch > 90) {
       setMessage("Pitch must be a number between -90 and 90.");
+      return null;
+    }
+    if (form.type === "navigation" && !form.target_view360_id) {
+      setMessage("Select a target scene from this destination.");
       return null;
     }
     return {
@@ -653,12 +659,15 @@ function HotspotsEditor({ viewId, images, sceneOptions }: { viewId: number; imag
           <Field label="Target Scene">
             <select value={form.target_view360_id} onChange={(event) => setForm({ ...form, target_view360_id: event.target.value })} className="input">
               <option value="">Select scene to open</option>
-              {sceneOptions.filter((scene) => getView360Id(scene) !== viewId).map((scene) => (
+              {navigationTargets.map((scene) => (
                 <option key={getView360Id(scene)} value={getView360Id(scene)}>
-                  #{getView360Id(scene)} · {scene.title}
+                  #{getView360Id(scene)} · {scene.title}{scene.location_name ? ` — ${scene.location_name}` : ""}
                 </option>
               ))}
             </select>
+            {!loading && navigationTargets.length === 0 ? (
+              <p className="mt-1.5 text-xs text-amber-600">No other View360 scene exists in this destination.</p>
+            ) : null}
           </Field>
         ) : null}
         {form.type === "link" ? (

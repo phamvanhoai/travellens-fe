@@ -164,6 +164,10 @@ export const adminView360Service = {
     const response = await api.get(`/admin/view360/${viewId}/hotspots`);
     return unwrapList<AdminView360Hotspot>(response.data);
   },
+  async listNavigationTargets(viewId: number) {
+    const response = await api.get(`/admin/view360/${viewId}/navigation-targets`);
+    return unwrapList<AdminView360>(response.data);
+  },
   async createHotspot(viewId: number, payload: AdminView360HotspotPayload) {
     const response = await api.post(`/admin/view360/${viewId}/hotspots`, payload);
     return unwrapData<AdminView360Hotspot>(response.data);
