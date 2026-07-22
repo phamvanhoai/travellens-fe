@@ -14,6 +14,7 @@ import { getPublicTourId, getPublicTourName, tourService, type PublicTour } from
 
 type PassengerDraft = BookingPassengerPayload;
 type BookingMetadata = Record<string, { booked_at: string; arrival_time: string; amount: number; passengers: PassengerDraft["age_category"][] }>;
+const BOOKING_DEADLINE_HOURS = 4;
 
 const emptyPassenger = (): PassengerDraft => ({
   passenger_name: "",
@@ -86,6 +87,7 @@ export default function BookingPage() {
   }, []);
 
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
+  const minimumTravelDate = getMinimumTravelDate(selectedTour);
   const unitPrice = Number(selectedTour?.price ?? 0);
   const childPrice = Number(selectedTour?.child_price ?? unitPrice * 0.65);
   const infantPrice = Number(selectedTour?.infant_price ?? 0);
@@ -167,6 +169,10 @@ export default function BookingPage() {
     const errors: Record<string, string> = {};
     if (!tourId) errors.tour_id = "Tour is required.";
     if (!travelDate) errors.travel_date = "Travel date is required.";
+    else {
+      const departureError = getDepartureValidationMessage(travelDate, selectedTour);
+      if (departureError) errors.travel_date = departureError;
+    }
     if (passengers.length < minimumBooking) errors.passengers = `This tour requires at least ${minimumBooking} passenger${minimumBooking === 1 ? "" : "s"} per booking.`;
     else if (maximumBooking !== null && passengers.length > maximumBooking) errors.passengers = `This tour allows at most ${maximumBooking} passengers per booking.`;
     if (String(selectedTour?.currency ?? "VND").toUpperCase() !== "VND") errors.tour_id = "Online booking currently supports VND tours only.";
@@ -254,10 +260,14 @@ export default function BookingPage() {
                 <input
                   type="date"
                   value={travelDate}
-                  min={getVietnamDateInputValue()}
+                  min={minimumTravelDate}
                   onChange={(event) => {
-                    setTravelDate(event.target.value);
-                    setFieldErrors((current) => ({ ...current, travel_date: "" }));
+                    const value = event.target.value;
+                    setTravelDate(value);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      travel_date: getDepartureValidationMessage(value, selectedTour) ?? ""
+                    }));
                   }}
                   className={`mt-2 h-12 w-full rounded-lg border px-4 outline-none ${fieldErrors.travel_date ? "border-rose-500" : "border-slate-200 focus:border-brand-600"}`}
                 />
@@ -419,6 +429,45 @@ function getVietnamDateInputValue() {
   }).formatToParts(new Date());
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${value.year}-${value.month}-${value.day}`;
+}
+
+function getTourStartTime(tour?: PublicTour) {
+  const direct = String(tour?.start_time ?? "").match(/^([01]?\d|2[0-3]):([0-5]\d)/);
+  const schedule = String(tour?.schedule ?? "").match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)/);
+  const match = direct ?? schedule;
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : null;
+}
+
+function getTourDepartureTime(travelDate: string, tour?: PublicTour) {
+  const startTime = getTourStartTime(tour);
+  if (!travelDate || !startTime) return null;
+  const value = new Date(`${travelDate}T${startTime}:00+07:00`).getTime();
+  return Number.isFinite(value) ? value : null;
+}
+
+function getMinimumTravelDate(tour?: PublicTour) {
+  const startTime = getTourStartTime(tour);
+  if (!startTime) return getVietnamDateInputValue();
+  const cutoff = Date.now() + BOOKING_DEADLINE_HOURS * 60 * 60 * 1000;
+  let date = getVietnamDateInputValue();
+  for (let index = 0; index < 4; index += 1) {
+    const departure = new Date(`${date}T${startTime}:00+07:00`).getTime();
+    if (departure > cutoff) return date;
+    date = new Date(new Date(`${date}T00:00:00+07:00`).getTime() + 24 * 60 * 60 * 1000)
+      .toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+  }
+  return date;
+}
+
+function getDepartureValidationMessage(travelDate: string, tour?: PublicTour) {
+  const departure = getTourDepartureTime(travelDate, tour);
+  if (departure === null) return null;
+  const remaining = departure - Date.now();
+  if (remaining <= 0) return "This tour has already started or finished for the selected date.";
+  if (remaining < BOOKING_DEADLINE_HOURS * 60 * 60 * 1000) {
+    return `Bookings close ${BOOKING_DEADLINE_HOURS} hours before the tour starts.`;
+  }
+  return null;
 }
 
 function isValidVietnamMobilePhone(value: string) {
