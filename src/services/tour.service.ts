@@ -65,6 +65,7 @@ export type PublicTourListParams = {
 
 export type PublicTourListResult = { items: PublicTour[]; total: number; totalPages: number };
 export type TourAvailability = { tour_id: number; travel_date: string; departure_at: string; capacity: number; booked_slots: number; available_slots: number };
+export type PublicTourDeparture = { tour_departure_id: number; tour_id: number; departure_at: string; capacity: number; booked_slots: number; available_slots: number; price: number | string; child_price: number | string; infant_price: number | string; currency: string; booking_open_at?: string | null; booking_close_at?: string | null; status: string };
 
 export type PublicTourDestination = {
   name?: string;
@@ -135,5 +136,10 @@ export const tourService = {
   async availability(id: string, travelDate: string) {
     const response = await api.get(`/tours/${id}/availability`, { params: { travel_date: travelDate } });
     return unwrapData<TourAvailability>(response.data);
+  },
+  async departures(id: string) {
+    const response = await api.get(`/tours/${id}/departures`);
+    const data = unwrapData<unknown>(response.data);
+    return Array.isArray(data) ? data as PublicTourDeparture[] : [];
   }
 };
