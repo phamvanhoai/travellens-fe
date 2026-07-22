@@ -106,8 +106,11 @@ export function PanoramaViewer({
     onLoadingChange(true);
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
-    loader.load(
-      imageUrl,
+    const proxyUrl = `/api/view360/image?url=${encodeURIComponent(imageUrl)}`;
+    let attemptedProxy = false;
+
+    const loadTexture = (sourceUrl: string) => loader.load(
+      sourceUrl,
       (loadedTexture) => {
         if (cancelled) {
           loadedTexture.dispose();
@@ -144,10 +147,16 @@ export function PanoramaViewer({
       undefined,
       () => {
         if (cancelled) return;
+        if (!attemptedProxy && /^https:\/\//i.test(imageUrl)) {
+          attemptedProxy = true;
+          loadTexture(proxyUrl);
+          return;
+        }
         onLoadingChange(false);
         onError("This panorama image could not be loaded.");
       }
     );
+    loadTexture(imageUrl);
 
     function render() {
       frameId = window.requestAnimationFrame(render);
