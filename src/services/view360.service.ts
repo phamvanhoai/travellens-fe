@@ -87,8 +87,7 @@ function getImageSceneId(image: PublicView360Image) {
 }
 
 function getPanoramaImageUrl(value: string) {
-  const source = resolveBackendAssetUrl(value);
-  return source ? `/api/view360/image?url=${encodeURIComponent(source)}` : "";
+  return resolveBackendAssetUrl(value);
 }
 
 function getNarrationAudioUrl(value: string) {

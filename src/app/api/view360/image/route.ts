@@ -24,26 +24,21 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(15_000),
       cache: "no-store"
     });
-    if (!response.ok) {
+    if (!response.ok || !response.body) {
       return NextResponse.json({ message: "Panorama image is unavailable." }, { status: 502 });
     }
 
-    const image = await response.arrayBuffer();
-    const upstreamLength = Number(response.headers.get("content-length"));
-    if (!image.byteLength || (Number.isFinite(upstreamLength) && upstreamLength > 0 && image.byteLength !== upstreamLength)) {
-      return NextResponse.json({ message: "Panorama image download was incomplete." }, { status: 502 });
-    }
-
-    return new NextResponse(image, {
-      headers: {
-        "Content-Type": response.headers.get("content-type") ?? "image/jpeg",
-        "Content-Length": String(image.byteLength),
-        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-        "CDN-Cache-Control": "no-store",
-        "Vercel-CDN-Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff"
-      }
+    const headers = new Headers({
+      "Content-Type": response.headers.get("content-type") ?? "image/webp",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "CDN-Cache-Control": "public, max-age=31536000, immutable",
+      "Vercel-CDN-Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff"
     });
+    const contentLength = response.headers.get("content-length");
+    if (contentLength) headers.set("Content-Length", contentLength);
+
+    return new NextResponse(response.body, { headers });
   } catch {
     return NextResponse.json({ message: "Panorama image is unavailable." }, { status: 502 });
   }

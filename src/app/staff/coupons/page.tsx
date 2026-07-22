@@ -512,16 +512,33 @@ function validateCouponForm(form: CouponFormValue, editing: boolean): CouponFiel
   else if (!Number.isFinite(discountValue) || discountValue <= 0) errors.discount_value = "Discount value must be greater than 0.";
   else if (form.discount_type === "percentage" && discountValue > 100) errors.discount_value = "Percentage discount cannot exceed 100.";
 
-  for (const field of ["max_discount_amount", "min_order_amount", "usage_limit"] as const) {
+  for (const field of ["max_discount_amount", "min_order_amount"] as const) {
     const value = form[field];
     if (value && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
       errors[field] = "Value must be 0 or greater.";
     }
   }
 
+  if (!form.usage_limit) errors.usage_limit = "Usage limit is required.";
+  else if (!Number.isInteger(Number(form.usage_limit)) || Number(form.usage_limit) <= 0) {
+    errors.usage_limit = "Usage limit must be a whole number greater than 0.";
+  }
+
+  if (form.max_discount_amount !== "" && Number(form.max_discount_amount) <= 0) {
+    errors.max_discount_amount = "Maximum discount amount must be greater than 0 or left blank.";
+  }
+
+  if (
+    form.max_discount_amount !== ""
+    && form.min_order_amount !== ""
+    && Number(form.max_discount_amount) < Number(form.min_order_amount)
+  ) {
+    errors.max_discount_amount = "Maximum discount amount must be greater than or equal to minimum order amount.";
+  }
+
   if (!form.start_date) errors.start_date = "Start date is required.";
   if (!form.end_date) errors.end_date = "End date is required.";
-  if (form.start_date && form.end_date && form.end_date < form.start_date) {
+  if (form.start_date && form.end_date && form.end_date <= form.start_date) {
     errors.end_date = "End date must be after start date.";
   }
 

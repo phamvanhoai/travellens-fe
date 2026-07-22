@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AxiosError } from "axios";
+import { motion } from "framer-motion";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, Filter, Flag, Heart, ImagePlus, Loader2, MapPin, MessageCircle, MoreHorizontal, Pencil, Reply, Search, Send, Share2, SlidersHorizontal, Trash2, UserX, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
@@ -435,25 +436,24 @@ function TravelFeedContent() {
         title="Travel Feed"
         subtitle="See public travel posts from other customers, with real-time likes, photos, locations and destinations from the Travel360 API."
         image={images.balloons}
+        searchClassName="w-full"
         searchContent={
-          <form onSubmit={submitSearch} className="rounded-lg bg-white p-3 text-ink shadow-soft">
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <label className="rounded-lg border border-slate-100 px-4 py-3">
-                <span className="mb-2 block text-xs font-semibold text-slate-500">Search feed</span>
-                <span className="flex items-center gap-2">
-                  <Search size={16} className="text-brand-600" />
-                  <input
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-slate-400"
-                    placeholder="Search posts, places, experiences..."
-                  />
-                </span>
-              </label>
-              <button type="submit" className="inline-flex h-full min-h-14 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700">
-                <Search size={17} /> Search
-              </button>
-            </div>
+          <form onSubmit={submitSearch} className="flex flex-col gap-3 rounded-2xl border border-white/40 bg-white/95 p-2.5 text-ink shadow-2xl backdrop-blur sm:flex-row sm:items-center">
+            <label className="flex min-w-0 flex-1 items-center gap-4 rounded-xl px-3 py-2">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Search size={20} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Discover travel stories</span>
+                <input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  className="mt-0.5 h-7 w-full bg-transparent text-base font-semibold text-ink outline-none placeholder:font-normal placeholder:text-slate-400"
+                  placeholder="Search posts, places or experiences..."
+                />
+              </span>
+            </label>
+            <button type="submit" className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-600 px-7 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700">
+              Explore feed <ChevronRight size={17} />
+            </button>
           </form>
         }
       />
@@ -470,25 +470,31 @@ function TravelFeedContent() {
           >
             <ImagePlus size={17} /> Create post
           </button>
-          <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold">
-            <Filter size={16} />
-            <select
-              value={sort}
-              onChange={(event) => {
-                setPage(1);
-                setSort(event.target.value as TravelFeedSort);
-              }}
-              className="bg-transparent outline-none"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
+          <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm font-semibold">
+            <span className="grid size-8 shrink-0 place-items-center text-slate-400"><Filter size={15} /></span>
+            {sortOptions.map((option) => {
+              const active = sort === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setPage(1);
+                    setSort(option.value);
+                  }}
+                  className={`relative isolate h-8 rounded-lg px-3 text-xs font-bold transition-colors ${active ? "text-white" : "text-slate-500 hover:text-brand-600"}`}
+                >
+                  {active ? <motion.span layoutId="travel-feed-sort-active" className="absolute inset-0 -z-10 rounded-lg bg-brand-600 shadow-sm" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
           <button
             type="button"
             onClick={() => setShowFilters((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold transition hover:border-brand-600 hover:text-brand-600"
+            aria-pressed={showFilters}
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${showFilters ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-600 hover:border-brand-600 hover:text-brand-600"}`}
           >
             <SlidersHorizontal size={16} /> Filters
           </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { ChevronRight, Compass, Filter, Search, Sparkles } from "lucide-react";
 import { DestinationCard } from "@/components/cards/destination-card";
 import { Pagination } from "@/components/common/pagination";
@@ -133,8 +134,9 @@ export default function DestinationsPage() {
           <button
             type="button"
             onClick={() => selectCategory("")}
-            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${!selectedCategoryId ? "bg-brand-600 text-white shadow-md shadow-brand-600/20" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
+            className={`relative isolate inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${!selectedCategoryId ? "text-white" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
           >
+            {!selectedCategoryId ? <motion.span layoutId="destination-category-active" className="absolute inset-0 -z-10 rounded-xl bg-brand-600 shadow-md shadow-brand-600/20" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
             <Compass size={16} /> All Destinations
           </button>
           {categories.map((category) => {
@@ -144,8 +146,9 @@ export default function DestinationsPage() {
                 key={id || category.name}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold transition ${selectedCategoryId === id ? "bg-brand-600 text-white shadow-md shadow-brand-600/20" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
+                className={`relative isolate shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${selectedCategoryId === id ? "text-white" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}
               >
+                {selectedCategoryId === id ? <motion.span layoutId="destination-category-active" className="absolute inset-0 -z-10 rounded-xl bg-brand-600 shadow-md shadow-brand-600/20" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
                 {category.name}
               </button>
             );
