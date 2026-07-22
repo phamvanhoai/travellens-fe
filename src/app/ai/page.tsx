@@ -2,7 +2,6 @@
 
 import { FormEvent, MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   AlertCircle,
   ArrowRight,
@@ -203,7 +202,7 @@ export default function AIAssistantPage() {
               {results.map((destination, index) => (
                 <article key={destination.destination_id} className="group flex h-full min-h-[430px] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-soft">
                   <div className="relative h-56 overflow-hidden bg-slate-100">
-                    <Image src={destination.thumbnail || "/placeholder-destination.jpg"} alt={destination.name} fill className="object-cover transition duration-500 group-hover:scale-105" />
+                    <img src={destination.thumbnail || "/placeholder-destination.jpg"} alt={destination.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-black/10" />
                     <span className="absolute left-3 top-3 grid size-9 place-items-center rounded-xl bg-white/90 text-sm font-black text-brand-700 shadow-sm backdrop-blur">{index + 1}</span>
                     <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm"><Sparkles size={12} />{Math.round(destination.score * 100)}% match</span>
