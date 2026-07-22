@@ -1,10 +1,37 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { ExternalLink, Info, MapPin, Navigation, type LucideIcon } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { View360Hotspot } from "@/services/view360.service";
+
+const hotspotAppearance: Record<View360Hotspot["type"], {
+  icon: LucideIcon;
+  label: string;
+  className: string;
+}> = {
+  navigation: {
+    icon: Navigation,
+    label: "Navigation",
+    className: "bg-amber-500 hover:bg-amber-400 ring-amber-200/30"
+  },
+  info: {
+    icon: Info,
+    label: "Information",
+    className: "bg-blue-600 hover:bg-blue-500 ring-blue-200/30"
+  },
+  link: {
+    icon: ExternalLink,
+    label: "External link",
+    className: "bg-violet-600 hover:bg-violet-500 ring-violet-200/30"
+  },
+  location: {
+    icon: MapPin,
+    label: "Location",
+    className: "bg-emerald-600 hover:bg-emerald-500 ring-emerald-200/30"
+  }
+};
 
 export function PanoramaViewer({
   imageUrl,
@@ -231,22 +258,28 @@ export function PanoramaViewer({
         {hotspots.map((hotspot) => {
           const position = hotspotPositions.find((item) => item.id === hotspot.id);
           if (!position?.visible) return null;
+          const appearance = hotspotAppearance[hotspot.type] ?? hotspotAppearance.info;
+          const HotspotIcon = appearance.icon;
           return (
             <motion.button
               key={hotspot.id}
               type="button"
               onClick={() => onHotspotClick?.(hotspot, { x: position.x, y: position.y })}
-              className="pointer-events-auto absolute grid size-11 place-items-center rounded-full border border-white/50 bg-brand-600 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)] ring-4 ring-white/20 transition-colors hover:bg-brand-500"
+              className={`group pointer-events-auto absolute grid size-11 place-items-center rounded-full border border-white/60 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)] ring-4 transition-colors ${appearance.className}`}
               style={{ left: position.x - 22, top: position.y - 22 }}
               initial={reduceMotion ? false : { opacity: 0, scale: 0.55 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: reduceMotion ? 0.1 : 0.35, ease: "backOut" }}
               whileHover={reduceMotion ? undefined : { scale: 1.12 }}
               whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-              title={hotspot.title}
-              aria-label={hotspot.title}
+              title={`${appearance.label}: ${hotspot.title}`}
+              aria-label={`${appearance.label}: ${hotspot.title}`}
             >
-              <MapPin size={19} />
+              <HotspotIcon size={19} strokeWidth={2.4} />
+              <span className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] w-max max-w-48 -translate-x-1/2 rounded-md border border-white/15 bg-black/80 px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <span className="block text-[10px] uppercase tracking-wide text-white/60">{appearance.label}</span>
+                <span className="block max-w-44 truncate">{hotspot.title}</span>
+              </span>
             </motion.button>
           );
         })}
