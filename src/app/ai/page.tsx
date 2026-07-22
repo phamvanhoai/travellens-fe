@@ -1,46 +1,75 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { aiService, AIRecommendationResult, AIHistoryItem } from "@/services/ai.service";
-import { useAuthStore } from "@/store/use-auth-store";
-import { useAIStore } from "@/store/use-ai-store";
+import { FormEvent, MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  AlertCircle,
+  ArrowRight,
+  Bot,
+  Clock3,
+  History,
+  LoaderCircle,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Trash2,
+  X
+} from "lucide-react";
+import { PageHero } from "@/components/common/page-hero";
+import { images } from "@/lib/data";
+import { aiService, type AIHistoryItem } from "@/services/ai.service";
+import { useAIStore } from "@/store/use-ai-store";
+import { useAuthStore } from "@/store/use-auth-store";
+
+const fieldNamesMap: Record<string, string> = {
+  cust_segment: "đối tượng chuyến đi",
+  tour_type: "loại hình du lịch",
+  pax: "số lượng người",
+  budget_per_person_vnd: "ngân sách mỗi người"
+};
+
+const travelSuggestions = [
+  {
+    label: "Biển cho gia đình",
+    prompt: "Tôi muốn đi du lịch biển cùng gia đình 4 người, ngân sách khoảng 5 triệu đồng mỗi người."
+  },
+  {
+    label: "Khám phá cùng bạn bè",
+    prompt: "Nhóm bạn 6 người muốn đi khám phá thiên nhiên và trải nghiệm ngoài trời, ngân sách khoảng 4 triệu đồng mỗi người."
+  },
+  {
+    label: "Văn hóa cho cặp đôi",
+    prompt: "Cặp đôi 2 người muốn khám phá văn hóa, ẩm thực và các địa điểm lãng mạn, ngân sách khoảng 7 triệu đồng mỗi người."
+  },
+  {
+    label: "Tiết kiệm cho sinh viên",
+    prompt: "Nhóm sinh viên 5 người muốn du lịch nghỉ dưỡng kết hợp tham quan, ngân sách tối đa 3 triệu đồng mỗi người."
+  }
+] as const;
 
 export default function AIAssistantPage() {
   const { user } = useAuthStore();
   const { travelRequest, setTravelRequest, results, setResults, showResults, setShowResults } = useAIStore();
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<AIHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Fetch history when user logs in
-  useEffect(() => {
-    if (user) {
-      loadHistory();
+  async function loadHistory() {
+    try {
+      setHistory(await aiService.getHistory());
+    } catch (historyError) {
+      console.error("Failed to load history", historyError);
     }
+  }
+
+  useEffect(() => {
+    if (user) void loadHistory();
   }, [user]);
 
-  const loadHistory = async () => {
-    try {
-      const data = await aiService.getHistory();
-      setHistory(data);
-    } catch (err) {
-      console.error("Failed to load history", err);
-    }
-  };
-
-  const fieldNamesMap: Record<string, string> = {
-    cust_segment: "Đối tượng (Gia đình, Sinh viên...)",
-    tour_type: "Loại hình (Biển, Văn hóa...)",
-    pax: "Số lượng người",
-    budget_per_person_vnd: "Ngân sách mỗi người",
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSearch(event: FormEvent) {
+    event.preventDefault();
     if (!user) {
       setError("Vui lòng đăng nhập để sử dụng tính năng này.");
       return;
@@ -50,274 +79,149 @@ export default function AIAssistantPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await aiService.searchByText(travelRequest);
-
-      if (!res.success) {
-        // Missing fields – ask user to describe more
-        const missing = (res.missing_fields || [])
-          .map((f) => fieldNamesMap[f] || f)
-          .join(", ");
-        setError(`Vui lòng mô tả chi tiết hơn. Hệ thống chưa nhận diện được: ${missing}.`);
+      const response = await aiService.searchByText(travelRequest);
+      if (!response.success) {
+        const missing = (response.missing_fields || []).map((field) => fieldNamesMap[field] || field).join(", ");
+        setError(`Hãy mô tả chi tiết hơn${missing ? `. AI chưa nhận diện được: ${missing}` : ""}.`);
         return;
       }
-
-      setResults(res.recommendations || []);
+      setResults(response.recommendations || []);
       setShowResults(true);
-
-      // Refresh history if logged in
-      if (user) loadHistory();
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-        err.message ||
-        "Không thể lấy kết quả. Vui lòng thử lại."
-      );
+      void loadHistory();
+    } catch (searchError: unknown) {
+      const candidate = searchError as { response?: { data?: { message?: string } }; message?: string };
+      setError(candidate.response?.data?.message || candidate.message || "Không thể lấy kết quả. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const formatVND = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
-  const handleSelectHistory = (item: AIHistoryItem) => {
+  function selectHistory(item: AIHistoryItem) {
     setTravelRequest(item.travel_request);
     setResults(item.recommendations);
     setShowResults(true);
     setShowHistory(false);
-  };
+  }
 
-  const handleDeleteHistory = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  async function deleteHistory(id: number, event: MouseEvent) {
+    event.stopPropagation();
     try {
       await aiService.deleteHistory(id);
-      setHistory(prev => prev.filter(h => h.id !== id));
-    } catch (err) {
-      console.error("Failed to delete history", err);
+      setHistory((current) => current.filter((item) => item.id !== id));
+    } catch (historyError) {
+      console.error("Failed to delete history", historyError);
     }
-  };
+  }
 
-  return (
-    <div className="container mx-auto py-12 px-4 max-w-7xl">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10">
-        <div className="text-center md:text-left flex-1">
-          <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500">
-            AI Travel Assistant
-          </h1>
-          <p className="text-gray-600 max-w-2xl">
-            Mô tả chuyến đi lý tưởng của bạn, AI sẽ tìm những điểm đến hoàn hảo nhất!
-          </p>
-        </div>
-
-        {user && (
-          <div className="mt-6 md:mt-0 relative">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-700"
-            >
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              Lịch sử tìm kiếm ({history.length})
-            </button>
-
-            {showHistory && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-96 flex flex-col">
-                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                  <h3 className="font-bold text-gray-800">Lịch sử gần đây</h3>
-                  <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                  </button>
-                </div>
-
-                <div className="overflow-y-auto flex-1">
-                  {history.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500">
-                      Chưa có lịch sử tìm kiếm nào.
-                    </div>
-                  ) : (
-                    history.map(item => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleSelectHistory(item)}
-                        className="p-4 border-b hover:bg-blue-50 cursor-pointer transition-colors relative group"
-                      >
-                        <p className="text-sm font-medium text-gray-800 line-clamp-2 pr-6">
-                          &ldquo;{item.travel_request}&rdquo;
-                        </p>
-                        <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-                          <span>{new Date(item.created_at).toLocaleDateString('vi-VN')}</span>
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{item.recommendations.length} kết quả</span>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteHistory(item.id, e)}
-                          className="absolute top-4 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+  const assistantForm = (
+    <form onSubmit={handleSearch} className="rounded-2xl border border-white/40 bg-white/95 p-2.5 text-ink shadow-2xl backdrop-blur">
+      <label className="flex items-start gap-3 rounded-xl px-3 py-2">
+        <span className="mt-1 grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Bot size={21} /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Tell AI about your ideal trip</span>
+          <textarea
+            value={travelRequest}
+            onChange={(event) => setTravelRequest(event.target.value)}
+            rows={2}
+            required
+            placeholder="Ví dụ: Tôi muốn đi biển cùng gia đình 4 người, ngân sách khoảng 5 triệu mỗi người..."
+            className="mt-1 w-full resize-none bg-transparent text-sm font-semibold leading-6 outline-none placeholder:font-normal placeholder:text-slate-400 sm:text-base"
+          />
+        </span>
+      </label>
+      <div className="flex gap-2 overflow-x-auto px-3 pb-3 pt-1" aria-label="Gợi ý yêu cầu chuyến đi">
+        {travelSuggestions.map((suggestion) => (
+          <button
+            key={suggestion.label}
+            type="button"
+            onClick={() => {
+              setTravelRequest(suggestion.prompt);
+              setError(null);
+            }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-100 bg-brand-50/70 px-3 py-1.5 text-xs font-bold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100"
+          >
+            <Sparkles size={12} />{suggestion.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2 border-t border-slate-100 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="px-3 text-xs font-medium text-slate-400">Điểm đến phù hợp được gợi ý dựa trên sở thích của bạn.</span>
+        {user ? (
+          <button type="submit" disabled={loading || !travelRequest.trim()} className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700 disabled:pointer-events-none disabled:opacity-60">
+            {loading ? <LoaderCircle size={18} className="animate-spin" /> : <Sparkles size={18} />}
+            {loading ? "AI đang phân tích..." : "Tạo gợi ý"}
+          </button>
+        ) : (
+          <Link href="/login" className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700">Đăng nhập để trải nghiệm <ArrowRight size={17} /></Link>
         )}
       </div>
+    </form>
+  );
 
-      {/* Error message */}
-      {error && (
-        <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg max-w-2xl mx-auto font-medium shadow-sm">
-          {error}
-        </div>
-      )}
+  return (
+    <>
+      <PageHero title="AI Travel Assistant" subtitle="Mô tả chuyến đi trong mơ và để AI tìm những điểm đến phù hợp nhất cho bạn." image={images.balloons} searchClassName="w-full" searchContent={assistantForm} />
 
-      {/* Search box */}
-      <div className="bg-white rounded-3xl shadow-lg p-8 mb-12 border border-gray-100 max-w-3xl mx-auto">
-        <form onSubmit={handleSearch}>
-          <div className="relative">
-            <textarea
-              className="w-full p-5 pl-5 pr-14 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white outline-none resize-none mb-6 text-lg transition-all"
-              rows={3}
-              placeholder="Ví dụ: Tôi muốn đi biển cùng gia đình 4 người, ngân sách khoảng 5 triệu mỗi người."
-              value={travelRequest}
-              onChange={(e) => setTravelRequest(e.target.value)}
-              required
-            />
-          </div>
-
-          {!user ? (
-            <div className="mt-4 text-center">
-              <p className="text-red-500 mb-4 font-medium">Bạn cần đăng nhập để sử dụng tính năng này.</p>
-              <Link
-                href="/login"
-                className="inline-block bg-blue-600 text-white font-bold text-lg py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-700 transition-all transform hover:-translate-y-1"
-              >
-                Đăng Nhập Ngay
-              </Link>
-            </div>
-          ) : (
-            <button
-              type="submit"
-              disabled={loading || !travelRequest.trim()}
-              className="w-full bg-gray-900 text-white font-bold text-lg py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 disabled:cursor-not-allowed transform hover:-translate-y-1 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-              )}
-              {loading ? "Đang phân tích AI..." : "Khám Phá Điểm Đến"}
-            </button>
-          )}
-        </form>
-      </div>
-
-      {/* Results Section */}
-      {showResults && (
-        <div className="animate-fade-in-up">
-          <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+      <section className="bg-gradient-to-b from-slate-50 to-white py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-3xl font-extrabold text-gray-900">
-                Top {results.length} Điểm Đến Đề Xuất
-              </h2>
-              <p className="text-gray-500 mt-2">Dựa trên mong muốn của bạn</p>
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-600"><Sparkles size={14} />Personalized discovery</span>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink">{showResults ? "Điểm đến dành cho bạn" : "Bắt đầu hành trình của bạn"}</h2>
+              <p className="mt-1 text-sm text-slate-500">{showResults ? `${results.length} gợi ý dựa trên yêu cầu của bạn.` : "Càng mô tả chi tiết, kết quả AI đưa ra càng phù hợp."}</p>
             </div>
 
-            <button
-              onClick={() => {
-                setTravelRequest("");
-                setShowResults(false);
-              }}
-              className="text-blue-600 font-semibold hover:text-blue-800 transition-colors flex items-center bg-blue-50 px-4 py-2 rounded-xl"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-              Làm mới
-            </button>
-          </div>
+            <div className="relative flex gap-2">
+              {showResults ? <button type="button" onClick={() => { setTravelRequest(""); setShowResults(false); setError(null); }} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:border-brand-200 hover:text-brand-600"><RefreshCw size={15} />Làm mới</button> : null}
+              {user ? <button type="button" onClick={() => setShowHistory((visible) => !visible)} className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-bold shadow-sm transition ${showHistory ? "border-brand-200 bg-brand-50 text-brand-700" : "border-slate-200 bg-white text-slate-600 hover:border-brand-200 hover:text-brand-600"}`}><History size={16} />Lịch sử <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{history.length}</span></button> : null}
 
-          {results.length === 0 ? (
-            <div className="text-center p-16 bg-white rounded-3xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
-              <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Không tìm thấy kết quả phù hợp</h3>
-              <p className="text-gray-500 mb-6">Chúng tôi chưa tìm thấy điểm đến nào phù hợp hoàn toàn với tiêu chí hiện tại.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {results.map((dest, idx) => (
-                <div
-                  key={dest.destination_id}
-                  className="bg-white rounded-3xl shadow-md overflow-hidden hover:shadow-2xl transition-all duration-300 group flex flex-col h-full border border-gray-100 relative"
-                >
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-gray-900 font-black w-10 h-10 flex items-center justify-center rounded-2xl z-10 shadow-sm">
-                    {idx + 1}
-                  </div>
-
-                  <div className="relative h-64 w-full overflow-hidden">
-                    <Image
-                      src={dest.thumbnail || "/placeholder-destination.jpg"}
-                      alt={dest.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-
-                    <div className="absolute top-4 right-4 bg-teal-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-sm flex items-center gap-1 backdrop-blur-md">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                      {(dest.score * 100).toFixed(0)}%
-                    </div>
-
-                    <div className="absolute bottom-4 left-5 right-5">
-                      <h3 className="font-bold text-2xl text-white mb-2 leading-tight drop-shadow-md">
-                        {dest.name}
-                      </h3>
-                      <div className="flex gap-2">
-                        <span className="bg-white/20 backdrop-blur-md border border-white/30 text-white px-2.5 py-1 rounded-lg text-xs font-semibold">
-                          {dest.suggested_tour_type || "Khám phá"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6 flex flex-col flex-grow bg-white">
-                    <div 
-                      className="text-gray-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: dest.description || "Điểm đến tuyệt vời để bạn trải nghiệm và khám phá những điều thú vị." }}
-                    />
-
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Chỉ từ</p>
-                        {dest.starting_price ? (
-                          <span className="text-xl font-bold text-orange-600">
-                            {formatVND(dest.starting_price)}
-                          </span>
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-400">Đang cập nhật</span>
-                        )}
-                      </div>
-
-                      <Link
-                        href={dest.detail_link}
-                        className="bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white px-5 py-2.5 rounded-xl font-bold transition-colors shadow-sm"
-                      >
-                        Chi Tiết
-                      </Link>
-                    </div>
+              {showHistory ? (
+                <div className="absolute right-0 top-12 z-30 flex max-h-96 w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h3 className="font-bold text-ink">Lịch sử gần đây</h3><p className="text-xs text-slate-400">Chọn để xem lại kết quả</p></div><button type="button" onClick={() => setShowHistory(false)} className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-ink"><X size={17} /></button></div>
+                  <div className="overflow-y-auto">
+                    {history.length ? history.map((item) => (
+                      <button key={item.id} type="button" onClick={() => selectHistory(item)} className="group relative block w-full border-b border-slate-100 p-4 text-left transition last:border-0 hover:bg-brand-50/60">
+                        <p className="line-clamp-2 pr-7 text-sm font-semibold leading-5 text-slate-700">“{item.travel_request}”</p>
+                        <span className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={12} />{new Date(item.created_at).toLocaleDateString("vi-VN")} · {item.recommendations.length} kết quả</span>
+                        <span role="button" tabIndex={0} onClick={(event) => void deleteHistory(item.id, event)} className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-300 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"><Trash2 size={15} /></span>
+                      </button>
+                    )) : <div className="p-8 text-center"><History className="mx-auto text-slate-300" size={28} /><p className="mt-2 text-sm text-slate-500">Chưa có lịch sử tìm kiếm.</p></div>}
                   </div>
                 </div>
+              ) : null}
+            </div>
+          </div>
+
+          {error ? <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700"><AlertCircle size={18} className="mt-0.5 shrink-0" /><span>{error}</span></div> : null}
+
+          {!showResults ? (
+            <div className="grid min-h-52 place-items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center"><div><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-50 text-brand-600"><Search size={24} /></span><h3 className="mt-4 font-bold text-ink">Sẵn sàng khám phá?</h3><p className="mt-1 max-w-md text-sm leading-6 text-slate-500">Nhập loại hình, số người và ngân sách để nhận gợi ý chính xác hơn.</p></div></div>
+          ) : results.length === 0 ? (
+            <div className="grid min-h-52 place-items-center rounded-2xl border border-dashed border-slate-300 bg-white text-center"><div><AlertCircle className="mx-auto text-slate-300" size={32} /><h3 className="mt-3 font-bold text-ink">Không tìm thấy kết quả phù hợp</h3><p className="mt-1 text-sm text-slate-500">Hãy thử thay đổi yêu cầu hoặc ngân sách của bạn.</p></div></div>
+          ) : (
+            <div className="grid auto-rows-fr gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {results.map((destination, index) => (
+                <article key={destination.destination_id} className="group flex h-full min-h-[430px] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-soft">
+                  <div className="relative h-56 overflow-hidden bg-slate-100">
+                    <Image src={destination.thumbnail || "/placeholder-destination.jpg"} alt={destination.name} fill className="object-cover transition duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-black/10" />
+                    <span className="absolute left-3 top-3 grid size-9 place-items-center rounded-xl bg-white/90 text-sm font-black text-brand-700 shadow-sm backdrop-blur">{index + 1}</span>
+                    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm"><Sparkles size={12} />{Math.round(destination.score * 100)}% match</span>
+                    <div className="absolute bottom-4 left-4 right-4"><h3 className="text-xl font-bold text-white">{destination.name}</h3><span className="mt-2 inline-flex rounded-full border border-white/30 bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">{destination.suggested_tour_type || "Khám phá"}</span></div>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="line-clamp-3 text-sm leading-6 text-slate-500" dangerouslySetInnerHTML={{ __html: destination.description || "Điểm đến tuyệt vời để bạn trải nghiệm và khám phá." }} />
+                    <div className="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+                      <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Giá tham khảo</p><p className="mt-1 font-bold text-brand-700">{destination.starting_price ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(destination.starting_price) : "Đang cập nhật"}</p></div>
+                      <Link href={destination.detail_link} className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-50 px-4 text-sm font-bold text-brand-700 transition group-hover:bg-brand-600 group-hover:text-white">Chi tiết <ArrowRight size={15} /></Link>
+                    </div>
+                  </div>
+                </article>
               ))}
             </div>
           )}
         </div>
-      )}
-    </div>
+      </section>
+    </>
   );
 }

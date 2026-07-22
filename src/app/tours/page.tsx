@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { AlertCircle, Calendar, ChevronRight, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { TourCard } from "@/components/cards/tour-card";
 import { Pagination } from "@/components/common/pagination";
@@ -210,7 +211,7 @@ function formatCompactVnd(amount: number) {
 
 
 function CategoryButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${active ? "bg-brand-600 text-white shadow-md shadow-brand-600/20" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}>{children}</button>;
+  return <button type="button" onClick={onClick} className={`relative isolate inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${active ? "text-white" : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"}`}>{active ? <motion.span layoutId="tour-category-active" className="absolute inset-0 -z-10 rounded-xl bg-brand-600 shadow-md shadow-brand-600/20" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}{children}</button>;
 }
 
 function getDurationParams(value: string) {
