@@ -287,9 +287,10 @@ export default function AIAssistantPage() {
                   </div>
 
                   <div className="p-6 flex flex-col flex-grow bg-white">
-                    <p className="text-gray-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed">
-                      {dest.description || "Điểm đến tuyệt vời để bạn trải nghiệm và khám phá những điều thú vị."}
-                    </p>
+                    <div 
+                      className="text-gray-600 text-sm line-clamp-3 mb-6 flex-grow leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: dest.description || "Điểm đến tuyệt vời để bạn trải nghiệm và khám phá những điều thú vị." }}
+                    />
 
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
                       <div>
