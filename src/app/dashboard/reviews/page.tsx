@@ -13,21 +13,23 @@ export default function ReviewsPage() {
   const [items, setItems] = useState<CustomerReview[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const showToast = useToast();
 
-  const visibleItems = items.filter((item) => `${getCustomerReviewId(item)} ${getCustomerReviewLocationName(item)} ${item.comment ?? ""} ${item.status ?? ""}`.toLowerCase().includes(query.toLowerCase()));
-  const pageCount = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const rows = visibleItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rows = items;
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const reviews = await reviewService.list();
-      setItems(reviews);
+      const result = await reviewService.listPage({ page, limit: pageSize, search: query.trim() || undefined });
+      setItems(result.data);
+      setTotalItems(result.meta.total);
+      setPageCount(result.meta.total_pages);
     } catch (err) {
       const message = getApiError(err, "Cannot load reviews from API.");
       setError(message);
@@ -35,10 +37,11 @@ export default function ReviewsPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [page, query, showToast]);
 
   useEffect(() => {
-    void loadData();
+    const timer = window.setTimeout(() => void loadData(), 300);
+    return () => window.clearTimeout(timer);
   }, [loadData]);
 
   return <>
@@ -51,7 +54,7 @@ export default function ReviewsPage() {
           : rows.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
             : rows.map((review) => <tr key={getCustomerReviewId(review)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getCustomerReviewId(review)}</td><td className="p-3 font-semibold">{getCustomerReviewLocationName(review)}</td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{review.rating}</td><td className="max-w-80 truncate p-3 text-slate-600">{review.comment || "-"}</td><td className="p-3"><Status value={review.status ?? "approved"} /></td></tr>)}
       </tbody></table></div>
-      <Pagination page={currentPage} pageCount={pageCount} totalItems={visibleItems.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
+      <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
     </div>
   </>;
 }
