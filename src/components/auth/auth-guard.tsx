@@ -116,22 +116,22 @@ export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) 
     }
 
     const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-    const sidebarRows = isAdmin ? 19 : 6;
+    const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    const sidebarRows = isAdmin ? 19 : isDashboard ? 9 : 6;
 
     return (
-      <section className="min-h-[760px] bg-mist" aria-label="Loading account" aria-busy="true">
-        <div className="mx-auto grid min-h-[760px] w-full max-w-[1600px] animate-pulse gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
+      <section className={`${isDashboard ? "min-h-[720px]" : "min-h-[760px]"} bg-mist`} aria-label="Loading account" aria-busy="true">
+        <div className={`mx-auto grid w-full animate-pulse gap-8 px-4 py-8 sm:px-6 lg:px-8 ${isDashboard ? "min-h-[720px] max-w-7xl lg:grid-cols-[260px_minmax(0,1fr)]" : "min-h-[760px] max-w-[1600px] lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
           <aside className="hidden h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:block">
             <div className="h-7 w-44 rounded bg-slate-200" />
             <div className="mt-3 grid gap-1">
               {Array.from({ length: sidebarRows }, (_, index) => <div key={index} className="h-10 rounded-lg bg-slate-100" />)}
             </div>
           </aside>
-          <div className="min-h-[680px] min-w-0 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className={`${isDashboard ? "h-fit" : "min-h-[680px]"} min-w-0 rounded-lg border border-slate-200 bg-white p-6 shadow-sm`}>
             <div className="h-8 w-64 max-w-full rounded bg-slate-200" />
             <div className="mt-3 h-4 w-96 max-w-full rounded bg-slate-100" />
-            <div className="mt-7 h-11 rounded-lg bg-slate-100" />
-            <div className="mt-6 grid gap-4"><div className="h-12 rounded bg-slate-100" />{Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 rounded border-t border-slate-100 bg-slate-50" />)}</div>
+            {isDashboard ? <><div className="mt-6 h-32 rounded-lg bg-slate-100" /><div className="mt-6 grid gap-4 md:grid-cols-2">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-16 rounded-lg bg-slate-100" />)}</div><div className="mt-5 h-10 w-36 rounded-lg bg-brand-100" /></> : <><div className="mt-7 h-11 rounded-lg bg-slate-100" /><div className="mt-6 grid gap-4"><div className="h-12 rounded bg-slate-100" />{Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 rounded border-t border-slate-100 bg-slate-50" />)}</div></>}
           </div>
         </div>
       </section>

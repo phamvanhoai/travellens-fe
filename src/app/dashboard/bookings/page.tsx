@@ -67,8 +67,13 @@ export default function BookingsPage() {
     setCancelling(true);
     setError("");
     try {
-      await bookingService.cancel(getCustomerBookingId(selected), reason || undefined);
-      showToast({ variant: "success", title: "Booking cancelled", description: getCustomerBookingCode(selected) });
+      const response = await bookingService.cancel(getCustomerBookingId(selected), reason || undefined);
+      const isPendingRefund = response.data?.data?.status === "cancel_pending";
+      showToast({
+        variant: "success",
+        title: isPendingRefund ? "Cancellation requested" : "Booking cancelled",
+        description: isPendingRefund ? `${getCustomerBookingCode(selected)} is waiting for refund review.` : getCustomerBookingCode(selected)
+      });
       setSelected(null);
       setCancelReason("");
       setCancelReasonError("");
@@ -122,11 +127,11 @@ export default function BookingsPage() {
       {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
       <div className="relative mt-6 max-w-md"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search my bookings..." /></div>
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Booking", "Tour", "Departure", "Passengers", "Payment Status", "Amount", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
-        {loading ? <tr><td colSpan={7} className="p-8 text-center text-slate-500"><Loader2 className="mr-2 inline size-5 animate-spin" /> Loading your bookings...</td></tr>
+        {loading ? <BookingsTableSkeleton rows={pageSize} />
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">This account has no bookings yet.</td></tr>
             : rows.map((booking) => { const passengers = getCustomerBookingPassengers(booking); const paymentStatus = getCustomerBookingPaymentStatus(booking) ?? "unpaid"; const cancelActionStatus = getCancelActionStatus(booking); const canCancel = canCancelBooking(booking); const needsPayment = canPayBooking(booking); const canReview = canReviewBooking(booking); const review = getCustomerBookingReview(booking); const bookingId = getCustomerBookingId(booking); const arrival = booking.preferred_arrival_time ?? booking.departure_at ?? booking.arrival_time ?? booking.travel_date; return <tr key={bookingId} className="border-t border-slate-100"><td className="p-3 font-bold"><CalendarCheck className="mr-2 inline size-4 text-brand-600" />{getCustomerBookingCode(booking)}</td><td className="p-3 font-semibold">{getCustomerBookingTourName(booking)}</td><td className="p-3 text-slate-600">{arrival ? formatDate(arrival) : getArrivalFromRequest(booking)}</td><td className="p-3">{passengerSummary(booking, passengers)}</td><td className="p-3"><Status value={paymentStatus} /></td><td className="p-3 font-semibold">{formatVnd(getCustomerBookingAmount(booking))}</td><td className="p-3"><div className="flex flex-wrap gap-2">{cancelActionStatus ? <Status value={cancelActionStatus} /> : needsPayment ? <Button href={`/payment/checkout?bookingId=${bookingId}`} className="h-9 px-3"><CreditCard size={15} /> Pay Now</Button> : canCancel ? <button type="button" onClick={() => openCancelDialog(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 font-semibold text-rose-600 hover:bg-rose-50"><XCircle size={15} /> Cancel</button> : null}{canReview ? review ? <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 font-semibold text-slate-700 hover:bg-slate-50"><Pencil size={15} /> Review</button> : <button type="button" onClick={() => setReviewing(booking)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-amber-200 px-3 font-semibold text-amber-700 hover:bg-amber-50"><Star size={15} /> Review Tour</button> : null}</div></td></tr>; })}
       </tbody></table></div>
-      <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} />
+      {!loading ? <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="bookings" onPageChange={setPage} /> : null}
     </div>
     {selected ? (
       <CancelBookingDialog
@@ -144,6 +149,20 @@ export default function BookingsPage() {
     ) : null}
     {reviewing ? <TourReviewDialog booking={reviewing} onCancel={() => setReviewing(null)} onSave={saveTourReview} /> : null}
   </>;
+}
+
+function BookingsTableSkeleton({ rows }: { rows: number }) {
+  return Array.from({ length: rows }, (_, index) => (
+    <tr key={index} className="animate-pulse border-t border-slate-100" aria-hidden="true">
+      <td className="p-3"><div className="h-4 w-24 rounded bg-slate-200" /></td>
+      <td className="p-3"><div className="h-4 w-36 rounded bg-slate-200" /></td>
+      <td className="p-3"><div className="h-4 w-28 rounded bg-slate-100" /></td>
+      <td className="p-3"><div className="h-4 w-20 rounded bg-slate-100" /></td>
+      <td className="p-3"><div className="h-7 w-20 rounded-full bg-slate-200" /></td>
+      <td className="p-3"><div className="h-4 w-24 rounded bg-slate-200" /></td>
+      <td className="p-3"><div className="h-9 w-24 rounded-lg bg-slate-100" /></td>
+    </tr>
+  ));
 }
 
 type ReviewFormValue = { rating: string; comment: string };
@@ -272,7 +291,7 @@ function CancelBookingDialog({
             disabled={cancelling}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {cancelling ? "Cancelling..." : "Cancel Booking"}
+            {cancelling ? "Processing..." : (getCustomerBookingPaymentStatus(booking) ?? "").toLowerCase() === "paid" ? "Request Cancellation" : "Cancel Booking"}
           </button>
         </div>
       </form>
@@ -310,7 +329,7 @@ function canCancelBooking(booking: CustomerBooking) {
   if (!departure) return true;
 
   const hoursUntilDeparture = departure.getTime() - Date.now();
-  return hoursUntilDeparture > 24 * 60 * 60 * 1000;
+  return hoursUntilDeparture >= 24 * 60 * 60 * 1000;
 }
 
 function canPayBooking(booking: CustomerBooking) {
@@ -339,9 +358,12 @@ function getCancelActionStatus(booking: CustomerBooking) {
   const paymentStatus = (getCustomerBookingPaymentStatus(booking) ?? "").toLowerCase();
 
   if (bookingStatus === "cancel_pending") return "Pending Cancel";
-  if (paymentStatus === "refunded") return "completed";
+  if (paymentStatus === "refunded") return "Refunded";
+  if (["cancelled", "canceled"].includes(bookingStatus)) {
+    if (["pending", "approved"].includes(cancelStatus.toLowerCase()) || paymentStatus === "paid") return "Refund Pending";
+    return "Canceled";
+  }
   if (cancelStatus && cancelStatus !== "completed") return cancelStatus;
-  if (["cancelled", "canceled"].includes(bookingStatus)) return "pending";
 
   return "";
 }

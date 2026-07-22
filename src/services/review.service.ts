@@ -32,6 +32,28 @@ function unwrapList(responseData: unknown) {
   return [];
 }
 
+export type CustomerReviewPage = {
+  data: CustomerReview[];
+  meta: { page: number; limit: number; total: number; total_pages: number };
+};
+
+function unwrapPage(responseData: unknown, fallbackPage: number, fallbackLimit: number): CustomerReviewPage {
+  const body = responseData && typeof responseData === "object" ? responseData as Record<string, unknown> : {};
+  const data = body.data && typeof body.data === "object" ? body.data as Record<string, unknown> : body;
+  const items = Array.isArray(data.items) ? data.items as CustomerReview[] : unwrapList(responseData);
+  const paginationSource = body.pagination ?? data.pagination;
+  const pagination = paginationSource && typeof paginationSource === "object" ? paginationSource as Record<string, unknown> : {};
+  return {
+    data: items,
+    meta: {
+      page: Number(pagination.page ?? fallbackPage),
+      limit: Number(pagination.limit ?? fallbackLimit),
+      total: Number(pagination.total ?? items.length),
+      total_pages: Number(pagination.totalPages ?? pagination.total_pages ?? 1)
+    }
+  };
+}
+
 export function getCustomerReviewId(review: CustomerReview) {
   return review.review_id ?? review.id ?? 0;
 }
@@ -52,6 +74,12 @@ export const reviewService = {
   async list() {
     const response = await api.get("/reviews");
     return unwrapList(response.data);
+  },
+  async listPage(params: { page?: number; limit?: number; search?: string } = {}) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 20;
+    const response = await api.get("/reviews", { params: { page, limit, search: params.search || undefined } });
+    return unwrapPage(response.data, page, limit);
   },
   async detail(id: number) {
     const response = await api.get(`/reviews/${id}`);
