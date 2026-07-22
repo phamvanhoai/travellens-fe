@@ -12,6 +12,8 @@ export type CreateBookingPayload = {
   contact_phone: string;
   travel_date: string;
   coupon_code?: string | null;
+  request_id: string;
+  policy_accepted: true;
   passengers: BookingPassengerPayload[];
 };
 

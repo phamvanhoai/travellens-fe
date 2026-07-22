@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, Minus, Plus, Tag, Trash2, UserRound, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/common/toast";
@@ -38,9 +38,12 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [dateAvailableSlots, setDateAvailableSlots] = useState<number | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const bookingRequestId = useRef("");
 
   useEffect(() => {
     async function loadTours() {
@@ -91,7 +94,7 @@ export default function BookingPage() {
   const unitPrice = Number(selectedTour?.price ?? 0);
   const childPrice = Number(selectedTour?.child_price ?? unitPrice * 0.65);
   const infantPrice = Number(selectedTour?.infant_price ?? 0);
-  const availableSlots = getAvailableSlots(selectedTour);
+  const availableSlots = travelDate ? dateAvailableSlots : null;
   const minimumBooking = Math.max(1, Number(selectedTour?.minimum_booking ?? 1));
   const maximumBooking = getMaximumBooking(selectedTour, availableSlots);
   const subtotal = useMemo(
@@ -100,6 +103,25 @@ export default function BookingPage() {
   );
   const discountAmount = getCouponDiscountAmount(appliedCoupon, subtotal);
   const finalTotal = getCouponFinalAmount(appliedCoupon, subtotal);
+
+  useEffect(() => {
+    let active = true;
+    if (!tourId || !travelDate || !selectedTour) {
+      setDateAvailableSlots(null);
+      return () => { active = false; };
+    }
+    setAvailabilityLoading(true);
+    setDateAvailableSlots(null);
+    void tourService.availability(tourId, travelDate)
+      .then((result) => {
+        if (active) setDateAvailableSlots(Math.max(0, Number(result.available_slots ?? 0)));
+      })
+      .catch((availabilityError) => {
+        if (active) setFieldErrors((current) => ({ ...current, travel_date: getApiError(availabilityError, "Cannot check availability for this date.") }));
+      })
+      .finally(() => { if (active) setAvailabilityLoading(false); });
+    return () => { active = false; };
+  }, [tourId, travelDate, selectedTour]);
 
   useEffect(() => {
     if (!appliedCoupon) return;
@@ -172,6 +194,8 @@ export default function BookingPage() {
     else {
       const departureError = getDepartureValidationMessage(travelDate, selectedTour);
       if (departureError) errors.travel_date = departureError;
+      else if (availabilityLoading) errors.travel_date = "Please wait while availability is checked.";
+      else if (dateAvailableSlots === null) errors.travel_date = "Availability could not be confirmed for this date.";
     }
     if (passengers.length < minimumBooking) errors.passengers = `This tour requires at least ${minimumBooking} passenger${minimumBooking === 1 ? "" : "s"} per booking.`;
     else if (maximumBooking !== null && passengers.length > maximumBooking) errors.passengers = `This tour allows at most ${maximumBooking} passengers per booking.`;
@@ -188,11 +212,14 @@ export default function BookingPage() {
     setSaving(true);
     setError("");
     try {
+      if (!bookingRequestId.current) bookingRequestId.current = crypto.randomUUID();
       const booking = await bookingService.create({
         tour_id: Number(tourId),
         contact_phone: phone.trim(),
         travel_date: travelDate,
         coupon_code: appliedCoupon ? couponCode.trim() : null,
+        request_id: bookingRequestId.current,
+        policy_accepted: true,
         passengers: passengers.map((passenger, index) => ({
           passenger_name: customerName.trim(),
           age_category: passenger.age_category,
@@ -200,12 +227,13 @@ export default function BookingPage() {
         }))
       });
       const bookingId = booking.booking_id ?? booking.id;
+      const serverFinalTotal = Number(booking.final_amount ?? finalTotal);
       if (bookingId && typeof window !== "undefined") {
         const metadata = readBookingMetadata();
         metadata[String(bookingId)] = {
           booked_at: new Date().toISOString(),
           arrival_time: travelDate,
-          amount: finalTotal,
+          amount: serverFinalTotal,
           passengers: passengers.map((passenger) => passenger.age_category)
         };
         localStorage.setItem("travel360_booking_metadata", JSON.stringify(metadata));
@@ -213,7 +241,7 @@ export default function BookingPage() {
 
       showToast({ variant: "success", title: "Booking created", description: "Your booking was created successfully." });
       if (bookingId) {
-        if (finalTotal <= 0) {
+        if (serverFinalTotal <= 0) {
           showToast({ variant: "info", title: "No payment required", description: "This booking total is 0 VND." });
           router.push("/dashboard/bookings");
           return;
@@ -251,7 +279,7 @@ export default function BookingPage() {
                 {selectedTour ? <div className="grid gap-4 sm:grid-cols-[140px_1fr]"><div className="h-28 overflow-hidden rounded-lg bg-slate-100">{selectedTour.thumbnail_url || selectedTour.thumbnail ? <img src={resolveBackendAssetUrl(selectedTour.thumbnail_url ?? selectedTour.thumbnail ?? "")} alt={getPublicTourName(selectedTour)} className="h-full w-full object-cover" /> : null}</div><div><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-base font-bold text-slate-900">{getPublicTourName(selectedTour)}</p><p className="mt-1 text-xs font-normal text-slate-500">{selectedTour.short_description || "Your selected tour is locked for this booking."}</p></div><p className="font-bold text-brand-700">{formatVnd(Number(selectedTour.price ?? 0))}</p></div><div className="mt-3 grid gap-2 text-xs font-normal text-slate-600 sm:grid-cols-2"><p>Tour time: {getTourTimeRange(selectedTour)}</p><p>Duration: {selectedTour.duration_days ?? 1} day(s), {selectedTour.duration_nights ?? 0} night(s)</p><p>Meeting point: {selectedTour.meeting_point || "See tour instructions"}</p><p>Pickup: {selectedTour.pickup_available ? selectedTour.pickup_description || "Available" : "Not included"}</p></div></div></div> : <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-rose-700">No valid tour selected.</p><Button href="/tours" variant="outline" className="h-9">Choose a Tour</Button></div>}
               </div>
               {fieldErrors.tour_id ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.tour_id}</span> : null}
-              {availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots: {availableSlots}</span> : null}
+              {availabilityLoading ? <span className="mt-2 block text-xs font-semibold text-slate-500"><Loader2 className="mr-1 inline size-3 animate-spin" />Checking availability...</span> : availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots for selected date: {availableSlots}</span> : <span className="mt-2 block text-xs text-slate-500">Select a travel date to check live availability.</span>}
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -264,6 +292,7 @@ export default function BookingPage() {
                   onChange={(event) => {
                     const value = event.target.value;
                     setTravelDate(value);
+                    setDateAvailableSlots(null);
                     setFieldErrors((current) => ({
                       ...current,
                       travel_date: getDepartureValidationMessage(value, selectedTour) ?? ""
@@ -363,7 +392,7 @@ export default function BookingPage() {
               {customerName.trim() ? <div className="mt-5 border-t border-slate-200 pt-4"><p className="text-sm font-bold">Booking contact</p><p className="mt-2 text-xs text-slate-600">{customerName.trim()} · {phone || "No phone entered"}</p></div> : null}
             </>
           )}
-          <Button type="submit" className="mt-6 w-full" disabled={loading || saving || validatingCoupon || !selectedTour}>
+          <Button type="submit" className="mt-6 w-full" disabled={loading || saving || validatingCoupon || availabilityLoading || !selectedTour}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : null}
             Submit Booking
           </Button>
