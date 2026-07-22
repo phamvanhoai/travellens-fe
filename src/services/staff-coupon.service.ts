@@ -66,9 +66,9 @@ function toRequestPayload(payload: StaffCouponPayload, includeCode: boolean) {
     description: payload.description,
     discount_type: payload.discount_type,
     discount_value: Number(payload.discount_value),
-    max_discount_amount: Number(payload.max_discount_amount || 0),
+    max_discount_amount: payload.max_discount_amount === "" ? null : Number(payload.max_discount_amount),
     min_order_amount: Number(payload.min_order_amount || 0),
-    usage_limit: Number(payload.usage_limit || 0),
+    usage_limit: Number(payload.usage_limit),
     start_date: payload.start_date,
     end_date: payload.end_date,
     status: payload.status
