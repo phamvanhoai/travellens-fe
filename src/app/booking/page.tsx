@@ -14,6 +14,7 @@ import { getPublicTourId, getPublicTourName, tourService, type PublicTour } from
 
 type PassengerDraft = BookingPassengerPayload;
 type BookingMetadata = Record<string, { booked_at: string; arrival_time: string; amount: number; passengers: PassengerDraft["age_category"][] }>;
+const BOOKING_DEADLINE_HOURS = 4;
 
 const emptyPassenger = (): PassengerDraft => ({
   passenger_name: "",
@@ -86,6 +87,7 @@ export default function BookingPage() {
   }, []);
 
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
+  const minimumTravelDate = getMinimumTravelDate(selectedTour);
   const unitPrice = Number(selectedTour?.price ?? 0);
   const childPrice = Number(selectedTour?.child_price ?? unitPrice * 0.65);
   const infantPrice = Number(selectedTour?.infant_price ?? 0);
@@ -167,6 +169,10 @@ export default function BookingPage() {
     const errors: Record<string, string> = {};
     if (!tourId) errors.tour_id = "Tour is required.";
     if (!travelDate) errors.travel_date = "Travel date is required.";
+    else {
+      const departureError = getDepartureValidationMessage(travelDate, selectedTour);
+      if (departureError) errors.travel_date = departureError;
+    }
     if (passengers.length < minimumBooking) errors.passengers = `This tour requires at least ${minimumBooking} passenger${minimumBooking === 1 ? "" : "s"} per booking.`;
     else if (maximumBooking !== null && passengers.length > maximumBooking) errors.passengers = `This tour allows at most ${maximumBooking} passengers per booking.`;
     if (String(selectedTour?.currency ?? "VND").toUpperCase() !== "VND") errors.tour_id = "Online booking currently supports VND tours only.";
@@ -242,7 +248,7 @@ export default function BookingPage() {
             <div className="block text-sm font-semibold">
               Selected Tour
               <div className={`mt-2 rounded-lg border p-4 ${fieldErrors.tour_id ? "border-rose-500 bg-rose-50" : "border-brand-100 bg-brand-50/50"}`}>
-                {selectedTour ? <div className="grid gap-4 sm:grid-cols-[140px_1fr]"><div className="h-28 overflow-hidden rounded-lg bg-slate-100">{selectedTour.thumbnail_url || selectedTour.thumbnail ? <img src={resolveBackendAssetUrl(selectedTour.thumbnail_url ?? selectedTour.thumbnail ?? "")} alt={getPublicTourName(selectedTour)} className="h-full w-full object-cover" /> : null}</div><div><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-base font-bold text-slate-900">{getPublicTourName(selectedTour)}</p><p className="mt-1 text-xs font-normal text-slate-500">{selectedTour.short_description || "Your selected tour is locked for this booking."}</p></div><p className="font-bold text-brand-700">{formatVnd(Number(selectedTour.price ?? 0))}</p></div><div className="mt-3 grid gap-2 text-xs font-normal text-slate-600 sm:grid-cols-2"><p>Schedule: {selectedTour.schedule || selectedTour.start_time || "Updating"}</p><p>Duration: {selectedTour.duration_days ?? 1} day(s), {selectedTour.duration_nights ?? 0} night(s)</p><p>Meeting point: {selectedTour.meeting_point || "See tour instructions"}</p><p>Pickup: {selectedTour.pickup_available ? selectedTour.pickup_description || "Available" : "Not included"}</p></div></div></div> : <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-rose-700">No valid tour selected.</p><Button href="/tours" variant="outline" className="h-9">Choose a Tour</Button></div>}
+                {selectedTour ? <div className="grid gap-4 sm:grid-cols-[140px_1fr]"><div className="h-28 overflow-hidden rounded-lg bg-slate-100">{selectedTour.thumbnail_url || selectedTour.thumbnail ? <img src={resolveBackendAssetUrl(selectedTour.thumbnail_url ?? selectedTour.thumbnail ?? "")} alt={getPublicTourName(selectedTour)} className="h-full w-full object-cover" /> : null}</div><div><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-base font-bold text-slate-900">{getPublicTourName(selectedTour)}</p><p className="mt-1 text-xs font-normal text-slate-500">{selectedTour.short_description || "Your selected tour is locked for this booking."}</p></div><p className="font-bold text-brand-700">{formatVnd(Number(selectedTour.price ?? 0))}</p></div><div className="mt-3 grid gap-2 text-xs font-normal text-slate-600 sm:grid-cols-2"><p>Tour time: {getTourTimeRange(selectedTour)}</p><p>Duration: {selectedTour.duration_days ?? 1} day(s), {selectedTour.duration_nights ?? 0} night(s)</p><p>Meeting point: {selectedTour.meeting_point || "See tour instructions"}</p><p>Pickup: {selectedTour.pickup_available ? selectedTour.pickup_description || "Available" : "Not included"}</p></div></div></div> : <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-rose-700">No valid tour selected.</p><Button href="/tours" variant="outline" className="h-9">Choose a Tour</Button></div>}
               </div>
               {fieldErrors.tour_id ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.tour_id}</span> : null}
               {availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots: {availableSlots}</span> : null}
@@ -254,15 +260,19 @@ export default function BookingPage() {
                 <input
                   type="date"
                   value={travelDate}
-                  min={getVietnamDateInputValue()}
+                  min={minimumTravelDate}
                   onChange={(event) => {
-                    setTravelDate(event.target.value);
-                    setFieldErrors((current) => ({ ...current, travel_date: "" }));
+                    const value = event.target.value;
+                    setTravelDate(value);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      travel_date: getDepartureValidationMessage(value, selectedTour) ?? ""
+                    }));
                   }}
                   className={`mt-2 h-12 w-full rounded-lg border px-4 outline-none ${fieldErrors.travel_date ? "border-rose-500" : "border-slate-200 focus:border-brand-600"}`}
                 />
                 {fieldErrors.travel_date ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.travel_date}</span> : null}
-                {selectedTour?.schedule ? <span className="mt-2 block text-xs font-semibold text-slate-500">Time: {selectedTour.schedule}</span> : null}
+                {selectedTour ? <span className="mt-2 block text-xs font-semibold text-slate-500">Tour time: {getTourTimeRange(selectedTour)}</span> : null}
               </label>
 
               <div className="block text-sm font-semibold">
@@ -419,6 +429,58 @@ function getVietnamDateInputValue() {
   }).formatToParts(new Date());
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${value.year}-${value.month}-${value.day}`;
+}
+
+function getTourStartTime(tour?: PublicTour) {
+  const direct = String(tour?.start_time ?? "").match(/^([01]?\d|2[0-3]):([0-5]\d)/);
+  const schedule = String(tour?.schedule ?? "").match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)/);
+  const match = direct ?? schedule;
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : null;
+}
+
+function normalizeTourTime(value?: string | null) {
+  const match = String(value ?? "").match(/^([01]?\d|2[0-3]):([0-5]\d)/);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : null;
+}
+
+function getTourTimeRange(tour?: PublicTour) {
+  const startTime = normalizeTourTime(tour?.start_time) ?? getTourStartTime(tour);
+  const endTime = normalizeTourTime(tour?.end_time);
+  if (startTime && endTime) return `${startTime} – ${endTime}`;
+  if (startTime) return `${startTime} – End time updating`;
+  return tour?.schedule?.trim() || "Time updating";
+}
+
+function getTourDepartureTime(travelDate: string, tour?: PublicTour) {
+  const startTime = getTourStartTime(tour);
+  if (!travelDate || !startTime) return null;
+  const value = new Date(`${travelDate}T${startTime}:00+07:00`).getTime();
+  return Number.isFinite(value) ? value : null;
+}
+
+function getMinimumTravelDate(tour?: PublicTour) {
+  const startTime = getTourStartTime(tour);
+  if (!startTime) return getVietnamDateInputValue();
+  const cutoff = Date.now() + BOOKING_DEADLINE_HOURS * 60 * 60 * 1000;
+  let date = getVietnamDateInputValue();
+  for (let index = 0; index < 4; index += 1) {
+    const departure = new Date(`${date}T${startTime}:00+07:00`).getTime();
+    if (departure > cutoff) return date;
+    date = new Date(new Date(`${date}T00:00:00+07:00`).getTime() + 24 * 60 * 60 * 1000)
+      .toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+  }
+  return date;
+}
+
+function getDepartureValidationMessage(travelDate: string, tour?: PublicTour) {
+  const departure = getTourDepartureTime(travelDate, tour);
+  if (departure === null) return null;
+  const remaining = departure - Date.now();
+  if (remaining <= 0) return "This tour has already started or finished for the selected date.";
+  if (remaining < BOOKING_DEADLINE_HOURS * 60 * 60 * 1000) {
+    return `Bookings close ${BOOKING_DEADLINE_HOURS} hours before the tour starts.`;
+  }
+  return null;
 }
 
 function isValidVietnamMobilePhone(value: string) {
