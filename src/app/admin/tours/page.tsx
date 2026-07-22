@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Images, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, Images, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -413,14 +413,14 @@ export default function AdminToursPage() {
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                {["ID", "Tour", "Travel Destinations", "Category", "Schedule", "Capacity", "Price", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
+                {["ID", "Tour", "Travel Destinations", "Category", "Schedule", "Default capacity", "Base price", "Departures", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableSkeleton columns={9} rows={10} />
+                <AdminTableSkeleton columns={10} rows={10} />
               ) : items.length === 0 ? (
-                <tr><td colSpan={9} className="p-6 text-center text-slate-500">No tours found.</td></tr>
+                <tr><td colSpan={10} className="p-6 text-center text-slate-500">No tours found.</td></tr>
               ) : items.map((item) => {
                 const thumbnail = resolveBackendAssetUrl(getAdminTourThumbnail(item));
                 const tourName = getAdminTourName(item);
@@ -440,6 +440,7 @@ export default function AdminToursPage() {
                     <td className="p-3">{item.schedule ?? item.duration ?? "-"}</td>
                     <td className="p-3">{item.capacity ?? "-"}</td>
                     <td className="p-3 font-semibold">{formatPrice(item.price)}</td>
+                    <td className="p-3"><Button href={`/admin/tour-departures?tourId=${getAdminTourId(item)}`} variant="outline" className="h-9 px-3 text-brand-600"><CalendarDays size={15} /> Manage</Button></td>
                     <td className="p-3"><StatusBadge value={item.status ?? "draft"} /></td>
                     <td className="p-3">
                       <span className="flex gap-2">
@@ -731,25 +732,28 @@ function TourForm({
             <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.pickup_available} onChange={(event) => setForm({ ...form, pickup_available: event.target.checked })} />Pickup available</label>
             {form.pickup_available ? <textarea value={form.pickup_description} onChange={(event) => setForm({ ...form, pickup_description: event.target.value })} className="input mt-3 min-h-20 py-3" placeholder="Describe pickup areas and conditions" /> : null}
           </div>
-          <Field label="Capacity" message={fieldErrors.capacity} tone={fieldErrors.capacity ? "invalid" : "neutral"}>
+          <div className="sm:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+            These values are defaults for new departures. Capacity and prices can be overridden for each departure in Tour Departures.
+          </div>
+          <Field label="Default Capacity" message={fieldErrors.capacity} tone={fieldErrors.capacity ? "invalid" : "neutral"}>
             <input required min="1" type="number" value={form.capacity} onChange={(event) => {
               onClearFieldError("capacity");
               setForm({ ...form, capacity: event.target.value });
             }} className="input" />
           </Field>
-          <Field label="Price" message={fieldErrors.price} tone={fieldErrors.price ? "invalid" : "neutral"}>
+          <Field label="Base Adult Price" message={fieldErrors.price} tone={fieldErrors.price ? "invalid" : "neutral"}>
             <input required min="0" type="number" step="any" value={form.price} onChange={(event) => {
               onClearFieldError("price");
               setForm({ ...form, price: event.target.value });
             }} className="input" />
           </Field>
-          <Field label="Child Price" message={fieldErrors.child_price} tone={fieldErrors.child_price ? "invalid" : "neutral"}>
+          <Field label="Base Child Price" message={fieldErrors.child_price} tone={fieldErrors.child_price ? "invalid" : "neutral"}>
             <input required min="0" type="number" step="any" value={form.child_price} onChange={(event) => {
               onClearFieldError("child_price");
               setForm({ ...form, child_price: event.target.value });
             }} className="input" />
           </Field>
-          <Field label="Infant Price" message={fieldErrors.infant_price} tone={fieldErrors.infant_price ? "invalid" : "neutral"}>
+          <Field label="Base Infant Price" message={fieldErrors.infant_price} tone={fieldErrors.infant_price ? "invalid" : "neutral"}>
             <input min="0" type="number" step="any" value={form.infant_price} onChange={(event) => { onClearFieldError("infant_price"); setForm({ ...form, infant_price: event.target.value }); }} className="input" />
           </Field>
           <Field label="Currency">

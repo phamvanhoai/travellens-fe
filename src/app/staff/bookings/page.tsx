@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarCheck, CheckCircle2, Eye, Loader2, Minus, Pencil, Plus, RefreshCw, Search, Tag, Trash2, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
@@ -23,7 +23,7 @@ import {
   type StaffCustomer,
   type StaffBookingStatus
 } from "@/services/staff-booking.service";
-import { getPublicTourId, getPublicTourName, tourService, type PublicTour } from "@/services/tour.service";
+import { getPublicTourId, getPublicTourName, tourService, type PublicTour, type PublicTourDeparture } from "@/services/tour.service";
 
 type BookingFormValue = {
   id: number;
@@ -257,7 +257,9 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
   const showToast = useToast();
   const [tours, setTours] = useState<PublicTour[]>([]);
   const [tourId, setTourId] = useState("");
-  const [travelDate, setTravelDate] = useState("");
+  const [departureId, setDepartureId] = useState("");
+  const [departureDate, setDepartureDate] = useState("");
+  const [departures, setDepartures] = useState<PublicTourDeparture[]>([]);
   const [customerEmail, setCustomerEmail] = useState("");
   const [customer, setCustomer] = useState<StaffCustomer | null>(null);
   const [contactPhone, setContactPhone] = useState("");
@@ -271,6 +273,7 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
   const [lookingUpCustomer, setLookingUpCustomer] = useState(false);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const requestId = useRef("");
 
   useEffect(() => {
     async function loadTours() {
@@ -290,10 +293,21 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
     void loadTours();
   }, []);
 
+  useEffect(() => {
+    setDepartureId("");
+    setDepartureDate("");
+    setDepartures([]);
+    if (!tourId) return;
+    void tourService.departures(tourId).then(setDepartures).catch(() => setFieldErrors((current) => ({ ...current, travel_date: "Cannot load open departures for this tour." })));
+  }, [tourId]);
+
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
-  const adultPrice = Number(selectedTour?.price ?? 0);
-  const childPrice = Number(selectedTour?.child_price ?? adultPrice * 0.65);
-  const availableSlots = getAvailableSlots(selectedTour);
+  const selectedDeparture = departures.find((item) => String(item.tour_departure_id) === departureId);
+  const departuresForDate = departures.filter((item) => staffDepartureDate(item.departure_at) === departureDate);
+  const departureDateRange = getStaffDepartureDateRange(departures);
+  const adultPrice = Number(selectedDeparture?.price ?? selectedTour?.price ?? 0);
+  const childPrice = Number(selectedDeparture?.child_price ?? selectedTour?.child_price ?? adultPrice * 0.65);
+  const availableSlots = selectedDeparture ? Number(selectedDeparture.available_slots) : null;
   const passengerTotal = counts.adult + counts.child + counts.infant;
   const subtotal = counts.adult * adultPrice + counts.child * childPrice;
   const discountAmount = getCouponDiscountAmount(appliedCoupon, subtotal);
@@ -402,7 +416,7 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
     const userId = customer ? getLookupCustomerId(customer) : 0;
 
     if (!tourId) errors.tour_id = "Tour is required.";
-    if (!travelDate) errors.travel_date = "Travel date is required.";
+    if (!selectedDeparture) errors.travel_date = "Select an open departure.";
     if (!customerEmail.trim()) errors.customer_email = "Customer email is required.";
     if (!userId) errors.customer_lookup = "Lookup an active customer by email before creating the booking.";
     if (!cleanContactPhone) errors.contact_phone = "Contact phone is required.";
@@ -425,12 +439,14 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
       }))
     );
 
+    if (!requestId.current) requestId.current = crypto.randomUUID();
     await onCreate({
       user_id: userId,
       tour_id: Number(tourId),
+      tour_departure_id: Number(departureId),
       contact_phone: cleanContactPhone,
-      travel_date: travelDate,
-      departure_at: buildDepartureAt(travelDate, selectedTour?.schedule),
+      request_id: requestId.current,
+      policy_accepted: true,
       coupon_code: appliedCoupon ? couponCode.trim() : null,
       passengers
     });
@@ -448,10 +464,10 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
           {fieldErrors.tour_id ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.tour_id}</span> : null}
           {availableSlots !== null ? <span className="mt-2 block text-xs font-semibold text-brand-600">Available slots: {availableSlots}</span> : null}
         </Field>
-        <Field label="Travel Date">
-          <input type="date" min={getVietnamDateInputValue()} value={travelDate} onChange={(event) => { setTravelDate(event.target.value); setFieldErrors((current) => ({ ...current, travel_date: "" })); }} className={`input ${fieldErrors.travel_date ? "border-rose-500" : ""}`} />
+        <Field label="Tour Departure">
+          <div className="grid gap-2"><input type="date" value={departureDate} min={departureDateRange.min} max={departureDateRange.max} disabled={!departures.length} onChange={(event) => { setDepartureDate(event.target.value); setDepartureId(""); setFieldErrors((current) => ({ ...current, travel_date: "" })); }} className={`input ${fieldErrors.travel_date ? "border-rose-500" : ""}`} /><select value={departureId} disabled={!departureDate || !departuresForDate.length} onChange={(event) => { setDepartureId(event.target.value); setFieldErrors((current) => ({ ...current, travel_date: "" })); }} className={`input ${fieldErrors.travel_date ? "border-rose-500" : ""}`}><option value="">{departureDate ? "Select departure time" : "Select a date first"}</option>{departuresForDate.map((departure) => <option key={departure.tour_departure_id} value={departure.tour_departure_id} disabled={Number(departure.available_slots) <= 0}>{formatStaffDepartureTime(departure)}</option>)}</select></div>
           {fieldErrors.travel_date ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.travel_date}</span> : null}
-          {selectedTour?.schedule ? <span className="mt-2 block text-xs font-semibold text-slate-500">Time: {selectedTour.schedule}</span> : null}
+          {!departures.length ? <span className="mt-2 block text-xs font-semibold text-rose-600">No open departures.</span> : departureDate && !departuresForDate.length ? <span className="mt-2 block text-xs font-semibold text-amber-600">No departure is available on this date.</span> : null}
         </Field>
         <Field label="Customer Email">
           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
@@ -796,6 +812,10 @@ function BookingDetailsModal({ booking, onClose }: { booking: StaffBooking; onCl
 function DetailCard({ label, value, strong = false, children }: { label: string; value?: React.ReactNode; strong?: boolean; children?: React.ReactNode }) { return <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">{label}</p><div className={`mt-2 ${strong ? "text-lg font-bold text-brand-700" : "font-semibold text-slate-800"}`}>{children ?? value ?? "-"}</div></div>; }
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) { return <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3"><dt className="text-slate-400">{label}</dt><dd className="break-words font-semibold text-slate-700">{value}</dd></div>; }
 function formatDateTime(value?: string) { if (!value) return "-"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date); }
+function formatStaffDeparture(departure: PublicTourDeparture) { return `${formatDateTime(departure.departure_at)} · ${departure.available_slots} slots · ${formatVnd(departure.price)}`; }
+function formatStaffDepartureTime(departure: PublicTourDeparture) { const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(departure.departure_at)); return `${time} · ${departure.available_slots} slots · ${formatVnd(departure.price)}`; }
+function staffDepartureDate(value: string) { return new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value)); }
+function getStaffDepartureDateRange(departures: PublicTourDeparture[]) { const dates = departures.map((item) => staffDepartureDate(item.departure_at)).sort(); return { min: dates[0], max: dates[dates.length - 1] }; }
 
 function isValidVietnamMobilePhone(value: string) {
   return /^0(?:3|5|7|8|9)\d{8}$/.test(value);
