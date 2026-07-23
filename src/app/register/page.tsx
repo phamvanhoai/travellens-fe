@@ -285,13 +285,14 @@ export default function RegisterPage() {
           </span>
         </label>
         
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-start gap-2 text-sm text-slate-600">
           <input 
             type="checkbox" 
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-1"
           /> 
-          I agree to the Terms & Conditions and Privacy Policy
+          <span>I agree to the <a href="/terms-of-use" target="_blank" className="font-semibold text-brand-700 hover:underline">Terms of Use</a> and <a href="/privacy-policy" target="_blank" className="font-semibold text-brand-700 hover:underline">Privacy Policy</a>.</span>
         </label>
         
         <Button className="w-full" type="submit" disabled={loading}>
