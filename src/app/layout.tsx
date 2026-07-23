@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Travel360",
-  description: "Travel booking, 360 tourism and AI trip recommendations"
+  title: { default: "TravelLens", template: "%s | TravelLens" },
+  description: "TravelLens — travel booking, 360 tourism and AI trip recommendations"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
