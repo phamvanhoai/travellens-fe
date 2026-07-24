@@ -142,7 +142,15 @@ function PaymentCheckoutContent() {
       const result = await paymentService.status(paymentId);
       const nextStatus = result.status;
       setPayment((current) => current ? { ...current, ...result, status: nextStatus ?? current.status } : current);
-      if (showSuccessToast) showToast({ variant: "success", title: "Status updated", description: `Payment is ${nextStatus ?? payment?.status ?? "pending"}.` });
+      if (nextStatus === "paid" && payment?.status !== "paid") {
+        showToast({
+          variant: "success",
+          title: "Payment successful",
+          description: "Your payment was received and the booking has been confirmed."
+        });
+      } else if (showSuccessToast) {
+        showToast({ variant: "success", title: "Status updated", description: `Payment is ${nextStatus ?? payment?.status ?? "pending"}.` });
+      }
     } catch (err) {
       const message = getApiError(err, "Cannot check payment status.");
       showToast({ variant: "error", title: "Status check failed", description: message });

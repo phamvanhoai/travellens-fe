@@ -53,9 +53,9 @@ function toFormData(payload: AdminTravelDestinationPayload) {
   const formData = new FormData();
   formData.append("name", payload.name);
   formData.append("description", payload.description);
-  if (payload.latitude) formData.append("latitude", payload.latitude);
-  if (payload.longitude) formData.append("longitude", payload.longitude);
-  if (payload.destination_category_id) formData.append("destination_category_id", payload.destination_category_id);
+  formData.append("latitude", payload.latitude);
+  formData.append("longitude", payload.longitude);
+  formData.append("destination_category_id", payload.destination_category_id);
   if (payload.thumbnail_file) formData.append("thumbnail_file", payload.thumbnail_file);
   return formData;
 }

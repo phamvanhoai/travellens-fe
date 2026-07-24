@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import axios from "axios";
-import { Eye, EyeOff, Globe2, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Globe2, Loader2 } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -39,6 +39,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -121,11 +124,114 @@ export default function LoginPage() {
         setError(response.data.message || "Login failed");
       }
     } catch (err: unknown) {
+      if (isEmailVerificationRequired(err)) {
+        setOtp("");
+        setSuccessMsg("Your account has not been verified. Enter the OTP sent to your email.");
+        setIsVerifying(true);
+        return;
+      }
       setError(getLoginError(err, "An error occurred during login. Please try again."));
     } finally {
       setLoading(false);
     }
   };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await authService.verifyEmail({ email, otp });
+      if (response.data.success) {
+        setOtp("");
+        setIsVerifying(false);
+        setSuccessMsg("Email verified successfully. You can now sign in.");
+      } else {
+        setError(response.data.message || "Verification failed");
+      }
+    } catch (err: unknown) {
+      setError(getLoginError(err, "Invalid OTP or an error occurred."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await authService.resendVerification({ email });
+      setSuccessMsg(response.data.message || "A new verification code has been sent.");
+    } catch (err: unknown) {
+      setError(getLoginError(err, "Could not resend the verification code."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isVerifying) {
+    return (
+      <AuthShell title="Verify Email" subtitle="Enter the verification code to activate your account.">
+        <div className="mb-8 flex justify-end">
+          <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold">
+            <Globe2 size={16} /> EN
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsVerifying(false);
+            setOtp("");
+            setError("");
+            setSuccessMsg("");
+          }}
+          className="mb-4 inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-700"
+        >
+          <ArrowLeft className="mr-1 size-4" /> Back to Login
+        </button>
+        <h1 className="text-3xl font-bold">Verify Your Email</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Enter the 6-digit OTP sent to <span className="font-semibold text-slate-700">{email}</span>
+        </p>
+
+        <form onSubmit={handleVerifyOTP} className="mt-8 space-y-4">
+          {successMsg ? <div className="rounded-lg bg-green-50 p-3 text-sm text-green-600">{successMsg}</div> : null}
+          {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-500">{error}</div> : null}
+          <label className="block text-sm font-semibold">
+            Verification Code (OTP)
+            <input
+              className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-center text-xl tracking-widest outline-none focus:border-brand-600"
+              placeholder="000000"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              required
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            />
+          </label>
+          <Button className="w-full" type="submit" disabled={loading || otp.length !== 6}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Verify Email
+          </Button>
+          <button
+            className="w-full text-sm font-semibold text-brand-600 disabled:opacity-50"
+            type="button"
+            disabled={loading}
+            onClick={() => void handleResendOTP()}
+          >
+            Resend verification code
+          </button>
+        </form>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell title="Welcome Back" subtitle="Log in to your Travel360 account and continue your journey around the world.">
@@ -138,6 +244,11 @@ export default function LoginPage() {
       <p className="mt-2 text-sm text-slate-500">Please login to your account</p>
       
       <form onSubmit={handleLogin} className="mt-8 space-y-5">
+        {successMsg && (
+          <div className="rounded-lg bg-green-50 p-3 text-sm text-green-600">
+            {successMsg}
+          </div>
+        )}
         {error && (
           <div className="rounded-lg bg-red-50 p-3 text-sm text-red-500">
             {error}
@@ -219,4 +330,14 @@ function getLoginError(error: unknown, fallback: string) {
   if (error.code === "ERR_NETWORK") return "Cannot connect to the API server. Please check if backend is running.";
 
   return fallback;
+}
+
+function isEmailVerificationRequired(error: unknown) {
+  if (!axios.isAxiosError(error) || error.response?.status !== 403) return false;
+
+  const data = error.response.data as {
+    details?: { code?: string };
+  } | undefined;
+
+  return data?.details?.code === "EMAIL_NOT_VERIFIED";
 }
