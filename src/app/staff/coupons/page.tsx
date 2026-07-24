@@ -528,14 +528,6 @@ function validateCouponForm(form: CouponFormValue, editing: boolean): CouponFiel
     errors.max_discount_amount = "Maximum discount amount must be greater than 0 or left blank.";
   }
 
-  if (
-    form.max_discount_amount !== ""
-    && form.min_order_amount !== ""
-    && Number(form.max_discount_amount) < Number(form.min_order_amount)
-  ) {
-    errors.max_discount_amount = "Maximum discount amount must be greater than or equal to minimum order amount.";
-  }
-
   if (!form.start_date) errors.start_date = "Start date is required.";
   if (!form.end_date) errors.end_date = "End date is required.";
   if (form.start_date && form.end_date && form.end_date <= form.start_date) {

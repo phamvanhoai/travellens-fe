@@ -16,6 +16,7 @@ export function TravelStoriesBar() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [sessionUserId, setSessionUserId] = useState(0);
   const [sessionRole, setSessionRole] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [loadError, setLoadError] = useState("");
   const currentUserId = Number(user?.user_id ?? user?.id ?? sessionUserId ?? 0);
   const currentRole = String(user?.role ?? sessionRole).toLowerCase();
@@ -23,9 +24,10 @@ export function TravelStoriesBar() {
 
   useEffect(() => {
     const storeId = Number(user?.user_id ?? user?.id ?? 0);
-    if (storeId) { setSessionUserId(storeId); setSessionRole(user?.role ?? ""); return; }
+    if (storeId) { setHasSession(true); setSessionUserId(storeId); setSessionRole(user?.role ?? ""); return; }
     const token = localStorage.getItem("travel360_token") ?? localStorage.getItem("token");
-    if (!token) { setSessionUserId(0); setSessionRole(""); return; }
+    if (!token) { setHasSession(false); setSessionUserId(0); setSessionRole(""); return; }
+    setHasSession(true);
     try {
       const stored = JSON.parse(localStorage.getItem("user") ?? "{}") as { user_id?: number; id?: number; role?: string };
       const storedId = Number(stored.user_id ?? stored.id ?? 0);
@@ -36,14 +38,25 @@ export function TravelStoriesBar() {
       const profile = body?.user ?? body;
       setSessionUserId(Number(profile?.user_id ?? profile?.id ?? 0));
       setSessionRole(String(profile?.role ?? ""));
-    }).catch(() => setSessionUserId(0));
+    }).catch(() => {
+      setHasSession(false);
+      setSessionUserId(0);
+      setSessionRole("");
+    });
   }, [user]);
 
   async function load() {
     setLoading(true); setLoadError("");
-    try { setStories(await travelStoryService.feed({ page: 1, limit: 100 })); } catch (error) { const message = getStoryLoadError(error); console.warn("Cannot load Travel Stories feed:", error); setLoadError(message); setStories([]); } finally { setLoading(false); }
+    try { setStories(await travelStoryService.feed({ page: 1, limit: 100 })); } catch (error) { const status = (error as { response?: { status?: number } }).response?.status; if (status === 401) setHasSession(false); const message = getStoryLoadError(error); console.warn("Cannot load Travel Stories feed:", error); setLoadError(message); setStories([]); } finally { setLoading(false); }
   }
-  useEffect(() => { void load(); }, [currentUserId, currentRole]);
+  useEffect(() => {
+    if (!hasSession) {
+      setStories([]);
+      setLoading(false);
+      return;
+    }
+    void load();
+  }, [hasSession, currentUserId, currentRole]);
 
   const groups = useMemo(() => {
     const map = new Map<number, TravelStory[]>();
@@ -51,6 +64,8 @@ export function TravelStoriesBar() {
     return [...map.values()];
   }, [stories]);
   const orderedStories = groups.flatMap((group) => group);
+
+  if (!hasSession) return null;
 
   return <>
     <section className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
