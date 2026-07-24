@@ -4,6 +4,7 @@ import axios from "axios";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, Minus, Plus, Tag, Trash2, UserRound, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { resolveBackendAssetUrl } from "@/lib/avatar";
@@ -24,6 +25,14 @@ const emptyPassenger = (): PassengerDraft => ({
 });
 
 export default function BookingPage() {
+  return (
+    <AuthGuard allowedRoles={["customer"]} fallback={<BookingPageSkeleton />}>
+      <BookingPageContent />
+    </AuthGuard>
+  );
+}
+
+function BookingPageContent() {
   const router = useRouter();
   const showToast = useToast();
   const [tours, setTours] = useState<PublicTour[]>([]);
