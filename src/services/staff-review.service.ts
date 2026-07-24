@@ -35,14 +35,24 @@ function unwrapData<T>(responseData: T | { data?: T }) {
   return responseData as T;
 }
 
-function unwrapList(responseData: unknown) {
-  const data = unwrapData<unknown>(responseData as { data?: unknown });
-  if (Array.isArray(data)) return data as StaffReview[];
-  if (data && typeof data === "object") {
-    const nested = (data as { reviews?: unknown; data?: unknown }).reviews ?? (data as { data?: unknown }).data;
-    return Array.isArray(nested) ? nested as StaffReview[] : [];
-  }
-  return [];
+type StaffReviewListResult = {
+  data: StaffReview[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
+function unwrapList(responseData: unknown): StaffReviewListResult {
+  const body = responseData && typeof responseData === "object"
+    ? responseData as { data?: unknown; pagination?: Partial<StaffReviewListResult["pagination"]> }
+    : {};
+  return {
+    data: Array.isArray(body.data) ? body.data as StaffReview[] : [],
+    pagination: {
+      page: Number(body.pagination?.page || 1),
+      limit: Number(body.pagination?.limit || 5),
+      total: Number(body.pagination?.total || 0),
+      totalPages: Math.max(1, Number(body.pagination?.totalPages || 1))
+    }
+  };
 }
 
 export function getStaffReviewId(review: StaffReview) {
@@ -71,8 +81,8 @@ export function getStaffReviewTarget(review: StaffReview) {
 }
 
 export const staffReviewService = {
-  async list() {
-    const response = await api.get("/staff/reviews", { params: { page: 1, limit: 100 } });
+  async list(params: { page?: number; limit?: number; search?: string; status?: string; rating?: number } = {}) {
+    const response = await api.get("/staff/reviews", { params });
     return unwrapList(response.data);
   },
   async detail(id: number) {
