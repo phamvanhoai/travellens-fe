@@ -101,8 +101,9 @@ function BookingPageContent() {
 
   const selectedTour = tours.find((tour) => String(getPublicTourId(tour)) === tourId);
   const selectedDeparture = departures.find((departure) => String(departure.tour_departure_id) === departureId);
-  const departuresForDate = departures.filter((departure) => getDepartureDateInput(departure.departure_at) === travelDate);
-  const departureDateRange = getDepartureDateRange(departures);
+  const bookableDepartures = departures.filter(isDepartureBookable);
+  const departuresForDate = bookableDepartures.filter((departure) => getDepartureDateInput(departure.departure_at) === travelDate);
+  const departureDateRange = getDepartureDateRange(bookableDepartures);
   const unitPrice = Number(selectedDeparture?.price ?? selectedTour?.price ?? 0);
   const childPrice = Number(selectedDeparture?.child_price ?? selectedTour?.child_price ?? unitPrice * 0.65);
   const infantPrice = Number(selectedDeparture?.infant_price ?? selectedTour?.infant_price ?? 0);
@@ -184,6 +185,9 @@ function BookingPageContent() {
     const errors: Record<string, string> = {};
     if (!tourId) errors.tour_id = "Tour is required.";
     if (!departureId || !selectedDeparture) errors.travel_date = "Please select an available departure.";
+    else if (!isDepartureBookable(selectedDeparture)) errors.travel_date = selectedDeparture.booking_close_at
+      ? "Booking has closed for this departure."
+      : `Bookings close ${BOOKING_DEADLINE_HOURS} hours before the tour starts.`;
     if (passengers.length < minimumBooking) errors.passengers = `This tour requires at least ${minimumBooking} passenger${minimumBooking === 1 ? "" : "s"} per booking.`;
     else if (maximumBooking !== null && passengers.length > maximumBooking) errors.passengers = `This tour allows at most ${maximumBooking} passengers per booking.`;
     if (String(selectedTour?.currency ?? "VND").toUpperCase() !== "VND") errors.tour_id = "Online booking currently supports VND tours only.";
@@ -277,7 +281,7 @@ function BookingPageContent() {
                   <div><span className="mb-1 block text-xs text-slate-500">Choose departure time</span><select value={departureId} disabled={!travelDate || !departuresForDate.length} onChange={(event) => { setDepartureId(event.target.value); setFieldErrors((current) => ({ ...current, travel_date: "" })); }} className={`h-12 w-full rounded-lg border px-4 outline-none ${fieldErrors.travel_date ? "border-rose-500" : "border-slate-200 focus:border-brand-600"}`}><option value="">{travelDate ? "Select departure time" : "Select a date first"}</option>{departuresForDate.map((departure) => <option key={departure.tour_departure_id} value={departure.tour_departure_id} disabled={Number(departure.available_slots) <= 0}>{formatDepartureTimeOption(departure)}</option>)}</select></div>
                 </div>
                 {fieldErrors.travel_date ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.travel_date}</span> : null}
-                {!departures.length ? <span className="mt-2 block text-xs font-semibold text-rose-600">This tour currently has no departures open for booking.</span> : travelDate && !departuresForDate.length ? <span className="mt-2 block text-xs font-semibold text-amber-600">No departure is available on this date. Please choose another date.</span> : selectedDeparture ? <span className="mt-2 block text-xs font-semibold text-slate-500">Booking closes: {selectedDeparture.booking_close_at ? formatDateTime(selectedDeparture.booking_close_at) : `${BOOKING_DEADLINE_HOURS} hours before departure`}</span> : null}
+                {!bookableDepartures.length ? <span className="mt-2 block text-xs font-semibold text-rose-600">This tour currently has no departures open for booking.</span> : travelDate && !departuresForDate.length ? <span className="mt-2 block text-xs font-semibold text-amber-600">No departure is available on this date. Please choose another date.</span> : selectedDeparture ? <span className="mt-2 block text-xs font-semibold text-slate-500">Booking closes: {selectedDeparture.booking_close_at ? formatDateTime(selectedDeparture.booking_close_at) : `${BOOKING_DEADLINE_HOURS} hours before departure`}</span> : null}
               </label>
 
               <div className="block text-sm font-semibold">
@@ -450,6 +454,19 @@ function formatDepartureOption(departure: PublicTourDeparture) {
 function formatDepartureTimeOption(departure: PublicTourDeparture) {
   const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(departure.departure_at));
   return `${time} · ${departure.available_slots} slots · ${formatVnd(Number(departure.price))}`;
+}
+
+function isDepartureBookable(departure: PublicTourDeparture) {
+  if (departure.status !== "open" || Number(departure.available_slots) <= 0) return false;
+  const now = Date.now();
+  const opensAt = departure.booking_open_at ? new Date(departure.booking_open_at).getTime() : null;
+  if (opensAt !== null && Number.isFinite(opensAt) && now < opensAt) return false;
+  const departureAt = new Date(departure.departure_at).getTime();
+  if (!Number.isFinite(departureAt)) return false;
+  const closesAt = departure.booking_close_at
+    ? new Date(departure.booking_close_at).getTime()
+    : departureAt - BOOKING_DEADLINE_HOURS * 60 * 60 * 1000;
+  return Number.isFinite(closesAt) && now < closesAt;
 }
 function getDepartureDateRange(departures: PublicTourDeparture[]) {
   const dates = departures.map((departure) => getDepartureDateInput(departure.departure_at)).sort();
