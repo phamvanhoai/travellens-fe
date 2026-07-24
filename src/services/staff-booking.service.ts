@@ -100,17 +100,7 @@ export type StaffBooking = {
 };
 
 export type StaffBookingUpdatePayload = {
-  customer_name?: string;
-  phone?: string;
-  travel_date?: string;
-  departure_at?: string | null;
-  status?: string;
-  adult_count?: number;
-  child_count?: number;
-  infant_count?: number;
-  adults?: number;
-  children?: number;
-  infants?: number;
+  contact_phone: string;
 };
 
 export type StaffBookingCreatePassengerPayload = {

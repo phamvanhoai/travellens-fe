@@ -9,8 +9,6 @@ import { Pagination } from "@/components/common/pagination";
 import { useToast } from "@/components/common/toast";
 import { Button } from "@/components/ui/button";
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
-import { adminUserService, getAdminUserId, type AdminUser } from "@/services/admin-user.service";
-import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import {
   getStaffReviewId,
   getStaffReviewLocationId,
@@ -36,10 +34,11 @@ function ReviewManagementPage() {
   const title = isAdmin ? "Review Management" : "Staff Reviews";
   const description = isAdmin ? "Moderate, update and delete location reviews." : "Moderate and delete location reviews.";
   const [items, setItems] = useState<StaffReview[]>([]);
-  const [users, setUsers] = useState<Map<number, AdminUser>>(new Map());
-  const [locations, setLocations] = useState<Map<number, AdminLocation>>(new Map());
+  const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -47,30 +46,22 @@ function ReviewManagementPage() {
   const [deleting, setDeleting] = useState<StaffReview | null>(null);
   const showToast = useToast();
 
-  const visible = items.filter((item) => {
-    const user = users.get(getStaffReviewUserId(item));
-    const location = locations.get(getStaffReviewLocationId(item));
-    const target = getStaffReviewTarget(item);
-    return `${getStaffReviewId(item)} ${user?.name ?? getStaffReviewUserName(item)} ${user?.email ?? item.user_email ?? ""} ${location?.name ?? target.name} ${item.comment ?? ""} ${item.status}`.toLowerCase().includes(query.toLowerCase());
-  });
-  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const rows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const rows = items;
 
-  const loadReviews = useCallback(async () => {
+  const loadReviews = useCallback(async (nextPage: number, search: string) => {
     setLoading(true);
     setError("");
     try {
-      const reviews = await staffReviewService.list();
-      setItems(reviews);
-      if (isAdmin) {
-        const [userResult, locationResult] = await Promise.all([
-          loadAllAdminUsers(),
-          loadAllAdminLocations()
-        ]);
-        setUsers(new Map(userResult.map((user) => [getAdminUserId(user), user])));
-        setLocations(new Map(locationResult.map((location) => [getLocationId(location), location])));
-      }
+      const result = await staffReviewService.list({
+        page: nextPage,
+        limit: pageSize,
+        search: search || undefined
+      });
+      setItems(result.data);
+      setPage(result.pagination.page);
+      setPageCount(result.pagination.totalPages);
+      setTotalItems(result.pagination.total);
     } catch (err) {
       const message = getApiError(err, "Cannot load staff reviews from API.");
       setError(message);
@@ -78,10 +69,10 @@ function ReviewManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, showToast]);
+  }, [showToast]);
 
   useEffect(() => {
-    void loadReviews();
+    void loadReviews(1, "");
   }, [loadReviews]);
 
   async function saveReview(review: StaffReview) {
@@ -98,7 +89,7 @@ function ReviewManagementPage() {
       await staffReviewService.update(getStaffReviewId(review), payload);
       showToast({ variant: "success", title: "Review updated", description: `Review #${getStaffReviewId(review)}` });
       setEditing(null);
-      await loadReviews();
+      await loadReviews(page, query);
     } catch (err) {
       const message = getApiError(err, "Cannot update this review.");
       setError(message);
@@ -117,7 +108,8 @@ function ReviewManagementPage() {
       await staffReviewService.remove(reviewId);
       showToast({ variant: "success", title: "Review deleted", description: `Review #${reviewId}` });
       setDeleting(null);
-      await loadReviews();
+      const nextPage = items.length === 1 && page > 1 ? page - 1 : page;
+      await loadReviews(nextPage, query);
     } catch (err) {
       const message = getApiError(err, "Cannot delete this review.");
       setError(message);
@@ -129,25 +121,23 @@ function ReviewManagementPage() {
 
   return <>
     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-1 text-sm text-slate-500">{description}</p></div><Button variant="outline" onClick={() => void loadReviews()} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button></div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-1 text-sm text-slate-500">{description}</p></div><Button variant="outline" onClick={() => void loadReviews(page, query)} disabled={loading}><RefreshCw size={17} className={loading ? "animate-spin" : ""} /> Refresh</Button></div>
       {error ? <div className="mt-5 rounded-lg bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div> : null}
-      <div className="relative mt-6 max-w-md"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search reviews..." /></div>
+      <form className="relative mt-6 flex max-w-xl gap-3" onSubmit={(event) => { event.preventDefault(); const value = searchInput.trim(); setQuery(value); void loadReviews(1, value); }}><div className="relative flex-1"><Search className="absolute left-3 top-3 size-5 text-slate-400" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} className="h-11 w-full rounded-lg border border-slate-200 pl-10 pr-4 text-sm outline-none focus:border-brand-600" placeholder="Search reviews..." /></div><Button type="submit" disabled={loading}><Search size={17} /> Search</Button></form>
       <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr>{["Review", "Customer", "Review target", "Rating", "Comment", "Status", "Actions"].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
         {loading ? <AdminTableSkeleton columns={7} rows={10} />
           : rows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-slate-500">No reviews found.</td></tr>
             : rows.map((item) => {
               const userId = getStaffReviewUserId(item);
               const locationId = getStaffReviewLocationId(item);
-              const user = users.get(userId);
-              const location = locations.get(locationId);
-              const userName = user?.name || getStaffReviewUserName(item);
+              const userName = getStaffReviewUserName(item);
               const target = getStaffReviewTarget(item);
-              const targetName = target.type === "Location" ? location?.name || target.name : target.name;
-              const email = user?.email || item.user_email;
+              const targetName = target.name;
+              const email = item.user_email;
               return <tr key={getStaffReviewId(item)} className="border-t border-slate-100"><td className="p-3 font-bold"><MessageSquareText className="mr-2 inline size-4 text-brand-600" />#{getStaffReviewId(item)}</td><td className="p-3"><p className="font-semibold text-slate-800">{userName}</p>{email ? <p className="mt-1 text-xs text-slate-500">{email}</p> : userId ? <p className="mt-1 text-xs text-slate-400">User #{userId}</p> : null}</td><td className="p-3"><p className="font-semibold text-slate-800">{targetName}</p><p className="mt-1 text-xs text-slate-400">{target.type}{target.id ? ` #${target.id}` : ""}</p></td><td className="p-3"><Star className="mr-1 inline size-4 fill-amber-400 text-amber-400" />{item.rating}</td><td className="max-w-64 truncate p-3 text-slate-600">{item.comment || "-"}</td><td className="p-3"><Status value={item.status} /></td><td className="p-3"><span className="flex gap-2">{isAdmin ? <Button variant="outline" className="h-9 px-3" onClick={() => setEditing(item)}><Pencil size={15} /> Edit</Button> : null}<button type="button" onClick={() => setDeleting(item)} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50" aria-label={`Delete review #${getStaffReviewId(item)}`}><Trash2 size={15} /></button></span></td></tr>;
             })}
       </tbody></table></div>
-      <Pagination page={currentPage} pageCount={pageCount} totalItems={visible.length} pageSize={pageSize} itemLabel="reviews" onPageChange={setPage} />
+      <Pagination page={currentPage} pageCount={pageCount} totalItems={totalItems} pageSize={pageSize} itemLabel="reviews" onPageChange={(nextPage) => void loadReviews(nextPage, query)} />
     </div>
     {editing ? <ReviewModal item={editing} saving={saving} onClose={() => setEditing(null)} onSave={saveReview} /> : null}
     {deleting ? <ConfirmDialog title="Delete Review" message={`Delete review #${getStaffReviewId(deleting)}? This action cannot be undone.`} onCancel={() => setDeleting(null)} onConfirm={() => void deleteReview()} /> : null}
@@ -161,22 +151,6 @@ function ReviewModal({ item, saving, onClose, onSave }: { item: StaffReview; sav
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block text-sm font-semibold [&_.input]:mt-2 [&_.input]:h-11 [&_.input]:w-full [&_.input]:rounded-lg [&_.input]:border [&_.input]:border-slate-200 [&_.input]:px-3">{label}{children}</label>; }
 function Status({ value }: { value: string }) { const style = value === "approved" ? "bg-emerald-50 text-emerald-700" : value === "hidden" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"; return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{value}</span>; }
-
-async function loadAllAdminUsers() {
-  const first = await adminUserService.list({ page: 1, limit: 100, sortBy: "name", sortOrder: "ASC" });
-  const totalPages = first.pagination?.totalPages ?? 1;
-  if (totalPages <= 1) return first.data ?? [];
-  const remaining = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => adminUserService.list({ page: index + 2, limit: 100, sortBy: "name", sortOrder: "ASC" })));
-  return [...(first.data ?? []), ...remaining.flatMap((result) => result.data ?? [])];
-}
-
-async function loadAllAdminLocations() {
-  const first = await adminLocationService.list({ page: 1, limit: 100 });
-  const totalPages = first.pagination?.totalPages ?? 1;
-  if (totalPages <= 1) return first.data ?? [];
-  const remaining = await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => adminLocationService.list({ page: index + 2, limit: 100 })));
-  return [...(first.data ?? []), ...remaining.flatMap((result) => result.data ?? [])];
-}
 
 function getApiError(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) return fallback;

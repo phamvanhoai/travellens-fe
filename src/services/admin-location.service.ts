@@ -60,8 +60,8 @@ function toFormData(payload: AdminLocationPayload, includeDestination: boolean) 
   formData.append("name", payload.name);
   formData.append("description", payload.description);
   if (includeDestination) formData.append("travel_destination_id", payload.travel_destination_id);
-  if (payload.latitude) formData.append("latitude", payload.latitude);
-  if (payload.longitude) formData.append("longitude", payload.longitude);
+  formData.append("latitude", payload.latitude);
+  formData.append("longitude", payload.longitude);
   if (payload.thumbnail_file) formData.append("thumbnail_file", payload.thumbnail_file);
   return formData;
 }
