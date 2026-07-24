@@ -322,14 +322,14 @@ export function getStaffBookingAmount(booking: StaffBooking) {
 }
 
 export function getStaffBookingTravelDate(booking: StaffBooking) {
-  return booking.travel_date ??
-    booking.travelDate ??
-    booking.departure_at ??
+  return booking.departure_at ??
     booking.departureAt ??
     booking.preferred_arrival_time ??
     booking.preferredArrivalTime ??
     booking.arrival_time ??
     booking.arrivalTime ??
+    booking.travel_date ??
+    booking.travelDate ??
     booking.booking_date ??
     booking.bookingDate ??
     "";

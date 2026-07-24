@@ -78,7 +78,7 @@ function Info({ icon: Icon, label, value }: { icon: typeof MapPin; label: string
 
 function formatShortDate(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(date);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(date);
 }
 
 function getInitials(name: string) { return name.trim().split(/\s+/).slice(-2).map((part) => part.charAt(0).toUpperCase()).join("") || "T"; }

@@ -8,6 +8,7 @@ import { Pagination } from "@/components/common/pagination";
 import { AdminTableSkeleton } from "@/components/admin/admin-table-skeleton";
 import { adminTourService, getAdminTourId, getAdminTourName, type AdminTour } from "@/services/admin-tour.service";
 import { adminTourDepartureService, type AdminTourDeparture, type AdminTourDeparturePayload, type BulkTourDeparturePayload } from "@/services/admin-tour-departure.service";
+import { toVietnamDateTimeLocal, vietnamDateTimeLocalToIso } from "@/utils/format";
 
 const emptyForm = { departure_at: "", capacity: "", price: "", child_price: "", infant_price: "0", booking_open_at: "", booking_close_at: "", status: "draft" };
 
@@ -67,7 +68,7 @@ export default function TourDeparturesPage() {
   function openEdit(item: AdminTourDeparture) { setEditing(item); setForm({ departure_at: localInput(item.departure_at), capacity: String(item.capacity), price: String(item.price), child_price: String(item.child_price), infant_price: String(item.infant_price), booking_open_at: localInput(item.booking_open_at), booking_close_at: localInput(item.booking_close_at), status: item.status }); }
   async function submit(event: FormEvent) {
     event.preventDefault(); setSaving(true);
-    const payload: AdminTourDeparturePayload = { departure_at: new Date(form.departure_at).toISOString(), capacity: Number(form.capacity), price: form.price ? Number(form.price) : undefined, child_price: form.child_price ? Number(form.child_price) : undefined, infant_price: Number(form.infant_price || 0), currency: "VND", booking_open_at: form.booking_open_at ? new Date(form.booking_open_at).toISOString() : null, booking_close_at: form.booking_close_at ? new Date(form.booking_close_at).toISOString() : null, status: form.status };
+    const payload: AdminTourDeparturePayload = { departure_at: vietnamDateTimeLocalToIso(form.departure_at), capacity: Number(form.capacity), price: form.price ? Number(form.price) : undefined, child_price: form.child_price ? Number(form.child_price) : undefined, infant_price: Number(form.infant_price || 0), currency: "VND", booking_open_at: form.booking_open_at ? vietnamDateTimeLocalToIso(form.booking_open_at) : null, booking_close_at: form.booking_close_at ? vietnamDateTimeLocalToIso(form.booking_close_at) : null, status: form.status };
     try { if (editing) await adminTourDepartureService.update(tourId, editing.tour_departure_id, payload); else await adminTourDepartureService.create(tourId, payload); toast({ variant: "success", title: editing ? "Departure updated" : "Departure created" }); setEditing(undefined); await load(); }
     catch (error: any) { toast({ variant: "error", title: "Save failed", description: error?.response?.data?.message || "Cannot save departure." }); } finally { setSaving(false); }
   }
@@ -108,7 +109,7 @@ function BulkCreateModal({ tourId, onClose, onCreated }: { tourId: number; onClo
     setSaving(true);
     const payload: BulkTourDeparturePayload = { start_date: form.start_date, end_date: form.end_date, weekdays: form.weekdays, departure_time: form.departure_time, status: form.status, currency: "VND",
       capacity: optionalNumber(form.capacity), price: optionalNumber(form.price), child_price: optionalNumber(form.child_price), infant_price: optionalNumber(form.infant_price),
-      booking_open_at: form.booking_open_at ? new Date(form.booking_open_at).toISOString() : null, booking_close_hours_before: form.booking_close_hours_before === "" ? null : Number(form.booking_close_hours_before) };
+      booking_open_at: form.booking_open_at ? vietnamDateTimeLocalToIso(form.booking_open_at) : null, booking_close_hours_before: form.booking_close_hours_before === "" ? null : Number(form.booking_close_hours_before) };
     try { await onCreated(await adminTourDepartureService.bulkCreate(tourId, payload)); }
     catch (error: any) { toast({ variant: "error", title: "Generation failed", description: error?.response?.data?.message || "Cannot generate departures." }); }
     finally { setSaving(false); }
@@ -121,7 +122,7 @@ function BulkCreateModal({ tourId, onClose, onCreated }: { tourId: number; onClo
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="text-sm font-semibold [&_input]:mt-2 [&_input]:h-11 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-200 [&_input]:px-3 [&_select]:mt-2 [&_select]:h-11 [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-slate-200 [&_select]:px-3">{label}{children}</label>; }
 function dateTime(value: string) { return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value)); }
-function localInput(value?: string | null) { if (!value) return ""; const date = new Date(value); const parts = new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(date); return parts.replace(" ", "T"); }
+function localInput(value?: string | null) { return toVietnamDateTimeLocal(value); }
 function money(value: number | string) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(value)); }
 function uniqueTours(tours: AdminTour[]) { return [...new Map(tours.map((tour) => [getAdminTourId(tour), tour])).values()].filter((tour) => getAdminTourId(tour) > 0); }
 function selectedTourName(selected: AdminTour | null, tours: AdminTour[], id: number) { const tour = getAdminTourId(selected ?? {}) === id ? selected : tours.find((item) => getAdminTourId(item) === id); return tour ? `${getAdminTourName(tour)} (#${id})` : `Tour #${id}`; }
