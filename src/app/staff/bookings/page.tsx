@@ -554,10 +554,9 @@ function CreateBookingModal({ saving, onClose, onCreate }: { saving: boolean; on
 function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValue; saving: boolean; onClose: () => void; onSave: (item: BookingFormValue) => void }) {
   const [form, setForm] = useState(item);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const today = useMemo(() => startOfDay(new Date()), []);
+  const today = useMemo(() => vietnamDateKey(new Date()), []);
   const requestedSeats = item.adults + item.children;
-  const travelDate = item.travelDate ? startOfDay(new Date(`${item.travelDate}T00:00:00`)) : null;
-  const travelDatePassed = Boolean(travelDate && travelDate < today);
+  const travelDatePassed = Boolean(item.travelDate && item.travelDate < today);
   const editable = !travelDatePassed && !saving;
 
   function submit() {
@@ -720,10 +719,6 @@ function toDateInputValue(value: string) {
   return Number.isNaN(date.getTime()) ? "" : toDateInput(date);
 }
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
 function toDateInput(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -756,6 +751,15 @@ function buildDepartureAt(date: string, schedule?: string) {
   return `${date}T${hour}:${minute}:00+07:00`;
 }
 
+function vietnamDateKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh"
+  }).format(date);
+}
+
 function BookingDetailsModal({ booking, onClose }: { booking: StaffBooking; onClose: () => void }) {
   const passengers = getStaffBookingPassengers(booking);
   const customer = typeof booking.customer === "object" && booking.customer ? booking.customer : booking.user ?? booking.User;
@@ -775,7 +779,7 @@ function BookingDetailsModal({ booking, onClose }: { booking: StaffBooking; onCl
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DetailCard label="Booking status"><StatusBadge value={booking.status ?? "pending"} /></DetailCard>
           <DetailCard label="Payment status"><StatusBadge value={paymentStatus} /></DetailCard>
-          <DetailCard label="Travel date" value={formatDate(getStaffBookingTravelDate(booking))} />
+          <DetailCard label="Travel date" value={formatDateTime(getStaffBookingTravelDate(booking))} />
           <DetailCard label="Total amount" value={formatVnd(getStaffBookingAmount(booking))} strong />
         </div>
 
@@ -794,7 +798,7 @@ function BookingDetailsModal({ booking, onClose }: { booking: StaffBooking; onCl
 
 function DetailCard({ label, value, strong = false, children }: { label: string; value?: React.ReactNode; strong?: boolean; children?: React.ReactNode }) { return <div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-bold uppercase text-slate-400">{label}</p><div className={`mt-2 ${strong ? "text-lg font-bold text-brand-700" : "font-semibold text-slate-800"}`}>{children ?? value ?? "-"}</div></div>; }
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) { return <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-3"><dt className="text-slate-400">{label}</dt><dd className="break-words font-semibold text-slate-700">{value}</dd></div>; }
-function formatDateTime(value?: string) { if (!value) return "-"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date); }
+function formatDateTime(value?: string) { if (!value) return "-"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(date); }
 function formatStaffDeparture(departure: PublicTourDeparture) { return `${formatDateTime(departure.departure_at)} · ${departure.available_slots} slots · ${formatVnd(departure.price)}`; }
 function formatStaffDepartureTime(departure: PublicTourDeparture) { const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(departure.departure_at)); return `${time} · ${departure.available_slots} slots · ${formatVnd(departure.price)}`; }
 function staffDepartureDate(value: string) { return new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value)); }

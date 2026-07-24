@@ -26,6 +26,7 @@ import {
 } from "@/services/admin-blog.service";
 import { adminLocationService, getLocationId, type AdminLocation } from "@/services/admin-location.service";
 import { adminBlogCategoryService, getBlogCategoryId, type BlogCategory } from "@/services/blog-category.service";
+import { toVietnamDateTimeLocal, vietnamDateTimeLocalToIso } from "@/utils/format";
 
 type BlogFormValue = {
   category_ids: string[];
@@ -127,7 +128,7 @@ export default function AdminBlogsPage() {
       thumbnail_file: form.thumbnail_file,
       content: form.content.trim(),
       status: form.status,
-      published_at: form.published_at ? new Date(form.published_at).toISOString() : null,
+      published_at: form.published_at ? vietnamDateTimeLocalToIso(form.published_at) : null,
       location_ids: form.location_ids.map(Number)
     };
 
@@ -307,10 +308,7 @@ function BlogStatus({ status = "published" }: { status?: AdminBlog["status"] }) 
 }
 
 function toDateTimeLocal(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return toVietnamDateTimeLocal(value);
 }
 
 function createSlug(value: string) {
