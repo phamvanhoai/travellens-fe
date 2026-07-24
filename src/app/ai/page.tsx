@@ -181,7 +181,7 @@ export default function AIAssistantPage() {
                     {history.length ? history.map((item) => (
                       <button key={item.id} type="button" onClick={() => selectHistory(item)} className="group relative block w-full border-b border-slate-100 p-4 text-left transition last:border-0 hover:bg-brand-50/60">
                         <p className="line-clamp-2 pr-7 text-sm font-semibold leading-5 text-slate-700">“{item.travel_request}”</p>
-                        <span className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={12} />{new Date(item.created_at).toLocaleDateString("vi-VN")} · {item.recommendations.length} kết quả</span>
+                        <span className="mt-2 flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={12} />{new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(item.created_at))} · {item.recommendations.length} kết quả</span>
                         <span role="button" tabIndex={0} onClick={(event) => void deleteHistory(item.id, event)} className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-300 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"><Trash2 size={15} /></span>
                       </button>
                     )) : <div className="p-8 text-center"><History className="mx-auto text-slate-300" size={28} /><p className="mt-2 text-sm text-slate-500">Chưa có lịch sử tìm kiếm.</p></div>}
