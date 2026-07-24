@@ -114,9 +114,7 @@ export default function StaffBookingsPage() {
     setError("");
     try {
       await staffBookingService.update(payload.id, {
-        customer_name: payload.customer,
-        phone: payload.phone,
-        status: payload.status,
+        contact_phone: payload.phone,
       });
       showToast({ variant: "success", title: "Booking updated", description: payload.code });
       setEditing(null);
@@ -560,36 +558,27 @@ function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValu
   const requestedSeats = item.adults + item.children;
   const travelDate = item.travelDate ? startOfDay(new Date(`${item.travelDate}T00:00:00`)) : null;
   const travelDatePassed = Boolean(travelDate && travelDate < today);
-  const statusLocked = ["cancelled", "canceled"].includes(String(item.status).toLowerCase());
   const editable = !travelDatePassed && !saving;
-  const statusOptions = getEditStatusOptions(item.status);
 
   function submit() {
     if (travelDatePassed) return;
 
     const errors: Record<string, string> = {};
-    const customer = form.customer.trim();
     const phone = form.phone.trim();
 
-    if (!customer) errors.customer = "Customer name is required.";
-    else if (customer.length < 2) errors.customer = "Customer name must contain at least 2 characters.";
-    else if (customer.length > 100) errors.customer = "Customer name must contain at most 100 characters.";
-    else if (!/^[\p{L}\s]+$/u.test(customer)) errors.customer = "Customer name must not contain special characters.";
-
-    if (!/^\d{10}$/.test(phone)) errors.phone = "Phone number must contain exactly 10 digits.";
+    if (!/^0(?:3|5|7|8|9)\d{8}$/.test(phone)) errors.phone = "Enter a valid Vietnamese mobile number.";
 
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    onSave({ ...form, customer, phone, status: statusLocked ? item.status : form.status });
+    onSave({ ...form, phone });
   }
 
   return (
     <Modal title="Edit Booking" onClose={onClose} onSubmit={submit} saveDisabled={!editable} saving={saving}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Customer">
-          <input value={form.customer} disabled={!editable} onChange={(event) => { setForm({ ...form, customer: event.target.value }); setFieldErrors((current) => ({ ...current, customer: "" })); }} className={`input disabled:bg-slate-50 disabled:text-slate-500 ${fieldErrors.customer ? "border-rose-500" : ""}`} />
-          {fieldErrors.customer ? <span className="mt-2 block text-xs font-semibold text-rose-600">{fieldErrors.customer}</span> : null}
+          <input value={form.customer} readOnly disabled className="input bg-slate-50 text-slate-500" />
         </Field>
         <Field label="Phone">
           <input type="tel" value={form.phone} disabled={!editable} onChange={(event) => { setForm({ ...form, phone: event.target.value }); setFieldErrors((current) => ({ ...current, phone: "" })); }} className={`input disabled:bg-slate-50 disabled:text-slate-500 ${fieldErrors.phone ? "border-rose-500" : ""}`} />
@@ -597,7 +586,7 @@ function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValu
         </Field>
         <Field label="Tour"><input value={form.tour} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
         <Field label="Travel Date"><input value={formatDate(form.travelDate)} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
-        <Field label="Status"><select value={form.status} disabled={!editable || statusLocked} onChange={(event) => setForm({ ...form, status: event.target.value as StaffBookingStatus })} className="input disabled:bg-slate-50 disabled:text-slate-500">{statusOptions.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select></Field>
+        <Field label="Status"><input value={formatLabel(form.status)} readOnly disabled className="input bg-slate-50 text-slate-500" /></Field>
         <ReadOnlyMetric label="Adults" value={form.adults} />
         <ReadOnlyMetric label="Children" value={form.children} />
         <ReadOnlyMetric label="Infants" value={form.infants} />
@@ -608,7 +597,7 @@ function BookingModal({ item, saving, onClose, onSave }: { item: BookingFormValu
         <span><span className="font-semibold text-slate-800">Requested Seats:</span> {requestedSeats}</span>
       </div>
       {travelDatePassed ? <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">This booking cannot be edited because the travel date has passed.</p> : null}
-      {statusLocked && !travelDatePassed ? <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-700">This booking status cannot be changed.</p> : null}
+      {!travelDatePassed ? <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Only the booking contact phone can be edited here. Payment, cancellation, and refund statuses are managed by their dedicated workflows.</p> : null}
     </Modal>
   );
 }
@@ -688,9 +677,9 @@ function toFormValue(booking: StaffBooking): BookingFormValue {
 }
 
 function getStaffBookingPhone(booking: StaffBooking) {
-  const direct = booking as StaffBooking & { phone?: string; phone_number?: string; phoneNumber?: string; customer_phone?: string; customerPhone?: string };
+  const direct = booking as StaffBooking & { contact_phone?: string; phone?: string; phone_number?: string; phoneNumber?: string; customer_phone?: string; customerPhone?: string };
   const customer = typeof booking.customer === "object" && booking.customer ? booking.customer : null;
-  return String(direct.phone ?? direct.phone_number ?? direct.phoneNumber ?? direct.customer_phone ?? direct.customerPhone ?? customer?.phone ?? "");
+  return String(direct.contact_phone ?? direct.phone ?? direct.phone_number ?? direct.phoneNumber ?? direct.customer_phone ?? direct.customerPhone ?? customer?.phone ?? "");
 }
 
 function getPassengerCount(booking: StaffBooking, category: "adult" | "child" | "infant") {
@@ -707,12 +696,6 @@ function getPassengerCount(booking: StaffBooking, category: "adult" | "child" | 
 
   const total = Number(booking.passenger_count ?? booking.passengerCount ?? booking.total_passengers ?? booking.totalPassengers ?? 0);
   return category === "adult" && total > 0 ? total : 0;
-}
-
-function getEditStatusOptions(status: StaffBookingStatus) {
-  const normalized = String(status || "pending").toLowerCase();
-  if (["cancelled", "canceled"].includes(normalized)) return [status];
-  return ["pending", "confirmed", "completed", "cancelled", "expired"] as StaffBookingStatus[];
 }
 
 function formatDate(value: string) {

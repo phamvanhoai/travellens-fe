@@ -48,11 +48,12 @@ export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) 
     let active = true;
 
     async function checkAccount() {
+      const redirectTarget = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       const token = localStorage.getItem("travel360_token") ?? localStorage.getItem("token");
 
       if (!token) {
         clearAuthStorage();
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
         return;
       }
 
@@ -75,7 +76,7 @@ export function AuthGuard({ allowedRoles, children, fallback }: AuthGuardProps) 
         if (!active) return;
         clearAuthStorage();
         setUser(null);
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
       }
     }
 
